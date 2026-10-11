@@ -10,7 +10,7 @@ Three ways to answer a heart failure question from clinical guidelines, side by 
 
 All three speak English, German, Russian and Hindi. They answer in the language you use and switch when you switch, in chat and in calls (`LANGUAGES`).
 
-Every agent can also take a video call through Tavus. In a call Guido shares a fake screen, and a small decision model (Cloudflare `clef-flash`) arranges the windows: the graph walk, the original guideline table, live UMLS and Wikidata facts, and notes of what he said.
+Every agent can also take a video call through Tavus. When Luna talks about the guidelines in a call, the right side shows what she is drawing on: verbatim quotes from the guideline pages, checked character by character against the source, with guideline, page, class and level of evidence, and the original table with the row highlighted. Small talk shows nothing. Guido shares a fake screen, and a small decision model (Cloudflare `clef-flash`) arranges the windows: the graph walk, the original guideline table, live UMLS and Wikidata facts, and notes of what he said.
 
 This is a research demo. It is not clinical decision support and nothing it says replaces medical advice.
 

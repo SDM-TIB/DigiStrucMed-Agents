@@ -536,6 +536,11 @@ window.jrHTML = {
         : h('a', {key: i, href: x.url, target: '_blank', rel: 'noopener', style: {animationDelay: i * 25 + 'ms'}}, x.label)),
         p.total > (p.items || []).length ? h('span', {className: 'more'}, `+${p.total - p.items.length} on Wikidata`) : null));
   },
+  quote(h, p) {
+    return h('article', {className: 'jr-quote'}, p.claim ? h('b', {className: 'claim'}, p.claim) : null, h('blockquote', null, p.quote),
+      h('footer', null, h('span', {className: 'src'}, `${p.ref || p.title} · p. ${p.page}`), p.grade ? h('span', {className: 'grade'}, p.grade) : null,
+        p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: p.pageId, quote: p.quote}}))}, 'Open page') : null));
+  },
   excerpt(h, p) {
     const body = p.html ? h('div', {className: 'tbl', ref: el => el && jrTable(el, p.html, p.match)}) : h('blockquote', null, p.text);
     return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, `${p.ref} · page ${p.page}${p.grade ? ' · ' + p.grade : ''}`)),
@@ -567,7 +572,7 @@ function jrFallback(el) {
     Warning: p => h('div', {className: 'jr-warn'}, icon(p.icon || 'triangle-alert'), h('p', null, p.text)),
     Chips: p => h('div', {className: 'jr-chips'}, p.label ? h('span', {className: 'jr-lab'}, p.label) : null, (p.items || []).map(t => h('span', {className: 'jr-chip'}, String(t)))),
     ConceptCard: (p, k) => jrHTML.concept(h, p, k), IdList: p => jrHTML.ids(h, p), RelationList: p => jrHTML.relations(h, p),
-    Excerpt: p => jrHTML.excerpt(h, p), Note: p => h('p', {className: 'jr-note'}, p.text)};
+    Excerpt: p => jrHTML.excerpt(h, p), Quote: p => jrHTML.quote(h, p), Note: p => h('p', {className: 'jr-note'}, p.text)};
   const build = (spec, key, depth = 0) => {
     const e = spec.elements[key]; if (!e || depth > 8 || !R[e.type]) return null;
     return R[e.type](e.props || {}, (e.children || []).map(c => build(spec, c, depth + 1)));
@@ -793,6 +798,15 @@ function showSource(st, n) {
   if (!srcList.length && st.sources[n]) srcList = [st.sources[n]];
   renderSource(); $('#srcx').classList.remove('hidden'); $('#srcx-close').focus();
 }
+// highlight a quote inside page text. matches across whitespace and punctuation differences, like the server check
+function markQuote(text, quote) {
+  if (!quote) return esc(text);
+  const words = quote.match(/[\p{L}\p{N}]+/gu) || [];
+  if (words.length < 3) return esc(text);
+  const re = new RegExp(words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^\\p{L}\\p{N}]+'), 'iu');
+  const m = text.match(re);
+  return m ? esc(text.slice(0, m.index)) + '<mark>' + esc(m[0]) + '</mark>' + esc(text.slice(m.index + m[0].length)) : esc(text);
+}
 function renderSource() {
   const s = srcList[srcIdx]; if (!s) return;
   $('#srcx-n').textContent = s.n;
@@ -812,7 +826,11 @@ function renderSource() {
   $('.srcx-quote h4').textContent = s.doc ? 'Page text' : s.page_id ? 'Passage used by Luna' : 'Recommendation';
   if (s.doc) {
     $('#srcx-quote').className = 'plain'; $('#srcx-quote').textContent = 'Loading…';
-    fetch('/api/page/' + encodeURIComponent(s.page_id)).then(r => r.json()).then(x => { if (srcList[srcIdx] === s) $('#srcx-quote').textContent = x.plain.trim(); }).catch(() => {});
+    fetch('/api/page/' + encodeURIComponent(s.page_id)).then(r => r.json()).then(x => {
+      if (srcList[srcIdx] !== s) return;
+      $('#srcx-quote').innerHTML = markQuote(x.plain.trim(), s.highlight);
+      $('#srcx-quote mark')?.scrollIntoView({block: 'center'});
+    }).catch(() => {});
   } else {
     const q = (s.snippet || '').replace(/\*\*/g, '');
     $('#srcx-quote').className = ''; $('#srcx-quote').innerHTML = q ? '<mark>' + esc(q) + '</mark>' : '';
@@ -947,7 +965,10 @@ addEventListener('jr-open-concept', e => {
   srcList = [{n: 'KG', rec_id: e.detail, search: true, title: e.detail.replace(/^c:/, '').replace(/_/g, ' '), ref: 'Knowledge graph'}]; srcIdx = 0;
   renderSource(); $('#srcx').classList.remove('hidden');
 });
-addEventListener('jr-open-page', e => { const d = LIB.find(d => d.pages.some(([id]) => id === e.detail)); if (!d) return; openDocument(d); srcIdx = Math.max(0, d.pages.findIndex(([id]) => id === e.detail)); renderSource(); });
+addEventListener('jr-open-page', e => {
+  const id = e.detail.id || e.detail, d = LIB.find(d => d.pages.some(([p]) => p === id)); if (!d) return;
+  openDocument(d); srcIdx = Math.max(0, d.pages.findIndex(([p]) => p === id)); srcList[srcIdx].highlight = e.detail.quote; renderSource();
+});
 function closeSource() { $('#srcx').classList.add('hidden'); }
 $('#srcx-close').onclick = closeSource;
 $('#srcx').addEventListener('click', e => { if (e.target.id === 'srcx') closeSource(); });
@@ -1363,7 +1384,7 @@ function showTable(x) {
   showT();
 }
 /* ---------- live stage next to the video: graph traversal, evidence, live json-render boards ---------- */
-const stage = {said: [], lastBoard: '', greeted: false};
+const stage = {said: [], lastBoard: '', greeted: false, quotes: new Set()};
 // speaking state of the face, from Tavus started/stopped_speaking events: narration lines are only sent into silence
 const face = {speaking: false, stoppedAt: 0, sentAt: 0};
 const faceIdle = (ms = 9000) => new Promise(r => { const t0 = performance.now(); const t = setInterval(() => {
@@ -1373,9 +1394,9 @@ const normSpeech = t => (t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim
 function stageShow(on) { cx.classList.toggle('stage-on', on); }
 function stageBusy(on, sub) { $('#stage-dot').classList.toggle('busy', on); if (sub != null) $('#stage-sub').textContent = sub; }
 function stageReset() {
-  stage.said = []; stage.lastBoard = ''; stage.greeted = false; face.speaking = false;
-  $('#stage-cards').innerHTML = `<p class="stage-empty">${callAgent === 'guido' ? 'Ask Guido a question: the graph walk, the guideline table and live context from UMLS and Wikidata appear here.' : 'What ' + (callAgent === 'lino' ? 'Lino' : 'Luna') + ' says is turned into live cards here.'}</p>`;
-  $('#stage-title').textContent = callAgent === 'guido' ? 'Guideline knowledge graph' : 'Live board'; $('#stage-sub').textContent = '';
+  stage.said = []; stage.lastBoard = ''; stage.greeted = false; stage.quotes = new Set(); face.speaking = false;
+  $('#stage-cards').innerHTML = `<p class="stage-empty">${callAgent === 'guido' ? 'Ask Guido a question: the graph walk, the guideline table and live context from UMLS and Wikidata appear here.' : (callAgent === 'luna' ? 'When Luna cites the guidelines, the original quotes, tables and pages appear here.' : 'What Lino says is turned into live cards here.')}</p>`;
+  $('#stage-title').textContent = callAgent === 'guido' ? 'Guideline knowledge graph' : callAgent === 'luna' ? 'From the guidelines' : 'Live board'; $('#stage-sub').textContent = '';
   stageBusy(false);
   stageShow(false);
 }
@@ -1455,6 +1476,27 @@ const SAY = {
     links: l => `मैं ${l} के कनेक्शन देख रहा हूँ।`, hop2: x => `अब दो कदम आगे, मैं ${x} पर हूँ।`, expand: l => `मैं ${l} को थोड़ा और विस्तार से देखता हूँ।`,
     select: 'मुझे जो चाहिए था, वह मिल गया। अब मैं वे सिफ़ारिशें चुनता हूँ जो आपके सवाल का जवाब देती हैं।', table: 'देखिए, यह रही वह सिफ़ारिश मूल गाइडलाइन टेबल में।'},
 };
+// luna's call: verbatim guideline quotes for what she just said. nothing at all when she said nothing from the guidelines
+async function evidenceBoard(text) {
+  const key = normSpeech(text).slice(0, 80);
+  if (!key || key === stage.lastBoard || text.length < 60) return; stage.lastBoard = key;
+  let x; try { x = await post('/api/evidence', {text}); } catch { return; }
+  const points = (x.points || []).filter(p => !stage.quotes.has(p.quote));
+  if (!x.relevant || !points.length) return;
+  points.forEach(p => stage.quotes.add(p.quote));
+  const el = {b: {type: 'Board', props: {title: x.title || 'From the guidelines'}, children: []}};
+  points.forEach((p, i) => {
+    el['q' + i] = {type: 'Quote', props: {claim: p.claim, quote: p.quote, ref: p.ref, title: p.title, page: p.page, grade: p.grade, pageId: p.page_id}, children: []};
+    el.b.children.push('q' + i);
+    const next = points[i + 1];  // two quotes from one table: show the table once, after the last of them
+    if (p.table_html && !(next && next.table_html === p.table_html)) {
+      el['t' + i] = {type: 'Excerpt', props: {title: p.title, ref: p.ref || p.title, page: p.page, grade: p.grade, html: p.table_html, match: p.quote.slice(0, 60), text: p.quote, pageId: p.page_id}, children: []};
+      el.b.children.push('t' + i);
+    }
+  });
+  if (!cx.classList.contains('stage-on')) stageShow(true);
+  stageCard({root: 'b', elements: el}, true);
+}
 // Guido's narration while he walks the graph (spoken via echo, spaced so lines never overlap)
 function narrator(lang = 'en') {
   const T = SAY[lang] || SAY.en;
@@ -1549,7 +1591,7 @@ async function onAppMessage(e) {
     if (pr.role === 'replica' && pr.speech && !stage.greeted) { stage.greeted = true; return; }  // greeting: no board
     if (pr.role === 'replica' && pr.speech) {
       const k = normSpeech(pr.speech).slice(0, 60);
-      if (!stage.said.some(x => x && (k.startsWith(x.slice(0, 40)) || x.startsWith(k.slice(0, 40))))) { liveBoard(pr.speech, callAgent); if (WM.on) direct('answering', pr.speech); }
+      if (!stage.said.some(x => x && (k.startsWith(x.slice(0, 40)) || x.startsWith(k.slice(0, 40))))) { if (callAgent === 'luna') evidenceBoard(pr.speech); else liveBoard(pr.speech, callAgent); if (WM.on) direct('answering', pr.speech); }
     }
     return;
   }

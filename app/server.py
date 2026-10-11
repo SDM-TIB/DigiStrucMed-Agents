@@ -18,6 +18,7 @@ import board
 import config
 import corpus
 import director
+import evidence
 import gpu
 import guido
 import kg
@@ -191,6 +192,8 @@ class Handler(BaseHTTPRequestHandler):
 
     if self.path.startswith('/api/chat/'):
       return self.chat(self.path.rsplit('/', 1)[-1], body)
+    if self.path == '/api/evidence':  # luna's call: verbatim guideline quotes for what she just said, or nothing
+      return self.send(200, evidence.board(body.get('text', '')))
     if self.path == '/api/board':
       return self.stream(board.board(body.get('text', '')))
     if self.path == '/api/director':

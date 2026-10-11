@@ -733,3 +733,14 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .gpu-off:hover{background:oklch(0.95 0.03 25);border-color:var(--danger)}
 .gpu-off.confirm{background:var(--danger);color:#fff;border-color:var(--danger)}
 .gpu-off[disabled]{opacity:.6;cursor:default}
+/* luna's evidence: verbatim quotes with their source */
+.jr-quote{display:flex;flex-direction:column;gap:7px;padding:12px 14px;border-radius:12px;background:var(--win);border:1px solid var(--line);animation:rise .45s var(--ease) both}
+.jr-quote .claim{font-size:14px;line-height:19px;color:var(--ink)}
+.jr-quote blockquote{margin:0;padding:8px 12px;border-left:3px solid oklch(0.72 0.14 75);border-radius:0 8px 8px 0;background:oklch(0.97 0.04 95);font-size:13.5px;line-height:20px;color:var(--ink)}
+.jr-quote blockquote::before{content:'\201C'}.jr-quote blockquote::after{content:'\201D'}
+.jr-quote footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.jr-quote .grade{height:20px;padding:0 8px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:650;display:inline-flex;align-items:center}
+.jr-quote footer button{margin-left:auto;height:26px;padding:0 10px;border-radius:13px;border:1px solid var(--line);background:var(--win);font-size:12px;font-weight:600;color:var(--accent)}
+.jr-quote footer button:hover{border-color:var(--accent)}
+.jr-board .jr-ex{margin:2px 0 4px;box-shadow:none;border:1px solid var(--line)}
+.jr-board .jr-ex .tbl{max-height:220px}
