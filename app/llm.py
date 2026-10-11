@@ -3,6 +3,8 @@
 Gemini is the default because Google serves it behind an OpenAI compatible endpoint. Point LLM_BASE_URL at
 OpenAI, OpenRouter, vLLM, Ollama or anything else that speaks /chat/completions and nothing else changes.
 Lino's vLLM server on Modal goes through the same code.
+LLM_API_KEY=vertex uses Vertex AI's OpenAI endpoint with the Cloud Run service account's token instead of a key
+(billed to the Cloud billing account; model names then carry the google/ prefix).
 
 stream() yields ('text', delta) while the model talks and ('calls', [tool_call]) once at the end.
 """
@@ -12,6 +14,7 @@ import urllib.error
 import urllib.request
 
 import config
+import storage
 
 
 class Endpoint:
@@ -25,8 +28,9 @@ AGENTS = Endpoint(config.LLM_BASE_URL, config.LLM_API_KEY, config.LLM_MODEL,
 
 
 def _open(ep, body, timeout, fallback=True):
+  auth = storage._auth() if ep.api_key == 'vertex' else {'Authorization': 'Bearer ' + ep.api_key}
   req = urllib.request.Request(ep.url, data=json.dumps(body).encode(), method='POST',
-                               headers={'Authorization': 'Bearer ' + ep.api_key, 'Content-Type': 'application/json'})
+                               headers={**auth, 'Content-Type': 'application/json'})
   for attempt in range(4):  # 429/503 happen under load. back off ~6 s before the first byte, never after
     try:
       return urllib.request.urlopen(req, timeout=timeout)
