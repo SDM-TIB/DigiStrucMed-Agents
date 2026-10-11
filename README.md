@@ -8,6 +8,8 @@ Three ways to answer a heart failure question from clinical guidelines, side by 
 | **Lino** | Answers from memory. Llama 3.2 1B, fine-tuned with NeSyCoT rules mined from the guideline knowledge graph. No retrieval, no guardrails. | vLLM on a Modal L4 that sleeps when unused |
 | **Guido** | Walks the guideline knowledge graph (Think-on-Graph), shows every hop live and cites each recommendation with class and level of evidence. | Same LLM as Luna |
 
+All three speak English, German and Russian. They answer in the language you use and switch when you switch, in chat and in calls (`LANGUAGES`).
+
 Every agent can also take a video call through Tavus. In a call Guido shares a fake screen, and a small decision model (Cloudflare `clef-flash`) arranges the windows: the graph walk, the original guideline table, live UMLS and Wikidata facts, and notes of what he said.
 
 This is a research demo. It is not clinical decision support and nothing it says replaces medical advice.

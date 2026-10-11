@@ -1,5 +1,14 @@
 {
-  "luna": {"pal_id": "p353a631eb6c", "face_id": "r99d2b9af9a0"},
-  "lino": {"pal_id": "p85cf0faefe2", "face_id": "rc39f215e8cb"},
-  "guido": {"pal_id": "p131ead68e06", "face_id": "rbf278df2604"}
+  "luna": {
+    "pal_id": "p353a631eb6c",
+    "face_id": "r99d2b9af9a0"
+  },
+  "lino": {
+    "pal_id": "p85cf0faefe2",
+    "face_id": "rc39f215e8cb"
+  },
+  "guido": {
+    "pal_id": "p131ead68e06",
+    "face_id": "rbf278df2604"
+  }
 }

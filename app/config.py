@@ -29,6 +29,12 @@ PORT = int(env('PORT', '8080'))
 DEMO_PASSWORD = env('DEMO_PASSWORD')
 ADMIN_PASSWORD = env('ADMIN_PASSWORD')
 
+# every agent may speak these. calls listen for all of them, the first one opens the call
+LANGUAGES = [x.strip() for x in env('LANGUAGES', 'en,de,ru').split(',') if x.strip()]
+LANGUAGE_RULE = ("Languages: you speak English, German and Russian fluently and you may use any of them. Detect which one the user "
+                 "speaks or writes and answer in that language. If the user switches, switch with them. Keep drug names, classes of "
+                 "recommendation and levels of evidence exact in every language. Sources can be in another language; translate what you quote.")
+
 # tavus video calls
 TAVUS_API_KEY = env('TAVUS_API_KEY')
 MAX_CALL_SECONDS = int(env('MAX_CALL_SECONDS', '300'))

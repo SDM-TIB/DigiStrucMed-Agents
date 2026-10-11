@@ -7,15 +7,18 @@
 needs: gcloud (logged in), and for `gpu` the modal package with a token (pip install modal, modal token new).
 secret values go to Secret Manager over stdin. nothing is printed, nothing touches disk.
 """
+import json
+import os
 import pathlib
 import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SECRETS = ('TAVUS_API_KEY', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
            'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
-SETTINGS = ('LLM_BASE_URL', 'LLM_MODEL', 'LLM_REASONING_EFFORT', 'LINO_URL', 'MAX_CALL_SECONDS',
+SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_REASONING_EFFORT', 'LINO_URL', 'MAX_CALL_SECONDS',
             'TAVUS_PLAN_MINUTES', 'TAVUS_PERIOD_START', 'TAVUS_USED_OFFSET_MIN')
 # large files that live in the bucket under assets/, not in git
 ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter'}
@@ -72,12 +75,18 @@ def deploy_app(env):
   run('gcloud', 'projects', 'add-iam-policy-binding', project, f'--member={runtime}', '--role=roles/cloudbuild.builds.builder',
       '--condition=None', quiet=True)
   secrets = ','.join(f'{v}={secret_name(v)}:latest' for v in SECRETS if env.get(v))
-  settings = ','.join(f'{k}={env[k]}' for k in SETTINGS if env.get(k)) + f',PAGE_BUCKET={bucket}'
+  # settings go through a yaml file: values can hold commas (LANGUAGES=en,de,ru). no secrets in it
+  settings = {k: env[k] for k in SETTINGS if env.get(k)} | {'PAGE_BUCKET': bucket}
+  fd, name = tempfile.mkstemp(suffix='.yaml')
+  os.close(fd)
+  env_file = pathlib.Path(name)
+  env_file.write_text(''.join(f'{k}: {json.dumps(v)}' + chr(10) for k, v in settings.items()), encoding='utf-8')
   # one instance: gpu wake state, call timers and the usage log live in memory. min 1 = no cold start.
   # --no-invoker-iam-check because org policies often forbid allUsers. the app has its own password
   print(run('gcloud', 'run', 'deploy', service, '--source', str(ROOT / 'app'), f'--region={region}', f'--project={project}',
             '--no-invoker-iam-check', '--min-instances=1', '--max-instances=1', '--memory=1Gi', '--cpu=1',
-            f'--set-secrets={secrets}', f'--set-env-vars={settings}', '--quiet', quiet=True) or 'deployed')
+            f'--set-secrets={secrets}', f'--env-vars-file={env_file}', '--quiet', quiet=True) or 'deployed')
+  env_file.unlink()
   print(run('gcloud', 'run', 'services', 'describe', service, f'--region={region}', f'--project={project}', '--format=value(status.url)', quiet=True))
 
 

@@ -37,7 +37,7 @@ def start(agent):
   body = {'pal_id': pal['pal_id'], 'face_id': pal['face_id'], 'conversation_name': CALL_NAMES[agent],
           'require_auth': True, 'max_participants': 2, 'policy': 'eu',
           'properties': {'max_call_duration': config.MAX_CALL_SECONDS, 'participant_absent_timeout': 120,
-                         'participant_left_timeout': 15, 'enable_recording': False, 'languages': ['en']}}
+                         'participant_left_timeout': 15, 'enable_recording': False, 'languages': config.LANGUAGES}}
   if agent == 'luna':  # luna also gets a curated set of evidence pages as call context
     body['conversational_context'] = (config.DATA / 'luna_call_context.json').read_text(encoding='utf-8')
   result = api('POST', 'conversations', body)

@@ -1429,11 +1429,33 @@ async function liveBoard(text, who) {
     const fin = comp.push('\n').result; if (fin.root) r.set(fin, false);
   } catch {}
 }
+// guido narrates in the language of the question. en, de and ru, like the agents themselves
+function langOf(text) {
+  const t = (text || '').toLowerCase();
+  if (/[а-яё]/.test(t)) return 'ru';
+  return /[äöüß]|\b(der|die|das|und|ist|nicht|was|wie|welche|bei|mit|für|sind|wird|kann|gibt)\b/.test(t) ? 'de' : 'en';
+}
+const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
+const SAY = {
+  en: {and: 'and', share: 'Let me share my screen and walk you through our knowledge graph.', again: 'Let me look at the graph again.',
+    seed: x => `I'm starting from ${x}.`, recs: (n, l) => `Here's something: ${n} recommendation${n > 1 ? 's' : ''} around ${l}. Let me follow them.`,
+    links: l => `Let me follow the links of ${l}.`, hop2: x => `Two steps out now, I'm at ${x}.`, expand: l => `Let me expand ${l} a bit further.`,
+    select: 'I found what I need. Let me pick the recommendations that answer your question.', table: 'Look, here is the recommendation in the original guideline table.'},
+  de: {and: 'und', share: 'Ich teile kurz meinen Bildschirm und gehe mit Ihnen durch unseren Wissensgraphen.', again: 'Ich schaue noch einmal in den Graphen.',
+    seed: x => `Ich starte bei ${x}.`, recs: (n, l) => `Hier ist etwas: ${n} ${n > 1 ? 'Empfehlungen' : 'Empfehlung'} rund um ${l}. Denen folge ich jetzt.`,
+    links: l => `Ich folge den Verbindungen von ${l}.`, hop2: x => `Zwei Schritte weiter bin ich jetzt bei ${x}.`, expand: l => `Ich schaue mir ${l} noch genauer an.`,
+    select: 'Ich habe, was ich brauche. Jetzt wähle ich die Empfehlungen aus, die Ihre Frage beantworten.', table: 'Schauen Sie, hier ist die Empfehlung in der originalen Leitlinientabelle.'},
+  ru: {and: 'и', share: 'Сейчас я покажу свой экран и проведу вас по нашему графу знаний.', again: 'Давайте ещё раз посмотрим на граф.',
+    seed: x => `Начинаю с ${x}.`, recs: (n, l) => `Вот что я нашёл: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} вокруг ${l}. Иду по ним дальше.`,
+    links: l => `Иду по связям ${l}.`, hop2: x => `Два шага дальше, я сейчас у ${x}.`, expand: l => `Посмотрю на ${l} подробнее.`,
+    select: 'Я нашёл то, что нужно. Сейчас выберу рекомендации, которые отвечают на ваш вопрос.', table: 'Смотрите, вот эта рекомендация в оригинальной таблице руководства.'},
+};
 // Guido's narration while he walks the graph (spoken via echo, spaced so lines never overlap)
-function narrator() {
+function narrator(lang = 'en') {
+  const T = SAY[lang] || SAY.en;
   let last = 0, n = 0; const q = [], seen = new Set();
   const short = (l, w = 4) => { const p = String(l).replace(/\s*\(.*?\)/g, '').split(/\s+/); return p.slice(0, w).join(' ') + (p.length > w ? '…' : ''); };
-  const list = ls => ls.length > 1 ? ls.slice(0, -1).join(', ') + ' and ' + ls[ls.length - 1] : ls[0] || '';
+  const list = ls => ls.length > 1 ? ls.slice(0, -1).join(', ') + ` ${T.and} ` + ls[ls.length - 1] : ls[0] || '';
   async function pump() {
     while (q.length) {
       await faceIdle();
@@ -1444,12 +1466,12 @@ function narrator() {
   return {
     say,
     on(kind, ev, concepts, recs) {
-      if (kind === 'seed' && ev.nodes.length) say(`I'm starting from ${list(ev.nodes.slice(0, 2).map(x => short(x.label)))}.`);
+      if (kind === 'seed' && ev.nodes.length) say(T.seed(list(ev.nodes.slice(0, 2).map(x => short(x.label)))));
       else if (kind === 'hop1' && !seen.has('hop1-' + ev.focus) && seen.size < 2) { seen.add('hop1-' + ev.focus); const l = short((KG.byId.get(ev.focus) || {}).label || 'this concept');
-        say(recs.length ? `Here's something: ${recs.length} recommendation${recs.length > 1 ? 's' : ''} around ${l}. Let me follow them.` : `Let me follow the links of ${l}.`); }
-      else if (kind === 'hop2' && !seen.has('hop2')) { seen.add('hop2'); if (concepts.length) say(`Two steps out now, I'm at ${list(concepts.slice(0, 2).map(x => short(x.label, 3)))}.`); }
-      else if (kind === 'expanded' && !seen.has('exp')) { seen.add('exp'); say(`Let me expand ${short((KG.byId.get(ev.focus) || {}).label || 'that')} a bit further.`); }
-      else if (kind === 'select' && !seen.has('sel')) { seen.add('sel'); say('I found what I need. Let me pick the recommendations that answer your question.'); }
+        say(recs.length ? T.recs(recs.length, l) : T.links(l)); }
+      else if (kind === 'hop2' && !seen.has('hop2')) { seen.add('hop2'); if (concepts.length) say(T.hop2(list(concepts.slice(0, 2).map(x => short(x.label, 3))))); }
+      else if (kind === 'expanded' && !seen.has('exp')) { seen.add('exp'); say(T.expand(short((KG.byId.get(ev.focus) || {}).label || '…'))); }
+      else if (kind === 'select' && !seen.has('sel')) { seen.add('sel'); say(T.select); }
     },
     done: () => new Promise(r => { const t = setInterval(() => { if (!q.length) { clearInterval(t); r(); } }, 200); })
   };
@@ -1463,7 +1485,7 @@ async function guidoCall(m, p) {
   gw.body.querySelector('.wsteps').innerHTML = '';
   ['table', 'inspector'].forEach(id => WM.wins.get(id)?.el.classList.add('min')); winLayout('focus');
   kgReset(question);
-  const nar = narrator(); nar.say(firstShare ? 'Let me share my screen and walk you through our knowledge graph.' : 'Let me look at the graph again.', true);
+  const lang = langOf(question), nar = narrator(lang); nar.say(firstShare ? SAY[lang].share : SAY[lang].again, true);
   const st = {el: document.createElement('div'), steps: gw.body.querySelector('.wsteps'), answer: document.createElement('div'), refs: document.createElement('div'), raw: '', shown: 0, sources: {}, pending: null, frame: 0};
   const tl = makeTimeline(st, {min: 9000, silentText: true, say: (k, ev, c, r) => { nar.on(k, ev, c, r); if (k === 'hop1' && performance.now() - WM.lastDir > 4000) direct('searching', 'Walking the knowledge graph from ' + ((KG.byId.get(ev.focus) || {}).label || '')); }});
   let ok = true;
@@ -1491,7 +1513,7 @@ async function guidoCall(m, p) {
   const cited = [...KG.cited];
   const seeds = keySeeds(question, 2).map(n => n.id);
   if (ok && cited.length) {
-    nar.say('Look, here is the recommendation in the original guideline table.', true);
+    nar.say(SAY[lang].table, true);
     try { const x = await (await fetch('/api/kg/evidence?id=' + encodeURIComponent(cited[0]))).json(); if (x && x.text) showTable(x); } catch {}
   }
   if (seeds[0]) inspect(seeds[0]);
