@@ -24,17 +24,21 @@ AGENTS = Endpoint(config.LLM_BASE_URL, config.LLM_API_KEY, config.LLM_MODEL,
                   {'reasoning_effort': config.LLM_REASONING_EFFORT} if config.LLM_REASONING_EFFORT else {})
 
 
-def _open(ep, body, timeout):
+def _open(ep, body, timeout, fallback=True):
   req = urllib.request.Request(ep.url, data=json.dumps(body).encode(), method='POST',
                                headers={'Authorization': 'Bearer ' + ep.api_key, 'Content-Type': 'application/json'})
-  for attempt in range(3):  # 429/503 happen. retry before the first byte, never after
+  for attempt in range(4):  # 429/503 happen under load. back off ~6 s before the first byte, never after
     try:
       return urllib.request.urlopen(req, timeout=timeout)
     except urllib.error.HTTPError as e:
-      if e.code not in (429, 500, 503) or attempt == 2:
+      if e.code not in (429, 500, 503):
         raise
       e.read()
-      time.sleep(1.5 * (attempt + 1))
+      if attempt == 3:
+        if fallback and ep is AGENTS and config.LLM_FALLBACK_MODEL and body['model'] != config.LLM_FALLBACK_MODEL:
+          return _open(ep, {**body, 'model': config.LLM_FALLBACK_MODEL}, timeout, False)  # a model with its own quota
+        raise
+      time.sleep(0.8 * 2 ** attempt)
 
 
 def stream(messages, tools=None, tool_choice=None, max_tokens=1200, ep=AGENTS, timeout=60, **extra):

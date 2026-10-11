@@ -78,6 +78,8 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .conv{display:flex;flex-direction:column;min-height:0;min-width:0}
 .head{display:flex;align-items:center;gap:20px;padding:20px 24px 20px 28px;border-bottom:1px solid var(--line)}
 .head h2{font:600 30px/36px var(--display);margin:0;letter-spacing:-.01em}
+.orb.md{width:40px;height:40px}
+.orb.lg{width:56px;height:56px}
 .orb.xl-head{width:72px;height:72px}.orb.xl-head .presence{width:18px;height:18px;max-width:18px;max-height:18px;border-width:3px}
 .head p{margin:0;color:var(--muted);font-size:14px}
 .head-actions{margin-left:auto;display:flex;align-items:center;gap:var(--space-md)}
@@ -726,8 +728,6 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .callx.share-on .cx-wait{display:none}
 .callx.share-on .dock{left:calc((100% - 368px) / 2);z-index:6}
 .callx.share-on .pip,.callx.share-on .share-dir{position:absolute;right:20px;top:264px;width:332px;display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;background:oklch(0.2 0.03 265 / .5);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-size:12px;color:oklch(0.95 0 0)}
-.share-dir .cf{font-weight:700;color:oklch(0.82 0.13 60);letter-spacing:.02em}
-.share-dir span:last-child{opacity:.85;line-height:17px}
 .gpu-off{display:inline-flex;align-items:center;gap:8px;height:36px;margin-top:14px;padding:0 14px;border-radius:10px;border:1px solid oklch(0.85 0.06 25);background:oklch(0.98 0.012 25);color:var(--danger);font-size:13.5px;font-weight:600;transition:background .15s,border-color .15s}
 .gpu-off svg{width:16px;height:16px}
 .gpu-off:hover{background:oklch(0.95 0.03 25);border-color:var(--danger)}
@@ -744,3 +744,30 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .jr-quote footer button:hover{border-color:var(--accent)}
 .jr-board .jr-ex{margin:2px 0 4px;box-shadow:none;border:1px solid var(--line)}
 .jr-board .jr-ex .tbl{max-height:220px}
+/* clef-flash decisions, under guido's video tile */
+.share-dir{position:absolute;right:20px;top:264px;width:332px;display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;background:oklch(0.2 0.03 265 / .5);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-size:12px;color:oklch(0.95 0 0)}
+.share-dir .cf{font-weight:700;color:oklch(0.82 0.13 60);letter-spacing:.02em}
+.share-dir span:last-child{opacity:.85;line-height:17px}
+.callx.share-on .cx-chat{z-index:6}
+/* guido's phase hud */
+.kg-hud{position:absolute;left:14px;top:62px;z-index:3;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;max-width:min(420px,calc(100% - 28px));
+  padding:10px 14px 10px 12px;border-radius:14px;background:oklch(1 0 0 / .9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 10px 30px oklch(0.3 0.05 264 / .14);border:1px solid var(--line);animation:rise .35s var(--ease) both}
+.win .kg-hud{top:12px}
+.kg-hud b{display:block;font-size:13.5px;line-height:18px;color:var(--ink)}
+.kg-hud small{display:block;font-size:12px;line-height:16px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kg-hud small .q{color:var(--ink-2);font-weight:600}
+.hud-orb{width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 oklch(0.55 0.19 264 / .5);animation:hudpulse 1.2s infinite}
+.kg-hud.done .hud-orb{background:oklch(0.65 0.15 150);animation:none}
+@keyframes hudpulse{0%{box-shadow:0 0 0 0 oklch(0.55 0.19 264 / .5)}100%{box-shadow:0 0 0 11px oklch(0.55 0.19 264 / 0)}}
+.hud-steps{grid-column:1 / -1;display:flex;gap:4px;margin:6px 0 0;padding:0;list-style:none}
+.hud-steps li{flex:1;padding-top:6px;border-top:3px solid var(--line);font-size:10.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;transition:border-color .3s,color .3s}
+.hud-steps li.past{border-color:oklch(0.65 0.15 150);color:var(--ink-2)}
+.hud-steps li.on{border-color:var(--accent);color:var(--accent);animation:hudstep 1s ease-in-out infinite alternate}
+@keyframes hudstep{to{border-color:oklch(0.75 0.12 264)}}
+/* original pdf page window in guido's screen share */
+.win.pdf .wbody{display:grid;grid-template-rows:minmax(0,1fr) 150px;background:oklch(0.95 0.005 264)}
+.pdf-page{overflow:auto;padding:14px;display:flex;justify-content:center}
+.pdf-page img{width:100%;max-width:760px;height:auto;align-self:flex-start;border-radius:4px;box-shadow:0 8px 24px oklch(0.3 0.03 264 / .2);background:#fff}
+.pdf-text{overflow:auto;padding:10px 14px;border-top:1px solid var(--line);background:var(--win);font-size:12.5px;line-height:19px;color:var(--ink-2);white-space:pre-wrap}
+.pdf-text mark{background:oklch(0.9 0.1 95);color:var(--ink);border-radius:3px;padding:0 2px}

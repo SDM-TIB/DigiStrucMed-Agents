@@ -68,7 +68,7 @@ Cloudflare is optional. Without `CF_ACCOUNT_ID` the screen share keeps its defau
 
 ## Change the LLM
 
-Set `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY` to any API that speaks OpenAI Chat Completions with streaming and tool calls: OpenAI, OpenRouter, a vLLM or Ollama server. Leave `LLM_REASONING_EFFORT` empty if the API doesn't know that parameter. We recommend Gemini 3.5 Flash-Lite: it is fast, cheap and reliable with tools.
+Set `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY` to any API that speaks OpenAI Chat Completions with streaming and tool calls: OpenAI, OpenRouter, a vLLM or Ollama server. Leave `LLM_REASONING_EFFORT` empty if the API doesn't know that parameter. We recommend Gemini 3.5 Flash-Lite: it is fast, cheap and reliable with tools. When the main model runs out of quota, requests move to `LLM_FALLBACK_MODEL` (default `gemini-3.1-flash-lite`, which has its own rate limit). Set it empty to turn that off.
 
 ## Rebuild the data
 
@@ -85,6 +85,14 @@ python pipeline/build_kg_links.py <clean_ready_07_10>
 ```
 
 Both graph builders reproduce the committed files exactly (checked on 2026-10-08).
+
+## How Guido searches
+
+Think-on-Graph (Sun et al., ICLR 2024) walks from the concepts in the question. Its weak spot is the start: when no concept label matches, the walk finds nothing even though the answer sits in a recommendation's text. So Guido starts like HippoRAG (Gutiérrez et al., NeurIPS 2024). `app/retrieve.py` ranks concept labels and the recommendation texts (BM25) against the query, fuses the rankings with reciprocal rank fusion, and runs personalized PageRank from those seeds over the graph. The recommendations with the most PageRank mass are the evidence closest to the question, even when no label matched. Searching the passages directly is the HippoRAG 2 lesson (ICML 2025). Guido can then expand any node or search again with other words.
+
+If the language model fails after the walk has found evidence, Guido still answers with the top recommendations he found instead of an error.
+
+Dense vectors are optional. `python pipeline/build_kg_vectors.py` embeds every node into `app/data/kg_vectors.npz`, and the same fusion uses them. The free Gemini tier allows only 1000 embeddings a day, so this needs a paid key, and every question then costs one embedding call. The demo runs without them.
 
 ## Things to know
 

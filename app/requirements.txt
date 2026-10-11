@@ -1,2 +1,3 @@
-# the server itself is stdlib only. modal is for the gpu shutdown button and the credit gauge
+# the server is stdlib plus numpy (pagerank and vector search for guido). modal is for the gpu shutdown button and the credit gauge
+numpy>=1.26
 modal==1.6.1

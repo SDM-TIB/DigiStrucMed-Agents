@@ -8,3 +8,4 @@ page_images/
 # python
 __pycache__/
 *.pyc
+pipeline/.vectors_cache.json

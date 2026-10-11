@@ -251,12 +251,26 @@ function kgCamera(ids) {
   const go = (ms) => ids.size > 1 ? KG.fg.zoomToFit(ms, 80, n => ids.has(n.id)) : (() => { const n = KG.byId.get([...ids][0]); if (n) { KG.fg.centerAt(n.x, n.y, ms); KG.fg.zoom(2.2, ms); } })();
   KG.camT = setTimeout(() => { go(700); KG.camT = setTimeout(() => go(900), 1100); }, 250);
 }
+// the phase hud: one line about the step guido is in, and a five-step track below it
+const HUD = {link: 'Linking your words to the graph', match: 'Reading recommendation texts', rank: 'Ranking evidence with PageRank',
+  walk: 'Following the links', select: 'Selecting the evidence', done: 'Evidence selected'};
+function hud(phase, detail) {
+  const el = $('#kg-hud'); if (!el) return;
+  el.classList.toggle('hidden', !phase); if (!phase) return;
+  el.classList.toggle('done', phase === 'done');
+  $('#hud-phase').textContent = HUD[phase] || phase; $('#hud-detail').innerHTML = detail || '';
+  const order = ['link', 'match', 'rank', 'walk', 'select'], at = phase === 'done' ? 5 : order.indexOf(phase);
+  el.querySelectorAll('#hud-steps li').forEach((li, i) => { li.classList.toggle('on', i === at); li.classList.toggle('past', i < at); });
+}
+// the hud lives in whichever element holds the graph canvas: the chat panel or guido's shared-screen window
+function hudHome(parent) { const el = $('#kg-hud'); if (el && el.parentNode !== parent) parent.append(el); }
 function kgReset(question) {
   kgInit(); if (KG.fg) KG.fg.d3Force('charge').strength(n => n.kind === 'question' ? -600 : -220);
   KG.nodes = []; KG.links = []; KG.byId.clear(); KG.cited.clear(); KG.pathIds = new Set(); KG.hop = 0; KG.wave = 0;
   if (question) { const q = {id: 'q', kind: 'question', label: question, hop: -1, born: performance.now(), x: 0, y: 0, fx: 0, fy: 0}; KG.nodes.push(q); KG.byId.set('q', q); }
   $('#kg-tip').classList.add('hidden'); $('#kg-tip').dataset.sticky = '';
   $('#kg-empty').classList.toggle('hidden', !!question); $('#kg-status').textContent = 'Starting traversal…';
+  hud(question ? 'link' : null, question ? esc(question.length > 70 ? question.slice(0, 69) + '…' : question) : '');
   KG.fg && KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]}); KG.fg.d3ReheatSimulation();
 }
 // Final view: the answer path as a clean layered layout (question → start concepts → cited recommendations →
@@ -305,6 +319,7 @@ function kgUpdate(ev) {
       if (a === 'q' && KG.pathIds.has(b)) { l.hot = true; KG.pathIds.add('q'); } });
     if (!KG.cited.size) KG.pathIds = new Set();
     $('#kg-status').textContent = `${KG.nodes.length} nodes explored · ${KG.cited.size} recommendations used`;
+    hud('done', `${KG.cited.size} recommendation${KG.cited.size === 1 ? '' : 's'} cited · ${KG.nodes.length} nodes explored`);
     KG.wave = -1;
     KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]});
     const focusSet = KG.pathIds.size ? KG.pathIds : new Set(KG.nodes.map(n => n.id));
@@ -320,12 +335,14 @@ function kgUpdate(ev) {
     const node = {...n, born: performance.now() + i * 40, x: parent ? parent.x + (Math.random() - .5) * 30 : (Math.random() - .5) * 40, y: parent ? parent.y + (Math.random() - .5) * 30 : (Math.random() - .5) * 40};
     KG.nodes.push(node); KG.byId.set(n.id, node);
   });
-  if (ev.action === 'seed' && KG.byId.has('q')) ev.nodes.forEach(n => KG.links.push({source: 'q', target: n.id, role: 'question', hot: true}));
+  // start concepts and directly matched recommendations hang off the question
+  if ((ev.action === 'seed' || ev.action === 'match') && KG.byId.has('q')) ev.nodes.forEach(n => { if (!ev.links.some(l => l.source === n.id)) KG.links.push({source: 'q', target: n.id, role: 'question', hot: true}); });
   ev.links.forEach(l => { if (KG.byId.has(l.source) && KG.byId.has(l.target)) KG.links.push({source: l.source, target: l.target, role: l.role, hot: true}); });
   KG.hop = Math.max(KG.hop, ev.hop || 0); KG.wave = (KG.wave || 0) + 1;
   const fresh = new Set(ev.nodes.map(n => n.id)); if (ev.focus) fresh.add(ev.focus);
   KG.nodes.forEach(n => { if (fresh.has(n.id)) n.wave = KG.wave; });
-  $('#kg-status').textContent = `${ev.action === 'seed' ? 'Found start concepts' : ev.action === 'hop2' ? 'Hop 2' : ev.action === 'hop1' ? 'Hop 1' : 'Expanding'} · ${KG.nodes.length} nodes`;
+  const STATUS = {seed: 'Start concepts', match: 'Matching texts', rank: 'PageRank', hop1: 'Relations', hop2: 'Two hops out', expanded: 'Expanding'};
+  $('#kg-status').textContent = `${STATUS[ev.action] || 'Walking'} · ${KG.nodes.length} nodes`;
   KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]}); KG.fg.d3ReheatSimulation();
   kgCamera(fresh);
 }
@@ -543,7 +560,7 @@ window.jrHTML = {
   },
   excerpt(h, p) {
     const body = p.html ? h('div', {className: 'tbl', ref: el => el && jrTable(el, p.html, p.match)}) : h('blockquote', null, p.text);
-    return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, `${p.ref} · page ${p.page}${p.grade ? ' · ' + p.grade : ''}`)),
+    return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && 'page ' + p.page, p.grade].filter(Boolean).join(' · '))),
       p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: p.pageId}))}, 'Open page') : null), body);
   }
 };
@@ -1002,12 +1019,17 @@ function makeTimeline(st, opts = {}) {
   function narrate(ev) {
     const concepts = ev.nodes.filter(n => n.kind === 'concept'), recs = ev.nodes.filter(n => n.kind === 'rec');
     opts.say?.(ev.action, ev, concepts, recs);
-    if (ev.action === 'seed') return step(st, 'search', `Matching the question to graph concepts: ${names(ev.nodes, 4)}`, true);
+    if (ev.action === 'seed') { hud('link', ev.nodes.length ? 'start concepts: ' + names(ev.nodes, 3) : 'no concept label matched, reading texts');
+      return step(st, 'search', ev.nodes.length ? `Linking the question to graph concepts: ${names(ev.nodes, 4)}` : 'No concept name matches, searching the recommendation texts', true); }
+    if (ev.action === 'match') { hud('match', `${recs.length} recommendation texts match directly`);
+      return step(st, 'read', `${recs.length} recommendation texts match the question directly`, true); }
+    if (ev.action === 'rank') { hud('rank', `personalized pagerank from the start concepts: ${recs.length} closest recommendations`);
+      return step(st, 'search', `Personalized PageRank ranks the ${recs.length} recommendations closest to the question`, true); }
     if (ev.action === 'hop1') {
       const rels = [...new Set(ev.links.map(l => l.role).filter(r => !['target', 'population', 'condition', 'parameter', 'mention'].includes(r)))];
       return step(st, 'search', `Hop 1 from <span class="q">${esc(lab(ev.focus))}</span>: ${recs.length} recommendations${rels.length ? ` · relations ${rels.slice(0, 3).map(r => `<span class="q">${esc(r)}</span>`).join(', ')}` : ''}`, true);
     }
-    if (ev.action === 'hop2') return step(st, 'search', `Hop 2: following recommendations to ${names(concepts)}`, true);
+    if (ev.action === 'hop2') { hud('walk', 'to ' + names(concepts, 3)); return step(st, 'search', `Following the top recommendations to ${names(concepts)}`, true); }
     if (ev.action === 'expanded') return step(st, 'search', `Expanding <span class="q">${esc(lab(ev.focus))}</span> one hop further`, true);
   }
   function chunks(ev) {   // reveal large hops in small waves so nodes visibly grow out of their parent
@@ -1030,7 +1052,7 @@ function makeTimeline(st, opts = {}) {
         await sleep(it.ev.action === 'seed' ? 1500 : it.ev.sub ? 650 : 1100);
       } else if (it.kind === 'text') {
         const wait = (opts.min || MIN_TRAVERSAL_MS) - (performance.now() - t0);
-        if (wait > 0) { opts.say?.('select'); step(st, 'check', 'Selecting the recommendations that answer the question', true); await sleep(wait); }
+        if (wait > 0) { opts.say?.('select'); hud('select', 'reading the ranked recommendations'); step(st, 'check', 'Selecting the recommendations that answer the question', true); await sleep(wait); }
         if (opts.silentText) { st.raw += it.delta; continue; }
         settle(st);
         for (let i = 0; i < it.delta.length; i += 18) {   // stream the held-back answer with the blur effect
@@ -1051,9 +1073,11 @@ function makeTimeline(st, opts = {}) {
 // Guido in the chat: the strongest cited recommendation in its original guideline table + live context of the start concept
 // start concepts ranked for the fact cards: named in the question first, then on the answer path
 function keySeeds(question, k = 2) {
-  const q = (question || '').toLowerCase();
+  const norm = s => ' ' + (s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' ';
+  const q = norm(question);  // 'sacubitril/valsartan' and 'Sacubitril-valsartan' are the same words
+  const words = l => norm(l).trim().split(' ').filter(w => w.length > 2);
   return KG.nodes.filter(n => n.kind === 'concept' && n.hop === 0)
-    .map(n => ({n, s: (q.includes(n.label.toLowerCase()) ? 2 : 0) + (KG.pathIds.has(n.id) ? 1 : 0)}))
+    .map(n => ({n, s: (q.includes(norm(n.label)) ? 2 : 0) + words(n.label).filter(w => q.includes(' ' + w + ' ')).length / Math.max(1, words(n.label).length) + (KG.pathIds.has(n.id) ? 1 : 0)}))
     .sort((a, b) => b.s - a.s).slice(0, k).map(x => x.n);
 }
 function chatEvidence(st) {
@@ -1295,7 +1319,7 @@ function shareOn() {
   const tick = () => { if (!WM.on) return; $('#share-clock').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}); setTimeout(tick, 15000); }; tick();
 }
 function shareOff() {
-  WM.on = false; cx.classList.remove('share-on');
+  WM.on = false; cx.classList.remove('share-on'); hudHome($('#kg-panel'));
   const cv = $('#kg-canvas'); if (cv.parentNode.id !== 'kg-panel') $('#kg-panel').insertBefore(cv, $('#kg-empty'));
   WM.wins.forEach(w => w.el.remove()); WM.wins.clear(); WM.order = []; WM.concept = null; $('#share-dir-t').textContent = 'director ready';
 }
@@ -1312,6 +1336,11 @@ function winOpen(id, title, cls, background) {
   w.el.classList.remove('min');
   if (background && WM.order.length) { WM.order = [...WM.order.filter(x => x !== id), id]; winFront(WM.order[0]); } else winFront(id);
   return w;
+}
+function winClose(id) {
+  const w = WM.wins.get(id); if (!w) return;
+  w.el.classList.add('min'); setTimeout(() => w.el.remove(), 500);
+  WM.wins.delete(id); WM.order = WM.order.filter(x => x !== id);
 }
 function winFront(id) {
   if (!WM.wins.has(id)) return;
@@ -1372,14 +1401,24 @@ function inspect(id) {
     w.body.innerHTML = ''; const host = document.createElement('div'); host.className = 'jr-host'; w.body.append(host); jrMount(host).set(conceptSpec(f));
   });
 }
+// the original guideline page as a pdf viewer window. the quote is marked in the page text underneath
+function showPdf(x) {
+  const w = winOpen('pdf', `${x.ref || x.title} — page ${x.page} (original PDF)`, 'pdf', true);
+  w.body.innerHTML = `<div class="pdf-page"><img alt="Guideline page ${x.page}" src="/api/page-image/${encodeURIComponent(x.page_id)}"></div><div class="pdf-text">Loading page text…</div>`;
+  fetch('/api/page/' + encodeURIComponent(x.page_id)).then(r => r.json()).then(p => {
+    const t = w.body.querySelector('.pdf-text'); if (!t) return;
+    t.innerHTML = markQuote(p.plain.trim(), x.text); t.querySelector('mark')?.scrollIntoView({block: 'center'});
+  }).catch(() => {});
+}
 function showTable(x) {
-  const w = winOpen('table', `Guideline — ${x.ref} · page ${x.page}`);
+  const w = winOpen('table', 'Guideline — ' + [x.ref || x.title, x.page && 'page ' + x.page].filter(Boolean).join(' · '));
   const grade = [x.class && x.class.length ? 'Class ' + x.class.join('/') : '', x.loe && x.loe.length ? 'LoE ' + x.loe.join('/') : ''].filter(Boolean).join(' · ');
   w.body.innerHTML = `<div class="tabs"><button class="on" data-t="t">Table</button>${x.page_id ? '<button data-t="p">Page</button>' : ''}</div><div class="tview"></div>`;
   const view = w.body.querySelector('.tview');
   const showT = () => { view.innerHTML = ''; const host = document.createElement('div'); host.className = 'jr-host'; view.append(host);
     jrMount(host).set({root: 'e', elements: {e: {type: 'Excerpt', props: {title: x.title || x.ref, ref: x.ref, page: x.page, grade, html: x.table_html, match: x.match, text: x.text, pageId: x.page_id}, children: []}}}); };
   const showP = () => { view.innerHTML = `<img class="pageimg" alt="Guideline page" src="/api/page-image/${encodeURIComponent(x.page_id)}">`; };
+  if (x.page_id) showPdf(x);
   w.body.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { w.body.querySelectorAll('.tabs button').forEach(z => z.classList.toggle('on', z === b)); b.dataset.t === 'p' ? showP() : showT(); });
   showT();
 }
@@ -1462,18 +1501,23 @@ const SAY = {
   en: {and: 'and', share: 'Let me share my screen and walk you through our knowledge graph.', again: 'Let me look at the graph again.',
     seed: x => `I'm starting from ${x}.`, recs: (n, l) => `Here's something: ${n} recommendation${n > 1 ? 's' : ''} around ${l}. Let me follow them.`,
     links: l => `Let me follow the links of ${l}.`, hop2: x => `Two steps out now, I'm at ${x}.`, expand: l => `Let me expand ${l} a bit further.`,
+    match: n => `${n} recommendation texts match directly.`, rank: n => `Spreading out through the graph, ${n} recommendations come up close to your question.`,
     select: 'I found what I need. Let me pick the recommendations that answer your question.', table: 'Look, here is the recommendation in the original guideline table.'},
   de: {and: 'und', share: 'Ich teile kurz meinen Bildschirm und gehe mit Ihnen durch unseren Wissensgraphen.', again: 'Ich schaue noch einmal in den Graphen.',
     seed: x => `Ich starte bei ${x}.`, recs: (n, l) => `Hier ist etwas: ${n} ${n > 1 ? 'Empfehlungen' : 'Empfehlung'} rund um ${l}. Denen folge ich jetzt.`,
     links: l => `Ich folge den Verbindungen von ${l}.`, hop2: x => `Zwei Schritte weiter bin ich jetzt bei ${x}.`, expand: l => `Ich schaue mir ${l} noch genauer an.`,
+    match: n => `${n} Empfehlungstexte passen direkt.`, rank: n => `Ich breite mich im Graphen aus, ${n} Empfehlungen liegen nah an Ihrer Frage.`,
     select: 'Ich habe, was ich brauche. Jetzt wähle ich die Empfehlungen aus, die Ihre Frage beantworten.', table: 'Schauen Sie, hier ist die Empfehlung in der originalen Leitlinientabelle.'},
   ru: {and: 'и', share: 'Сейчас я покажу свой экран и проведу вас по нашему графу знаний.', again: 'Давайте ещё раз посмотрим на граф.',
     seed: x => `Начинаю с ${x}.`, recs: (n, l) => `Вот что я нашёл: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} вокруг ${l}. Иду по ним дальше.`,
     links: l => `Иду по связям ${l}.`, hop2: x => `Два шага дальше, я сейчас у ${x}.`, expand: l => `Посмотрю на ${l} подробнее.`,
+    match: n => `${n} ${ruPlural(n, 'текст рекомендации совпадает', 'текста рекомендаций совпадают', 'текстов рекомендаций совпадают')} напрямую.`,
+    rank: n => `Расхожусь по графу: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} близко к вашему вопросу.`,
     select: 'Я нашёл то, что нужно. Сейчас выберу рекомендации, которые отвечают на ваш вопрос.', table: 'Смотрите, вот эта рекомендация в оригинальной таблице руководства.'},
   hi: {and: 'और', share: 'मैं अपनी स्क्रीन शेयर करता हूँ और आपको हमारे नॉलेज ग्राफ़ से होकर ले चलता हूँ।', again: 'चलिए, ग्राफ़ को एक बार फिर देखते हैं।',
     seed: x => `मैं ${x} से शुरू कर रहा हूँ।`, recs: (n, l) => `यह मिला: ${l} से जुड़ी ${n} ${n > 1 ? 'सिफ़ारिशें' : 'सिफ़ारिश'}। मैं इन्हें आगे देखता हूँ।`,
     links: l => `मैं ${l} के कनेक्शन देख रहा हूँ।`, hop2: x => `अब दो कदम आगे, मैं ${x} पर हूँ।`, expand: l => `मैं ${l} को थोड़ा और विस्तार से देखता हूँ।`,
+    match: n => `${n} सिफ़ारिशों का टेक्स्ट सीधे मेल खाता है।`, rank: n => `ग्राफ़ में फैलते हुए ${n} सिफ़ारिशें आपके सवाल के क़रीब मिलीं।`,
     select: 'मुझे जो चाहिए था, वह मिल गया। अब मैं वे सिफ़ारिशें चुनता हूँ जो आपके सवाल का जवाब देती हैं।', table: 'देखिए, यह रही वह सिफ़ारिश मूल गाइडलाइन टेबल में।'},
 };
 // luna's call: verbatim guideline quotes for what she just said. nothing at all when she said nothing from the guidelines
@@ -1516,6 +1560,8 @@ function narrator(lang = 'en') {
       if (kind === 'seed' && ev.nodes.length) say(T.seed(list(ev.nodes.slice(0, 2).map(x => short(x.label)))));
       else if (kind === 'hop1' && !seen.has('hop1-' + ev.focus) && seen.size < 2) { seen.add('hop1-' + ev.focus); const l = short((KG.byId.get(ev.focus) || {}).label || 'this concept');
         say(recs.length ? T.recs(recs.length, l) : T.links(l)); }
+      else if (kind === 'match' && !seen.has('match') && recs.length) { seen.add('match'); say(T.match(recs.length)); }
+      else if (kind === 'rank' && !seen.has('rank') && recs.length) { seen.add('rank'); say(T.rank(recs.length)); }
       else if (kind === 'hop2' && !seen.has('hop2')) { seen.add('hop2'); if (concepts.length) say(T.hop2(list(concepts.slice(0, 2).map(x => short(x.label, 3))))); }
       else if (kind === 'expanded' && !seen.has('exp')) { seen.add('exp'); say(T.expand(short((KG.byId.get(ev.focus) || {}).label || '…'))); }
       else if (kind === 'select' && !seen.has('sel')) { seen.add('sel'); say(T.select); }
@@ -1530,7 +1576,8 @@ async function guidoCall(m, p) {
   const gw = winOpen('graph', 'Knowledge Graph — ' + question, 'graph');
   if (!gw.body.querySelector('.kg-canvas')) { gw.body.append($('#kg-canvas')); const ws = document.createElement('div'); ws.className = 'wsteps'; gw.body.append(ws); }
   gw.body.querySelector('.wsteps').innerHTML = '';
-  ['table', 'inspector'].forEach(id => WM.wins.get(id)?.el.classList.add('min')); winLayout('focus');
+  ['table', 'inspector', 'notes', 'pdf'].forEach(winClose); WM.concept = null; winLayout('focus');  // new topic, clean desk
+  hudHome(gw.body);
   kgReset(question);
   const lang = langOf(question), nar = narrator(lang); nar.say(firstShare ? SAY[lang].share : SAY[lang].again, true);
   const st = {el: document.createElement('div'), steps: gw.body.querySelector('.wsteps'), answer: document.createElement('div'), refs: document.createElement('div'), raw: '', shown: 0, sources: {}, pending: null, frame: 0};

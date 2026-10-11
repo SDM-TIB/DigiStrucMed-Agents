@@ -31,7 +31,7 @@ def get(name):
   try:
     with urllib.request.urlopen(urllib.request.Request(url, headers=_auth()), timeout=15) as r:
       return r.read()
-  except urllib.error.HTTPError:
+  except (urllib.error.URLError, OSError):  # missing object, or no metadata server outside cloud run
     return None
 
 

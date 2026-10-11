@@ -1,8 +1,10 @@
-"""Guido: Think-on-Graph over the guideline knowledge graph, with the llm as the walker.
+"""Guido: the llm walks the guideline knowledge graph. Think-on-Graph for the walk, HippoRAG for where to start.
 
 Think-on-Graph (Sun et al., ICLR 2024): start at the topic entities, explore relations, prune, repeat, answer from
-the explored subgraph. we cut the latency by handing the model the whole 1-hop and 2-hop neighbourhood in one
-`explore` call. `expand` goes further when it needs to. most questions are done after one tool call.
+the explored subgraph. its weak spot is the start: when no concept label matches, the walk finds nothing even though
+the answer sits in a recommendation's text. so `explore` starts from retrieve.search: hybrid linking over concept
+labels and recommendation text (lexical + dense, fused), then personalized pagerank from those seeds ranks the
+recommendations closest to the question in the graph. `expand`, or another `explore` with other words, goes further.
 
 every hop is also a `graph` event, the ui draws the walk live.
 yields ui events: tool_call, graph, sources, text, done, error.
@@ -13,6 +15,7 @@ import config
 import corpus
 import llm
 import kg
+import retrieve
 from kg import CONCEPTS, IN, OUT, REC_ROLES, RECS
 
 MAX_ROUNDS = 3
@@ -22,21 +25,25 @@ SYSTEM = (
   "You are Guido, an AI assistant developed by the team at TIB. You answer questions about clinical guideline evidence "
   "by traversing TIB's medical guideline knowledge graph (recommendations from cardiology guidelines linked to populations, "
   "conditions, drugs, procedures, side effects, with class of recommendation and level of evidence).\n"
-  "Method: call explore once with the key medical terms of the question. It returns the matching concepts with their "
-  "1-hop and 2-hop neighbourhood. Read it; if a relevant path continues beyond what you see, call expand on that node "
-  "(concept id or recommendation number), possibly several in parallel. Then answer. Usually one explore is enough.\n"
+  "Method: call explore with the key medical terms of the question in English, plus useful synonyms and the drug class "
+  "(e.g. 'sacubitril valsartan ARNI side effects hypotension hyperkalaemia'). It links the terms to concepts and to "
+  "recommendation texts and ranks the recommendations closest to them in the graph, with relations and connected concepts. "
+  "If a relevant path continues beyond what you see, call expand on that node (concept id or recommendation number). "
+  "If the results miss the point, call explore again with other words, a broader term or the drug class before you answer.\n"
+  "Never leave the user empty-handed: if no recommendation answers the exact question, say what the guidelines do say "
+  "about the closest related topic and cite it.\n"
   "Answer only from the explored graph. Cite recommendations inline as [n], one number per bracket. Report class of "
   "recommendation and level of evidence exactly as given; never invent them. Mention the graph path when it explains the "
-  "answer (e.g. Aspirin → recommendation [3] → bleeding). If the graph does not contain the answer, say so.\n"
+  "answer (e.g. Aspirin → recommendation [3] → bleeding).\n"
   + config.LANGUAGE_RULE + "\n"
   + config.HELP_RULE.replace('search right away', 'explore the graph right away') + "\n"
   "Be concise (usually under 150 words), Markdown, symbols as plain Unicode. Never add disclaimers. "
   "Only if the user describes acute emergency symptoms, tell them to call 112."
 )
 TOOLS = [
-  llm.tool('explore', 'Find the concepts for medical terms in the guideline knowledge graph and return their 1-hop and 2-hop neighbourhood '
-           '(relations, recommendations with class/level of evidence, connected concepts).',
-           {'query': {'type': 'string', 'description': 'Key medical terms of the question, e.g. "aspirin complications bleeding"'}}, ['query']),
+  llm.tool('explore', 'Link medical terms to the guideline knowledge graph (concepts and recommendation texts) and return the '
+           'recommendations closest to them, ranked by personalized pagerank, with class/level of evidence, relations and connected concepts.',
+           {'query': {'type': 'string', 'description': 'Key medical terms in English with synonyms, e.g. "aspirin dose secondary prevention antiplatelet"'}}, ['query']),
   llm.tool('expand', 'Go one hop further from a node already shown: a concept id (c:...) or a recommendation number.',
            {'node_id': {'type': 'string'}}, ['node_id']),
 ]
@@ -102,6 +109,37 @@ class Walk:
       lines += ['Two hops away:'] + text
     return '\n'.join(lines)
 
+  def explore(self, query, question, events):
+    """start where hybrid linking and pagerank say. ui events go into `events`, compact text goes to the model"""
+    found = retrieve.search(query, question)
+    seeds, matched, ranked = found['concepts'], found['matched'], found['recs']
+    events.append(self.event(seeds, [], seeds[0] if seeds else None, 'seed', 0))
+    if matched:  # recommendations whose own text matched, no concept label needed
+      events.append(self.event(matched, [(r, c, role) for r in matched for c, role in OUT[r] if c in seeds], None, 'match', 1))
+    lines = []
+    for cid in seeds:
+      c = CONCEPTS[cid]
+      rel_out = [(cid, b, r) for b, r in OUT[cid] if r not in REC_ROLES][:6]
+      rel_in = [(a, cid, r) for a, r in IN[cid] if r not in REC_ROLES and not a.startswith('r:')][:4]
+      if rel_out or rel_in:
+        events.append(self.event([b for _, b, _ in rel_out] + [a for a, _, _ in rel_in], rel_out + rel_in, cid, 'hop1', 1))
+      relations = '; '.join(f"{kg.label(a)} --{r}--> {kg.label(b)}" for a, b, r in rel_out + rel_in)
+      lines.append(f"## {c['label']} ({cid})" + (f": {c['desc']}" if c.get('desc') else '') + (f"\nRelations: {relations}" if relations else ''))
+    if ranked:
+      events.append(self.event(ranked, [(r, c, role) for r in ranked for c, role in OUT[r] if c in self.shown], None, 'rank', 1))
+      lines.append('Recommendations closest to the question in the graph, best first:')
+      nodes, links = [], []
+      for rid in ranked:
+        others = [(b, role) for b, role in OUT[rid] if b in CONCEPTS and b not in seeds][:4]
+        linked = ', '.join(f"{kg.label(b)} ({role}, id {b})" for b, role in others)
+        lines.append('  ' + self.rec_line(rid) + (f"\n    linked: {linked}" if linked else ''))
+        if rid in ranked[:4]:
+          nodes += [b for b, _ in others]
+          links += [(rid, b, role) for b, role in others]
+      if nodes:
+        events.append(self.event(nodes, links, None, 'hop2', 2))
+    return '\n'.join(lines) or 'Nothing linked. Try other words, a synonym, the drug class or a broader term.'
+
   def expand(self, nid, events):
     if nid.isdigit() and 1 <= int(nid) <= len(self.numbered):
       nid = self.numbered[int(nid) - 1]
@@ -155,17 +193,23 @@ def run(messages):
     yield {'type': 'graph', 'nodes': [], 'links': [], 'cited': [walk.numbered[n - 1] for n in cited], 'action': 'done'}
     yield {'type': 'done'}
   except Exception as e:
-    yield llm.error_event(e)
+    if answer.strip() or not walk.numbered:
+      yield llm.error_event(e)
+      return
+    # the model is out of quota but the walk already found evidence: hand that over instead of an error
+    top = walk.numbered[:3]
+    yield {'type': 'text', 'delta': 'The language model is busy right now, so here is what the knowledge graph found:\n\n' +
+           '\n'.join(f"* {RECS[r]['text'][:300].strip()} [{i + 1}]" for i, r in enumerate(top))}
+    yield {'type': 'graph', 'nodes': [], 'links': [], 'cited': top, 'action': 'done'}
+    yield {'type': 'done'}
 
 
 def _tool(call, walk, question):
   name, args, events = call['function']['name'], llm.args(call), []
   if name == 'explore':
     q = str(args.get('query', ''))[:200]
-    seeds = kg.find_concepts(q + ' ' + question)
     yield {'type': 'tool_call', 'name': 'explore', 'args': {'query': q}}
-    yield walk.event(seeds, [], seeds[0] if seeds else None, 'seed', 0)
-    result = '\n\n'.join(walk.neighbourhood(c, events) for c in seeds) or 'No matching concepts in the graph.'
+    result = walk.explore(q, question, events)
   elif name == 'expand':
     nid = str(args.get('node_id', '')).strip()
     yield {'type': 'tool_call', 'name': 'expand', 'args': {'label': kg.label(nid) if nid in CONCEPTS else nid}}

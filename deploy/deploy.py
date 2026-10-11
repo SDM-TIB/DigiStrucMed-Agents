@@ -18,7 +18,7 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SECRETS = ('TAVUS_API_KEY', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
            'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
-SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_REASONING_EFFORT', 'LINO_URL', 'MAX_CALL_SECONDS',
+SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'LINO_URL', 'MAX_CALL_SECONDS',
             'TAVUS_PLAN_MINUTES', 'TAVUS_PERIOD_START', 'TAVUS_USED_OFFSET_MIN')
 # large files that live in the bucket under assets/, not in git
 ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter'}

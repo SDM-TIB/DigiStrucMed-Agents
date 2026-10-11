@@ -53,6 +53,7 @@ TAVUS_USED_OFFSET_MIN = float(env('TAVUS_USED_OFFSET_MIN', '0'))  # calibrate ag
 LLM_BASE_URL = env('LLM_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai')
 LLM_API_KEY = env('LLM_API_KEY') or env('GEMINI_API_KEY')
 LLM_MODEL = env('LLM_MODEL', 'gemini-3.5-flash-lite')
+LLM_FALLBACK_MODEL = env('LLM_FALLBACK_MODEL', 'gemini-3.1-flash-lite')  # own rate limit, used when the main model is out of quota. empty disables
 LLM_REASONING_EFFORT = env('LLM_REASONING_EFFORT', 'low')  # empty for apis that don't know the parameter
 
 # lino lives on a modal gpu that sleeps when nobody talks to it
