@@ -1429,10 +1429,11 @@ async function liveBoard(text, who) {
     const fin = comp.push('\n').result; if (fin.root) r.set(fin, false);
   } catch {}
 }
-// guido narrates in the language of the question. en, de and ru, like the agents themselves
+// guido narrates in the language of the question. en, de, ru and hi, like the agents themselves
 function langOf(text) {
   const t = (text || '').toLowerCase();
   if (/[а-яё]/.test(t)) return 'ru';
+  if (/[ऀ-ॿ]/.test(t)) return 'hi';
   return /[äöüß]|\b(der|die|das|und|ist|nicht|was|wie|welche|bei|mit|für|sind|wird|kann|gibt)\b/.test(t) ? 'de' : 'en';
 }
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
@@ -1449,6 +1450,10 @@ const SAY = {
     seed: x => `Начинаю с ${x}.`, recs: (n, l) => `Вот что я нашёл: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} вокруг ${l}. Иду по ним дальше.`,
     links: l => `Иду по связям ${l}.`, hop2: x => `Два шага дальше, я сейчас у ${x}.`, expand: l => `Посмотрю на ${l} подробнее.`,
     select: 'Я нашёл то, что нужно. Сейчас выберу рекомендации, которые отвечают на ваш вопрос.', table: 'Смотрите, вот эта рекомендация в оригинальной таблице руководства.'},
+  hi: {and: 'और', share: 'मैं अपनी स्क्रीन शेयर करता हूँ और आपको हमारे नॉलेज ग्राफ़ से होकर ले चलता हूँ।', again: 'चलिए, ग्राफ़ को एक बार फिर देखते हैं।',
+    seed: x => `मैं ${x} से शुरू कर रहा हूँ।`, recs: (n, l) => `यह मिला: ${l} से जुड़ी ${n} ${n > 1 ? 'सिफ़ारिशें' : 'सिफ़ारिश'}। मैं इन्हें आगे देखता हूँ।`,
+    links: l => `मैं ${l} के कनेक्शन देख रहा हूँ।`, hop2: x => `अब दो कदम आगे, मैं ${x} पर हूँ।`, expand: l => `मैं ${l} को थोड़ा और विस्तार से देखता हूँ।`,
+    select: 'मुझे जो चाहिए था, वह मिल गया। अब मैं वे सिफ़ारिशें चुनता हूँ जो आपके सवाल का जवाब देती हैं।', table: 'देखिए, यह रही वह सिफ़ारिश मूल गाइडलाइन टेबल में।'},
 };
 // Guido's narration while he walks the graph (spoken via echo, spaced so lines never overlap)
 function narrator(lang = 'en') {

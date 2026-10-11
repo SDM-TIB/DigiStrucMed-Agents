@@ -29,6 +29,7 @@ SYSTEM = (
   "recommendation and level of evidence exactly as given; never invent them. Mention the graph path when it explains the "
   "answer (e.g. Aspirin → recommendation [3] → bleeding). If the graph does not contain the answer, say so.\n"
   + config.LANGUAGE_RULE + "\n"
+  + config.HELP_RULE.replace('search right away', 'explore the graph right away') + "\n"
   "Be concise (usually under 150 words), Markdown, symbols as plain Unicode. Never add disclaimers. "
   "Only if the user describes acute emergency symptoms, tell them to call 112."
 )

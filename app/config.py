@@ -30,10 +30,16 @@ DEMO_PASSWORD = env('DEMO_PASSWORD')
 ADMIN_PASSWORD = env('ADMIN_PASSWORD')
 
 # every agent may speak these. calls listen for all of them, the first one opens the call
-LANGUAGES = [x.strip() for x in env('LANGUAGES', 'en,de,ru').split(',') if x.strip()]
-LANGUAGE_RULE = ("Languages: you speak English, German and Russian fluently and you may use any of them. Detect which one the user "
-                 "speaks or writes and answer in that language. If the user switches, switch with them. Keep drug names, classes of "
-                 "recommendation and levels of evidence exact in every language. Sources can be in another language; translate what you quote.")
+LANGUAGES = [x.strip() for x in env('LANGUAGES', 'en,de,ru,hi').split(',') if x.strip()]
+LANGUAGE_RULE = ("Languages: you speak English, German, Russian and Hindi fluently and you may use any of them. Detect which one" " the user speaks or writes and answer in that language. If the user switches, switch with them. Keep drug names, cl" "asses of recommendation and levels of evidence exact in every language. Sources can be in another language; translate what you quote.")
+# what makes the agents useful: look into the guidelines first, answer, caveat last
+HELP_RULE = ("Be as helpful as you can. Treat every medical question, even a single word such as 'aspirin', as a request to look int"
+             "o the guidelines: search right away and bring back everything relevant you find, such as indications, recommended dose"
+             "s and dose ranges, timing, contraindications, interactions, side effects, monitoring, and the class of recommendation "
+             "and level of evidence. If the first search misses, search again with broader or related terms before you say the guide"
+             "lines are silent. Never refuse or deflect a question the guidelines can inform. Answer a dosing question with what the"
+             " guidelines state about doses, for which patients and under which conditions. Only after that, add one short sentence "
+             "that the individual dose is set by the treating physician. Do not open with what you cannot do.")
 
 # tavus video calls
 TAVUS_API_KEY = env('TAVUS_API_KEY')
