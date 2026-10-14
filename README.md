@@ -8,9 +8,9 @@ Three ways to answer a heart failure question from clinical guidelines, side by 
 | **Lino** | Answers from memory. Llama 3.2 1B, fine-tuned with NeSyCoT rules mined from the guideline knowledge graph. No retrieval, no guardrails. | vLLM on a Modal L4 that sleeps when unused |
 | **Guido** | Walks the guideline knowledge graph (Think-on-Graph), shows every hop live and cites each recommendation with class and level of evidence. | Same LLM as Luna |
 
-All three speak English, German, Russian and Hindi. They answer in the language you use and switch when you switch, in chat and in calls (`LANGUAGES`).
+All three speak English, German, Spanish, Russian and Hindi. They answer in the language you use and switch when you switch, in chat and in calls (`LANGUAGES`).
 
-Every agent can also take a video call through Tavus. When Luna talks about the guidelines in a call, the right side shows what she is drawing on: verbatim quotes from the guideline pages, checked character by character against the source, with guideline, page, class and level of evidence, and the original table with the row highlighted. Small talk shows nothing. Guido shares a fake screen, and a small decision model (Cloudflare `clef-flash`) arranges the windows: the graph walk, the original guideline table, live UMLS and Wikidata facts, and notes of what he said.
+Every agent can also take a video call through Tavus. When Luna talks about the guidelines in a call, the right side shows what she is drawing on: verbatim quotes from the guideline pages, checked character by character against the source, with guideline, page, class and level of evidence, and the original table with the row highlighted. Small talk shows nothing. In Lino's call the avatar only speaks: every question goes to the fine-tuned model on Modal through the `ask_lino` tool, and its answer is read out unchanged, so the call needs his GPU awake. Guido shares a fake screen, and a small decision model (Cloudflare `clef-flash`) arranges the windows: the graph walk, the original guideline table, live UMLS and Wikidata facts, and notes of what he said.
 
 This is a research demo. It is not clinical decision support and nothing it says replaces medical advice.
 
@@ -96,9 +96,11 @@ Dense vectors are optional. `python pipeline/build_kg_vectors.py` embeds every n
 
 ## Things to know
 
-- **Costs.** Tavus bills call minutes, so every call ends after `MAX_CALL_SECONDS`. The Modal gpu costs money while awake. The start screen asks how long to keep it up, and Settings has a button that shuts it down at once.
+- **Costs.** Tavus bills call minutes, so every call ends after `MAX_CALL_SECONDS`. The Modal gpu costs money while awake. The start screen asks how long to keep it up, and Settings has a button that shuts it down. Only Lino needs the gpu. Luna and Guido run on the LLM API and are always there.
+- **Several visitors at once.** There are no accounts. The team password gives each browser its own random session id in a signed cookie. Each session holds its own lease on the gpu, so the gpu stays up while anyone still uses Lino, and Shut down only drops your own lease unless you are signed in as admin. A call can only be ended by the session that started it.
 - **Tavus minutes.** Tavus has no balance API. The app sums call durations since `TAVUS_PERIOD_START` and applies `TAVUS_USED_OFFSET_MIN`, calibrated by hand against the Tavus dashboard.
-- **Usage log.** `/dashboard` shows logins, chats, calls and gpu actions with ip and browser. It has its own `ADMIN_PASSWORD`. IPs and questions are personal data, so tell your visitors.
+- **About us.** The team on the About page comes from `app/static/team.json`. Put photos in `app/static/img/team/` and their file names into the json.
+- **Usage log.** `/dashboard` shows logins, chats, calls and gpu actions with ip, browser and session. It has its own `ADMIN_PASSWORD`. IPs and questions are personal data, so tell your visitors.
 - **Link quality.** UMLS links from the MHH export are rank-1 retrieval candidates, not confirmed links, and the UI marks them as candidates. The MHH Wikidata candidates are never used: spot checks found wrong items.
 - **Lino makes things up.** He invents references and is often wrong. That's the point of the comparison, so don't add guardrails to him.
 

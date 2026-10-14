@@ -11,7 +11,7 @@ import llm
 SYSTEM = (
   "Your name is Lino. You answer from your own knowledge, stating what the "
   "clinical guideline evidence you have internalized supports. "
-  "Answer in the language of the question: English, German, Russian or Hindi. "
+  "Answer in the language of the question: English, German, Spanish, Russian or Hindi. "
   "You are a language model fine-tuned on a knowledge graph built from "
   "scientific medical guidelines. The graph encodes relationships between "
   "entities such as populations, patients, procedures, drugs, side effects, "
@@ -27,7 +27,6 @@ def chat(messages):
   if not gpu.online():
     yield {'type': 'error', 'message': 'Lino is offline. Wake him up first.'}
     return
-  gpu.touch()
   try:
     # 1024 tokens: storyboards come back as json with several scenes
     for kind, val in llm.stream(llm.history(messages, keep=10, max_chars=4000, system=SYSTEM), max_tokens=1024, ep=MODEL, timeout=120):
@@ -42,7 +41,6 @@ def chat(messages):
 
 def answer(question):
   """one shot answer for the video call. it gets spoken verbatim, so cut at the last full sentence"""
-  gpu.touch()
   messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': str(question)[:2000]}]
   text, finish = llm.complete(messages, max_tokens=400, ep=MODEL)
   if finish == 'length':

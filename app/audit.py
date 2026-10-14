@@ -43,7 +43,8 @@ def _flush_forever():
 def client(handler):
   h = handler.headers
   return {'ip': (h.get('X-Forwarded-For') or handler.client_address[0] or '').split(',')[0].strip(),
-          'ua': (h.get('User-Agent') or '')[:300], 'device': (h.get('X-Device') or '')[:16]}
+          'ua': (h.get('User-Agent') or '')[:300], 'device': (h.get('X-Device') or '')[:16],
+          'session': handler.session()[:8]}  # signed by the server, unlike the device id the browser sends
 
 
 def record(handler, kind, **fields):

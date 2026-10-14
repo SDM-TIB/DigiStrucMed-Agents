@@ -30,7 +30,7 @@
 
       <div class="boot-phase" id="boot-choose">
         <span class="kicker">Before we start</span>
-        <h1 id="boot-title">How long should Lino and Guido stay awake?</h1>
+        <h1 id="boot-title">How long should Lino stay awake?</h1>
         <p class="lead">Lino runs on his own GPU. We start it now, so it is ready when you need it, and keep it running for at least the time you choose.</p>
         <div class="dial" id="dial">
           <div class="dial-top">
@@ -45,7 +45,7 @@
         </div>
         <div class="boot-actions">
           <button class="call boot-go" id="boot-go"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></svg><span id="boot-go-t">Start the GPU</span></button>
-          <button class="boot-alt" id="boot-luna"><span class="av" style="background-image:url(/static/img/luna.jpg)"></span><span><b>Luna only</b><small>No GPU needed</small></span></button>
+          <button class="boot-alt" id="boot-luna"><span class="av" style="background-image:url(/static/img/luna.jpg)"></span><span><b>Without Lino</b><small>Luna and Guido, no GPU needed</small></span></button>
         </div>
         <p class="boot-tavus" id="boot-tavus"><i></i><span>Checking video call minutes…</span></p>
       </div>
@@ -89,6 +89,7 @@
       <button id="nav-videos"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9.5 5 2.5-5 2.5Z"/></svg>Videos</button>
       <button id="nav-sources"><svg viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5Z"/><path d="M13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13Z"/></svg>Sources</button>
       <button id="nav-search" title="Search (Ctrl+K)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</button>
+      <button id="nav-about"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>About</button>
       <button id="nav-settings"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</button>
       <button class="me" id="logout" title="Sign out" aria-label="Sign out"><span class="presence"></span></button>
     </nav>
@@ -159,7 +160,7 @@
           </article>
           <article class="set-card">
             <div class="orb lino set-orb"><span class="presence off" id="set-lino-dot"></span></div>
-            <div><span class="set-kicker">Lino &amp; Guido runtime</span><h3 id="set-lino-state">Asleep</h3>
+            <div><span class="set-kicker">Lino runtime</span><h3 id="set-lino-state">Asleep</h3>
               <p id="set-lino-note">NVIDIA L4 GPU on Modal. Sleeps when unused and wakes on request.</p>
               <button class="gpu-off hidden" id="gpu-off"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0"/></svg><span>Shut down GPU</span></button></div>
           </article>
@@ -170,6 +171,24 @@
               <p id="tv-note">Loading…</p></div>
           </article>
         </div></div>
+      </section>
+
+      <section class="vids hidden" id="view-about" aria-labelledby="about-title">
+        <header class="lib-head"><div><h2 id="about-title">About us</h2><p class="lib-sub">The project and the people behind TIB Chat.</p></div></header>
+        <div class="lib-body about">
+          <article class="ab-intro">
+            <p>TIB Chat puts three ways of answering a heart failure question from clinical guidelines side by side, in chat and in video calls. All three draw on the same guideline knowledge: recommendations from cardiology guidelines, linked to the patients, conditions, drugs and procedures they are about, with class of recommendation and level of evidence.</p>
+            <p>It is a research demo for comparing answer quality, traceability and explainability. It does not give medical advice.</p>
+          </article>
+          <div class="ab-agents">
+            <article><div class="orb lg"></div><div><b>Luna</b><span>Searches 2,780 guideline pages and cites the pages she read.</span></div></article>
+            <article><div class="orb lg lino"></div><div><b>Lino</b><span>Answers from memory: Llama 3.2 1B, fine-tuned with neuro-symbolic chain-of-thought rules mined from the guideline knowledge graph. No retrieval.</span></div></article>
+            <article><div class="orb lg guido"></div><div><b>Guido</b><span>Walks the guideline knowledge graph live and cites each recommendation with class and level of evidence.</span></div></article>
+          </div>
+          <h3 class="ab-h">Team</h3>
+          <div class="ab-team" id="ab-team"></div>
+          <div class="ab-logos"><div class="logos"><img class="l-luh" src="/static/img/logo-luh.svg" alt="Leibniz Universität Hannover"><img class="l-tib" src="/static/img/logo-tib.png" alt="TIB"><img class="l-sdm" src="/static/img/logo-sdm.png" alt="SDM"><img class="l-l3s" src="/static/img/logo-l3s.png" alt="L3S AI Research"><img class="l-caimed" src="/static/img/logo-caimed.png" alt="CAIMed"></div></div>
+        </div>
       </section>
 
       <section class="srch hidden" id="view-search" aria-labelledby="search-title">

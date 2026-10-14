@@ -1,14 +1,16 @@
 """TIB Chat. one process, stdlib http server, no framework. runs on Cloud Run with a single instance.
 
 single instance on purpose: gpu wake state, call timers and the usage log live in memory.
-auth: the team password sets an HttpOnly cookie. every POST also needs the X-TIB-Chat header and a matching
-Origin, which is enough CSRF protection for a same-origin app.
+auth: one team password, no accounts. signing in gives this browser its own random session id in a signed
+HttpOnly cookie (the usual signed-cookie session), so every visitor has their own gpu lease and their own calls.
+every POST also needs the X-TIB-Chat header and a matching Origin, enough CSRF protection for a same-origin app.
 """
 import hashlib
 import hmac
 import http.cookies
 import json
 import mimetypes
+import secrets
 import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -31,16 +33,21 @@ import wikidata
 SESSION_COOKIE, ADMIN_COOKIE = 'tib_session', 'tib_admin'
 SESSION_SECONDS, ADMIN_SECONDS = 30 * 24 * 3600, 12 * 3600
 ACTION_HEADER = 'X-TIB-Chat'
-# stateless sessions: derived from the passwords, so rotating a password logs everyone out
+# stateless sessions: signed with a key derived from the passwords, so rotating a password logs everyone out
 _secret = (config.TAVUS_API_KEY or 'tib-chat').encode()
 SESSION_TOKEN = hmac.new(_secret, b'session:' + config.DEMO_PASSWORD.encode(), hashlib.sha256).hexdigest()
 ADMIN_TOKEN = hmac.new(_secret, b'admin:' + config.ADMIN_PASSWORD.encode(), hashlib.sha256).hexdigest() if config.ADMIN_PASSWORD else ''
-STATIC_TYPES = {'.html', '.css', '.js', '.jpg', '.png', '.svg', '.mp4'}
+STATIC_TYPES = {'.html', '.css', '.js', '.json', '.jpg', '.png', '.svg', '.mp4'}
 CHATS = {'luna': luna.run, 'lino': lino.chat, 'guido': guido.run}
 
 
 def same(given, expected):
   return bool(expected) and hmac.compare_digest(given.encode(), expected.encode())
+
+
+def session_cookie(sid):
+  """sid.signature. only the server can make one, so a visitor can't pick someone else's session"""
+  return sid + '.' + hmac.new(SESSION_TOKEN.encode(), sid.encode(), hashlib.sha256).hexdigest()[:32]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -52,8 +59,14 @@ class Handler(BaseHTTPRequestHandler):
     c = http.cookies.SimpleCookie(self.headers.get('Cookie', ''))
     return c[name].value if name in c else ''
 
+  def session(self):
+    """this browser's session id, or '' when not signed in"""
+    value = self.cookie(SESSION_COOKIE)
+    sid = value.partition('.')[0]
+    return sid if sid and config.DEMO_PASSWORD and same(value, session_cookie(sid)) else ''
+
   def signed_in(self):
-    return same(self.cookie(SESSION_COOKIE), SESSION_TOKEN)
+    return bool(self.session())
 
   def admin(self):
     return same(self.cookie(ADMIN_COOKIE), ADMIN_TOKEN)
@@ -63,7 +76,7 @@ class Handler(BaseHTTPRequestHandler):
     return f'{name}={value}; Path=/; Max-Age={max_age}; HttpOnly; SameSite=Strict{secure}'
 
   def send(self, code, data, content_type='application/json', cookie=None, cache='no-store'):
-    raw = json.dumps(data, ensure_ascii=False).encode() if content_type == 'application/json' else data
+    raw = data if isinstance(data, bytes) else json.dumps(data, ensure_ascii=False).encode()
     self.send_response(code)
     self.send_header('Content-Type', content_type)
     self.send_header('Cache-Control', cache)
@@ -159,6 +172,10 @@ class Handler(BaseHTTPRequestHandler):
     if path.startswith('/api/page/'):
       p = corpus.PAGE_BY_ID.get(path.rsplit('/', 1)[-1])
       return self.send(200, {k: p.get(k) for k in ('id', 'title', 'ref', 'page', 'plain')}) if p else self.send(404, {'error': 'Unknown page'})
+    if path == '/api/gpu':
+      return self.send(200, gpu.status(self.session()))
+    if path == '/api/settings':
+      return self.send(200, {'modal': gpu.credits(), 'lino': gpu.status(self.session())})
     if path.startswith('/api/page-image/'):
       pid = path.rsplit('/', 1)[-1]
       img = storage.get(pid + '.webp') if pid in corpus.PAGE_BY_ID else None
@@ -182,7 +199,7 @@ class Handler(BaseHTTPRequestHandler):
       return self.send(403, {'error': 'Action header required'})
 
     if self.path == '/api/login':
-      return self.login(body, config.DEMO_PASSWORD, SESSION_COOKIE, SESSION_TOKEN, SESSION_SECONDS, 'login')
+      return self.login(body, config.DEMO_PASSWORD, SESSION_COOKIE, session_cookie(secrets.token_urlsafe(16)), SESSION_SECONDS, 'login')
     if self.path == '/api/admin/login':
       return self.login(body, config.ADMIN_PASSWORD, ADMIN_COOKIE, ADMIN_TOKEN, ADMIN_SECONDS, 'admin_login')
     if self.path in ('/api/logout', '/api/admin/logout'):
@@ -201,16 +218,18 @@ class Handler(BaseHTTPRequestHandler):
     if self.path == '/api/gpu/wake':
       hold = int(body.get('hold_s') or 0)
       audit.record(self, 'gpu_wake', hold_min=round(hold / 60) or None, was=gpu.STATE['status'])
-      return self.send(200, gpu.wake(hold))
+      return self.send(200, gpu.wake(self.session(), hold))
     if self.path == '/api/gpu/touch':
-      gpu.touch()
-      return self.send(200, gpu.status())
-    if self.path == '/api/gpu/shutdown':
-      audit.record(self, 'gpu_shutdown')
-      return self.send(200, gpu.shutdown())
+      gpu.touch(self.session())
+      return self.send(200, gpu.status(self.session()))
+    if self.path == '/api/gpu/shutdown':  # admins stop it for everyone, visitors only drop their own lease
+      res = gpu.shutdown(self.session(), force=self.admin())
+      audit.record(self, 'gpu_shutdown', stopped=res.get('stopped'), shared=res.get('shared'))
+      return self.send(200, res)
     if self.path == '/api/call/lino':  # tavus tool call ask_lino, the answer is spoken verbatim
       question = str(body.get('question', ''))
       audit.record(self, 'call_tool', agent='Lino', text=question[:200])
+      gpu.touch(self.session())
       try:
         return self.send(200, {'output': lino.answer(question)})
       except Exception as e:
@@ -218,7 +237,7 @@ class Handler(BaseHTTPRequestHandler):
     if self.path == '/api/call/start':
       agent = body.get('agent') if body.get('agent') in tavus.PALS else 'luna'
       try:
-        res = tavus.start(agent)
+        res = tavus.start(agent, self.session())
       except Exception as e:
         return self.send(502, {'error': str(e)})
       audit.record(self, 'call_start', agent=agent.title(), conversation_id=res['conversation_id'])
@@ -242,10 +261,8 @@ class Handler(BaseHTTPRequestHandler):
     messages = body.get('messages') or []
     last = next((m.get('text', '') for m in reversed(messages) if m.get('role') == 'user'), '')
     audit.record(self, 'call_tool' if body.get('via') == 'call' else 'chat', agent=agent.title(), text=str(last)[:200], turn=len(messages))
-    if agent == 'guido':  # guido runs on the llm api, he only shares lino's wake timer
-      if not gpu.online():
-        return self.stream(iter([{'type': 'error', 'message': 'Guido is asleep. Wake him up first.'}]))
-      gpu.touch()
+    if agent == 'lino':  # only lino runs on the gpu. luna and guido use the llm api and are always there
+      gpu.touch(self.session())
     return self.stream(CHATS[agent](messages))
 
   def end_call(self, body, via=None):
@@ -254,7 +271,7 @@ class Handler(BaseHTTPRequestHandler):
     if cid and started:
       audit.record(self, 'call_end', conversation_id=cid, agent=started.get('agent'), seconds=round(time.time() - started['ts']), via=via)
     try:
-      return tavus.end(cid) if cid else False
+      return tavus.end(cid, self.session()) if cid else False
     except Exception:
       return False
 
@@ -278,8 +295,6 @@ GET_ROUTES = {
   '/api/kg/search': lambda q: {'items': kg.search(q.get('q', '')[:120])},
   '/api/kg/facts': facts,
   '/api/kg/evidence': lambda q: guido.evidence(q.get('id', '')),
-  '/api/gpu': lambda q: gpu.status(),
-  '/api/settings': lambda q: {'modal': gpu.credits(), 'lino': gpu.status()},
   '/api/tavus/usage': lambda q: tavus.usage(),
 }
 

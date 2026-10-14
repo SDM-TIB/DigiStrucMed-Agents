@@ -110,7 +110,7 @@ async function bootTick() {
   } else if (st.status === 'online') {
     $('#boot-wait').classList.add('boot-wait-done');
     $('#boot-fill').style.width = '100%'; ['#bs-1', '#bs-2', '#bs-3'].forEach(k => $(k).classList.add('on', 'done'));
-    $('#boot-state').textContent = 'Ready'; $('#boot-wtitle').textContent = `Lino and Guido are awake for at least ${fmtHold(st.hold_s || bootHold)}`;
+    $('#boot-state').textContent = 'Ready'; $('#boot-wtitle').textContent = `Lino is awake for at least ${fmtHold(st.hold_s || bootHold)}`;
     $('#boot-eta').textContent = `started in ${fmtClock(st.cold_start_s || 0)}`;
     $('#boot-enter').classList.remove('hidden'); $('#boot-enter').focus();
     if (!bootEntered) { bootEntered = true; bootPoll = setTimeout(showApp, 2200); }
@@ -350,7 +350,7 @@ function kgUpdate(ev) {
 /* views: chat / sources */
 function view(name) {
   $('.window').classList.toggle('no-side', name !== 'chat');
-  for (const v of ['chat', 'sources', 'videos', 'settings', 'search']) {
+  for (const v of ['chat', 'sources', 'videos', 'settings', 'search', 'about']) {
     $('#view-' + v).classList.toggle('hidden', v !== name);
     $('#nav-' + v).classList.toggle('active', v === name); $('#nav-' + v).toggleAttribute('aria-current', v === name);
   }
@@ -358,6 +358,18 @@ function view(name) {
 }
 $('#nav-videos').onclick = () => { buildVideos(); view('videos'); };
 $('#nav-settings').onclick = () => { view('settings'); loadSettings(); };
+// about us: the team comes from static/team.json, so names, roles and photos change without touching code
+$('#nav-about').onclick = async () => {
+  view('about');
+  if ($('#ab-team').childElementCount) return;
+  try {
+    const {members} = await (await fetch('/static/team.json', {cache: 'no-cache'})).json();
+    const initials = n => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    $('#ab-team').innerHTML = members.map((m, i) => `<${m.link ? `a href="${esc(m.link)}" target="_blank" rel="noopener"` : 'div'} class="ab-person" style="animation-delay:${i * 50}ms">
+      <span class="ab-pic"${m.photo ? ` style="background-image:url('/static/img/team/${encodeURIComponent(m.photo)}')"` : ''}>${m.photo ? '' : esc(initials(m.name))}</span>
+      <b>${esc(m.name)}</b>${m.role ? `<small>${esc(m.role)}</small>` : ''}</${m.link ? 'a' : 'div'}>`).join('');
+  } catch { $('#ab-team').innerHTML = '<p class="lib-sub">Team list unavailable.</p>'; }
+};
 // Shut the Modal GPU down now (two-step confirm), instead of waiting for the idle timeout
 let gpuOffArm = 0;
 $('#gpu-off').onclick = async () => {
@@ -366,7 +378,9 @@ $('#gpu-off').onclick = async () => {
     gpuOffArm = setTimeout(() => { b.classList.remove('confirm'); t.textContent = 'Shut down GPU'; }, 4000); return; }
   clearTimeout(gpuOffArm); b.disabled = true; t.textContent = 'Shutting down…';
   try { const x = await post('/api/gpu/shutdown'); gpuState = x; renderGpu();
-    $('#set-lino-note').textContent = x.ok ? `GPU shut down${x.stopped ? ` (${x.stopped} container${x.stopped > 1 ? 's' : ''} stopped)` : ''}. Lino and Guido are asleep until the next wake.` : 'Marked asleep; Modal will stop the container after its idle window.'; }
+    $('#set-lino-note').textContent = !x.ok ? 'Marked asleep; Modal will stop the container after its idle window.'
+      : x.shared ? `Your time is released. The GPU stays on because ${x.shared} other session${x.shared > 1 ? 's are' : ' is'} still using Lino.`
+      : `GPU shut down${x.stopped ? ` (${x.stopped} container${x.stopped > 1 ? 's' : ''} stopped)` : ''}. Lino is asleep until the next wake.`; }
   catch (e) { $('#set-lino-note').textContent = 'Could not shut down: ' + e.message; }
   b.disabled = false; b.classList.remove('confirm'); t.textContent = 'Shut down GPU';
   loadSettings();
@@ -631,8 +645,8 @@ function getFacts(id) {
 }
 const AGENTS = {
   luna: {name: 'Luna', tagline: 'Retrieval-augmented expert on heart guidelines', endpoint: '/api/chat/luna', video: true, history: [], thread: '#thread', preview: '#item-preview', item: '#item-luna', orb: ''},
-  lino: {name: 'Lino', tagline: 'Fine-tuned with Neuro-Symbolic Chain-of-Thought (NeSyCoT)', endpoint: '/api/chat/lino', video: false, history: [], thread: '#thread-lino', preview: '#item-preview-lino', item: '#item-lino', orb: 'lino'},
-  guido: {name: 'Guido', tagline: 'Finetuned LLM with access to the guideline knowledge graph', endpoint: '/api/chat/guido', video: true, history: [], thread: '#thread-guido', preview: '#item-preview-guido', item: '#item-guido', orb: 'guido'},
+  lino: {name: 'Lino', tagline: 'Fine-tuned with Neuro-Symbolic Chain-of-Thought (NeSyCoT)', endpoint: '/api/chat/lino', video: true, history: [], thread: '#thread-lino', preview: '#item-preview-lino', item: '#item-lino', orb: 'lino'},
+  guido: {name: 'Guido', tagline: 'Walks the guideline knowledge graph', endpoint: '/api/chat/guido', video: true, history: [], thread: '#thread-guido', preview: '#item-preview-guido', item: '#item-guido', orb: 'guido'},
 };
 let agent = AGENTS.luna;
 function switchAgent(id) {
@@ -642,7 +656,6 @@ function switchAgent(id) {
   $('#head-name').textContent = agent.name; $('#head-tagline').textContent = agent.tagline;
   $('#head-orb').classList.toggle('lino', agent.orb === 'lino'); $('#head-orb').classList.toggle('guido', agent.orb === 'guido');
   $('#view-chat').classList.toggle('kg-on', agent === AGENTS.guido); if (agent === AGENTS.guido) kgInit();
-  $('#start').classList.toggle('hidden', !agent.video);
   const SUG = agent === AGENTS.guido ? [
     ['Tell me about aspirin', 'What can you tell me about aspirin?'],
     ['Aspirin bleeding risks', 'What are the bleeding risks of aspirin combined with other antithrombotic drugs?'],
@@ -660,13 +673,15 @@ $('#item-lino').onclick = () => switchAgent('lino');
 $('#item-guido').onclick = () => switchAgent('guido');
 let gpuState = {status: 'offline'}, gpuPoll = 0;
 function renderGpu() {
-  const st = gpuState.status, sel = agent === AGENTS.lino || agent === AGENTS.guido, who = agent === AGENTS.guido ? 'Guido' : 'Lino';
+  // only lino runs on the gpu. luna and guido run on the llm api and are always online
+  const st = gpuState.status, sel = agent === AGENTS.lino, who = 'Lino';
   document.body.classList.toggle('lino-asleep', st !== 'online');
   $('#lino-dot').className = 'presence ' + (st === 'online' ? '' : st === 'waking' ? 'wake' : 'off');
   $('#lino-time').textContent = st === 'online' ? 'online' : st === 'waking' ? 'waking' : 'offline';
-  $('#guido-dot').className = $('#lino-dot').className; $('#guido-time').textContent = $('#lino-time').textContent;
+  $('#guido-dot').className = 'presence'; $('#guido-time').textContent = 'online';
+  $('#start').classList.toggle('hidden', !agent.video || (sel && st !== 'online'));  // lino's call needs his gpu
   $('#wake-btn-t').textContent = `Ping ${who} to wake up`;
-  $('#wake-orb').className = 'orb ' + (who === 'Guido' ? 'guido sleepy-guido' : 'lino sleepy-lino');
+  $('#wake-orb').className = 'orb lino sleepy-lino';
   if (sel) {
     $('#head-orb .presence').className = 'presence ' + (st === 'online' ? '' : st === 'waking' ? 'wake' : 'off');
     const left = Math.round((gpuState.awake_for_s || 0) / 60), h = Math.floor(left / 60), m = left % 60;
@@ -682,7 +697,7 @@ function renderGpu() {
   $('#wake-title').textContent = st === 'waking' ? `Waking ${who}…` : `${who} is asleep`;
   $('#wake-text').textContent = st === 'waking'
     ? 'His GPU is starting on Modal and the fine-tuned model is being loaded. This usually takes one to three minutes. After that it stays active as long as you use the page, no matter which agent you talk to.'
-    : `${who} shares a GPU with ${who === 'Guido' ? 'Lino' : 'Guido'}, which sleeps when nobody is talking to them. Once awake, it stays active as long as you use the page, no matter which agent you talk to.`;
+    : 'Lino runs on his own GPU, which sleeps when nobody is talking to him. Once awake, it stays active as long as you use the page, no matter which agent you talk to.';
   $('#wake-btn').classList.toggle('hidden', st === 'waking');
   $('#wake-steps').classList.toggle('hidden', st !== 'waking'); $('#wake-time').classList.toggle('hidden', st !== 'waking');
   if (st === 'waking') {
@@ -1489,11 +1504,12 @@ async function liveBoard(text, who) {
     const fin = comp.push('\n').result; if (fin.root) r.set(fin, false);
   } catch {}
 }
-// guido narrates in the language of the question. en, de, ru and hi, like the agents themselves
+// guido narrates in the language of the question. en, de, es, ru and hi, like the agents themselves
 function langOf(text) {
   const t = (text || '').toLowerCase();
   if (/[а-яё]/.test(t)) return 'ru';
   if (/[ऀ-ॿ]/.test(t)) return 'hi';
+  if (/[ñ¿¡áéíóú]|\b(el|los|las|qué|que|cuál|cómo|para|con|por|una|del|puedo|tengo|efectos|dosis)\b/.test(t)) return 'es';
   return /[äöüß]|\b(der|die|das|und|ist|nicht|was|wie|welche|bei|mit|für|sind|wird|kann|gibt)\b/.test(t) ? 'de' : 'en';
 }
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
@@ -1508,6 +1524,11 @@ const SAY = {
     links: l => `Ich folge den Verbindungen von ${l}.`, hop2: x => `Zwei Schritte weiter bin ich jetzt bei ${x}.`, expand: l => `Ich schaue mir ${l} noch genauer an.`,
     match: n => `${n} Empfehlungstexte passen direkt.`, rank: n => `Ich breite mich im Graphen aus, ${n} Empfehlungen liegen nah an Ihrer Frage.`,
     select: 'Ich habe, was ich brauche. Jetzt wähle ich die Empfehlungen aus, die Ihre Frage beantworten.', table: 'Schauen Sie, hier ist die Empfehlung in der originalen Leitlinientabelle.'},
+  es: {and: 'y', share: 'Comparto mi pantalla y le muestro nuestro grafo de conocimiento.', again: 'Vuelvo a mirar el grafo.',
+    seed: x => `Empiezo por ${x}.`, recs: (n, l) => `Aquí hay algo: ${n} ${n > 1 ? 'recomendaciones' : 'recomendación'} sobre ${l}. Las sigo.`,
+    links: l => `Sigo las conexiones de ${l}.`, hop2: x => `Dos pasos más allá, ahora estoy en ${x}.`, expand: l => `Miro ${l} con más detalle.`,
+    match: n => `${n} textos de recomendaciones coinciden directamente.`, rank: n => `Recorriendo el grafo, ${n} recomendaciones quedan cerca de su pregunta.`,
+    select: 'Ya tengo lo que necesito. Ahora elijo las recomendaciones que responden a su pregunta.', table: 'Mire, aquí está la recomendación en la tabla original de la guía.'},
   ru: {and: 'и', share: 'Сейчас я покажу свой экран и проведу вас по нашему графу знаний.', again: 'Давайте ещё раз посмотрим на граф.',
     seed: x => `Начинаю с ${x}.`, recs: (n, l) => `Вот что я нашёл: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} вокруг ${l}. Иду по ним дальше.`,
     links: l => `Иду по связям ${l}.`, hop2: x => `Два шага дальше, я сейчас у ${x}.`, expand: l => `Посмотрю на ${l} подробнее.`,

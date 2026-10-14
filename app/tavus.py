@@ -1,7 +1,7 @@
 """Tavus video calls: start, end, and an estimate of the minutes left.
 
 a call is a Tavus conversation joined over Daily in the browser. every call has a hard timer here so a
-forgotten tab never burns the plan.
+forgotten tab never burns the plan, and belongs to the session that started it: only that one can end it.
 """
 import datetime as dt
 import json
@@ -31,7 +31,7 @@ def api(method, path, body=None):
     raise RuntimeError(f'Tavus HTTP {e.code}: {detail}') from None
 
 
-def start(agent):
+def start(agent, owner):
   """new conversation for luna, lino or guido. returns the daily room url with its meeting token"""
   pal = PALS[agent]
   body = {'pal_id': pal['pal_id'], 'face_id': pal['face_id'], 'conversation_name': CALL_NAMES[agent],
@@ -45,17 +45,19 @@ def start(agent):
   timer = threading.Timer(config.MAX_CALL_SECONDS + 5, lambda: end(cid))
   timer.daemon = True
   with _lock:
-    _timers[cid] = timer
+    _timers[cid] = (timer, owner)
   timer.start()
   url = result['conversation_url'] + '?t=' + urllib.parse.quote(result.get('meeting_token', ''))
   return {'url': url, 'conversation_id': cid, 'max_seconds': config.MAX_CALL_SECONDS}
 
 
-def end(cid):
+def end(cid, owner=None):
+  """owner None is the hard timer itself"""
   with _lock:
-    timer = _timers.pop(cid, None)
-  if timer is None:
-    return False  # not ours, or already ended
+    timer, started_by = _timers.get(cid, (None, None))
+    if timer is None or owner not in (None, started_by):
+      return False  # not ours, someone else's, or already ended
+    del _timers[cid]
   timer.cancel()
   api('POST', f'conversations/{cid}/end', {})
   return True
