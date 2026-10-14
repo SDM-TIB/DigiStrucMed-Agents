@@ -1,0 +1,71 @@
+# Checks every push and pull request. Pushes to main that touch the app deploy it to Cloud Run.
+# No keys in GitHub: Actions signs in to Google Cloud through Workload Identity Federation, and only this
+# repository may do that. App secrets stay in Secret Manager; the service keeps its references to them.
+# Settings are repository variables (Settings > Secrets and variables > Actions > Variables).
+name: check and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - run: pip install pyflakes
+      - run: python -m pyflakes app deploy pipeline tavus
+      - run: for f in app/static/js/*.js; do node --check "$f"; done
+
+  deploy:
+    needs: check
+    if: github.repository == 'SDM-TIB/DigiStrucMed-Agents' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    concurrency: deploy
+    permissions:
+      contents: read
+      id-token: write  # for the Workload Identity Federation token
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: changed
+        with:
+          filters: |
+            app:
+              - 'app/**'
+              - 'deploy/**'
+      - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+        uses: google-github-actions/setup-gcloud@v3
+      - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+        run: python deploy/deploy.py app --code-only
+        env:
+          GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+          PAGE_BUCKET: ${{ vars.PAGE_BUCKET }}
+          LANGUAGES: ${{ vars.LANGUAGES }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_FALLBACK_MODEL: ${{ vars.LLM_FALLBACK_MODEL }}
+          LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
+          LINO_URL: ${{ vars.LINO_URL }}
+          MAX_CALL_SECONDS: ${{ vars.MAX_CALL_SECONDS }}
+          TAVUS_PLAN_MINUTES: ${{ vars.TAVUS_PLAN_MINUTES }}
+          TAVUS_PERIOD_START: ${{ vars.TAVUS_PERIOD_START }}
+          TAVUS_USED_OFFSET_MIN: ${{ vars.TAVUS_USED_OFFSET_MIN }}

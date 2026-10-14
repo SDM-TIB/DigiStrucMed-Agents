@@ -66,6 +66,14 @@ Then open http://localhost:8080. Without `PAGE_BUCKET` the server reads page ren
 
 Cloudflare is optional. Without `CF_ACCOUNT_ID` the screen share keeps its default layout.
 
+## Deploy from GitHub
+
+Every push and pull request is checked (Python lint, JavaScript syntax). A push to `main` that changes `app/` or `deploy/` then deploys itself with `python deploy/deploy.py app --code-only` (`.github/workflows/deploy.yml`). You can also start it by hand under Actions.
+
+GitHub holds no keys. Actions signs in to Google Cloud through Workload Identity Federation: the pool `github` with the provider `digistrucmed-agents` accepts only tokens from this repository, and lets it act as the service account `github-deployer`, which has just the roles a source deploy needs (`run.sourceDeveloper`, `serviceusage.serviceUsageConsumer`, and `iam.serviceAccountUser` on the runtime account). The app's secrets stay in Secret Manager and the service keeps its references to them. The settings are repository variables under Settings, Secrets and variables, Actions.
+
+To change a secret, put it in your `.env` and run `python deploy/deploy.py app` once locally.
+
 ## Change the LLM
 
 Set `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY` to any API that speaks OpenAI Chat Completions with streaming and tool calls: OpenAI, OpenRouter, a vLLM or Ollama server. Leave `LLM_REASONING_EFFORT` empty if the API doesn't know that parameter. We recommend Gemini 3.5 Flash-Lite: it is fast, cheap and reliable with tools. When the main model runs out of quota, requests move to `LLM_FALLBACK_MODEL` (default `gemini-3.1-flash-lite`, which has its own rate limit). Set it empty to turn that off.

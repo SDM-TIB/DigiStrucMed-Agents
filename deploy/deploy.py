@@ -1,6 +1,8 @@
-"""Deploy TIB Chat. reads everything from the .env at the repo root.
+"""Deploy TIB Chat. reads everything from the .env at the repo root, or from the environment when there is none (CI).
 
   python deploy/deploy.py app      # Cloud Run service (secrets to Secret Manager, then a source deploy of app/)
+  python deploy/deploy.py app --code-only   # only the source deploy. what GitHub Actions runs: no .env, no secret
+                                            # values, the service keeps the Secret Manager references it already has
   python deploy/deploy.py gpu      # Lino's vLLM server on Modal (creates the Modal secret, then modal deploy)
   python deploy/deploy.py assets push|pull   # videos and the LoRA adapter, kept in the bucket, not in git
 
@@ -25,6 +27,8 @@ ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter'}
 
 
 def dotenv():
+  if not (ROOT / '.env').exists():
+    return dict(os.environ)  # ci: settings come from repository variables, secrets stay in Secret Manager
   env = {}
   for line in (ROOT / '.env').read_text(encoding='utf-8').splitlines():
     if line.strip() and not line.lstrip().startswith('#') and '=' in line:
@@ -59,8 +63,10 @@ def put_secret(name, value, project):
   return 'new version'
 
 
-def deploy_app(env):
+def deploy_app(env, code_only=False):
   project, region, service, bucket = env['GCP_PROJECT'], env.get('GCP_REGION', 'europe-west3'), env['CLOUD_RUN_SERVICE'], env['PAGE_BUCKET']
+  if code_only:
+    return source_deploy(env, project, region, service, bucket, secrets_flag=[])
   run('gcloud', 'services', 'enable', 'run.googleapis.com', 'cloudbuild.googleapis.com', 'artifactregistry.googleapis.com',
       'secretmanager.googleapis.com', f'--project={project}', quiet=True)
   number = run('gcloud', 'projects', 'describe', project, '--format=value(projectNumber)', quiet=True).strip()
@@ -75,6 +81,10 @@ def deploy_app(env):
   run('gcloud', 'projects', 'add-iam-policy-binding', project, f'--member={runtime}', '--role=roles/cloudbuild.builds.builder',
       '--condition=None', quiet=True)
   secrets = ','.join(f'{v}={secret_name(v)}:latest' for v in SECRETS if env.get(v))
+  source_deploy(env, project, region, service, bucket, secrets_flag=[f'--set-secrets={secrets}'])
+
+
+def source_deploy(env, project, region, service, bucket, secrets_flag):
   # settings go through a yaml file: values can hold commas (LANGUAGES=en,de,ru). no secrets in it
   settings = {k: env[k] for k in SETTINGS if env.get(k)} | {'PAGE_BUCKET': bucket}
   fd, name = tempfile.mkstemp(suffix='.yaml')
@@ -85,7 +95,7 @@ def deploy_app(env):
   # --no-invoker-iam-check because org policies often forbid allUsers. the app has its own password
   print(run('gcloud', 'run', 'deploy', service, '--source', str(ROOT / 'app'), f'--region={region}', f'--project={project}',
             '--no-invoker-iam-check', '--min-instances=1', '--max-instances=1', '--memory=1Gi', '--cpu=1',
-            f'--set-secrets={secrets}', f'--env-vars-file={env_file}', '--quiet', quiet=True) or 'deployed')
+            *secrets_flag, f'--env-vars-file={env_file}', '--quiet', quiet=True) or 'deployed')
   env_file.unlink()
   print(run('gcloud', 'run', 'services', 'describe', service, f'--region={region}', f'--project={project}', '--format=value(status.url)', quiet=True))
 
@@ -110,7 +120,7 @@ if __name__ == '__main__':
   what = sys.argv[1] if len(sys.argv) > 1 else ''
   env = dotenv()
   if what == 'app':
-    deploy_app(env)
+    deploy_app(env, code_only='--code-only' in sys.argv)
   elif what == 'gpu':
     deploy_gpu(env)
   elif what == 'assets' and sys.argv[2:] in (['push'], ['pull']):
