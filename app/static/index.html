@@ -56,7 +56,7 @@
         <div class="wake-time"><div class="wt-bar"><i id="boot-fill"></i></div><div class="wt-row"><span id="boot-elapsed">0:00</span><span id="boot-eta"></span></div></div>
         <div class="boot-steps"><span id="bs-1">Starting NVIDIA L4 on Modal</span><span id="bs-2">Loading fine-tuned model</span><span id="bs-3">Warming up</span></div>
         <button class="call boot-go hidden" id="boot-enter">Enter TIB Chat<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-        <p class="boot-err hidden" id="boot-err">The GPU did not start. <button id="boot-retry">Try again</button> or <button id="boot-skip2">continue with Luna only</button>.</p>
+        <p class="boot-err hidden" id="boot-err">The GPU did not start. <button id="boot-retry">Try again</button> or <button id="boot-skip2">continue without Lino</button>.</p>
       </div>
 
       <ol class="boot-how" id="boot-how">
@@ -70,14 +70,17 @@
     <aside class="boot-side">
       <span class="kicker">Meet the agents</span>
       <div class="agent-card"><span class="av" style="background-image:url(/static/img/luna.jpg)"></span><div><h3>Luna <em>RAG agent</em></h3>
-        <p>Retrieval-augmented generation over everything we extracted: 132 guideline documents with 2,378 pages. She searches the pages, reads them and answers with page-level citations you can open.</p>
+        <p>Retrieval-augmented generation over everything we extracted: 204 guideline documents with 2,780 pages. She searches the pages, reads them and answers with page-level citations you can open.</p>
         <div class="tags"><span>Full-text retrieval</span><span>Video call</span></div></div></div>
       <div class="agent-card"><span class="av" style="background-image:url(/static/img/lino.jpg)"></span><div><h3>Lino <em>Fine-tuned LLM</em></h3>
         <p>Llama 3.2 1B, fine-tuned with NeSyCoT: neuro-symbolic chain-of-thought rules mined from the guideline knowledge graph. He answers questions from internalized knowledge and writes patient-education video scripts.</p>
-        <div class="tags"><span>Llama 3.2 1B + LoRA</span><span>NVIDIA L4 on Modal</span><span>Video scripts</span></div></div></div>
+        <div class="tags"><span>Llama 3.2 1B + LoRA</span><span>NVIDIA L4 on Modal</span><span>Video call</span><span>Video scripts</span></div></div></div>
       <div class="agent-card"><span class="av" style="background-image:url(/static/img/guido.jpg)"></span><div><h3>Guido <em>Knowledge-graph agent</em></h3>
-        <p>Walks the guideline knowledge graph we built (9,117 concepts, 3,977 recommendations) with graph tools tuned for it, shows every hop live and cites each recommendation with class and level of evidence.</p>
+        <p>Walks the guideline knowledge graph we built (8,882 concepts, 3,977 recommendations), finds the evidence closest to your question with personalized PageRank, shows every hop live and cites each recommendation with class and level of evidence.</p>
         <div class="tags"><span>Think-on-Graph traversal</span><span>Live visualization</span><span>Video call</span></div></div></div>
+      <div class="boot-langs"><span class="kicker">Talk in your language</span>
+        <div class="langs"><span><img src="/static/img/flags/gb.svg" alt="">English</span><span><img src="/static/img/flags/de.svg" alt="">Deutsch</span><span><img src="/static/img/flags/es.svg" alt="">Español</span><span><img src="/static/img/flags/ru.svg" alt="">Русский</span><span><img src="/static/img/flags/in.svg" alt="">हिन्दी</span></div>
+        <p>All three agents answer in the language you use, in chat and in video calls, and switch when you switch.</p></div>
     </aside>
   </div>
 </section>
@@ -177,8 +180,15 @@
         <header class="lib-head"><div><h2 id="about-title">About us</h2><p class="lib-sub">The project and the people behind TIB Chat.</p></div></header>
         <div class="lib-body about">
           <article class="ab-intro">
-            <p>TIB Chat puts three ways of answering a heart failure question from clinical guidelines side by side, in chat and in video calls. All three draw on the same guideline knowledge: recommendations from cardiology guidelines, linked to the patients, conditions, drugs and procedures they are about, with class of recommendation and level of evidence.</p>
-            <p>It is a research demo for comparing answer quality, traceability and explainability. It does not give medical advice.</p>
+            <span class="kicker">DigiStrucMed</span>
+            <p class="ab-lead">Clinical guidelines hold the best available evidence on how to treat heart disease, but it is locked in long PDFs written for specialists. DigiStrucMed makes that knowledge accessible to patients, with every answer traceable to the guideline it comes from.</p>
+            <p>We turned 204 guideline documents, 2,780 pages, into structured knowledge: tables reconstructed row by row, 3,977 recommendations with their class of recommendation and level of evidence, linked to 8,882 medical concepts and mapped to UMLS and Wikidata. On top of that we built three agents that use the knowledge in different ways, following current research instead of ad-hoc prompting:</p>
+            <ul class="ab-did">
+              <li><b>Retrieval</b> over every guideline page, with answers that cite the page and quotes checked word for word against the source.</li>
+              <li><b>Fine-tuning</b> of a small open model with neuro-symbolic chain-of-thought rules mined from the knowledge graph.</li>
+              <li><b>Graph reasoning</b> with Think-on-Graph and HippoRAG-style personalized PageRank, shown live as the agent walks the graph.</li>
+            </ul>
+            <p class="ab-note">A research demo for comparing answer quality, traceability and explainability. It does not give medical advice.</p>
           </article>
           <div class="ab-agents">
             <article><div class="orb lg"></div><div><b>Luna</b><span>Searches 2,780 guideline pages and cites the pages she read.</span></div></article>

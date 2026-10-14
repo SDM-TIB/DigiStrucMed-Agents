@@ -365,9 +365,9 @@ $('#nav-about').onclick = async () => {
   try {
     const {members} = await (await fetch('/static/team.json', {cache: 'no-cache'})).json();
     const initials = n => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    $('#ab-team').innerHTML = members.map((m, i) => `<${m.link ? `a href="${esc(m.link)}" target="_blank" rel="noopener"` : 'div'} class="ab-person" style="animation-delay:${i * 50}ms">
+    $('#ab-team').innerHTML = members.map((m, i) => `<${m.link ? `a href="${esc(m.link)}" target="_blank" rel="noopener"` : 'div'} class="ab-person${m.about ? ' wide' : ''}" style="animation-delay:${i * 50}ms">
       <span class="ab-pic"${m.photo ? ` style="background-image:url('/static/img/team/${encodeURIComponent(m.photo)}')"` : ''}>${m.photo ? '' : esc(initials(m.name))}</span>
-      <b>${esc(m.name)}</b>${m.role ? `<small>${esc(m.role)}</small>` : ''}</${m.link ? 'a' : 'div'}>`).join('');
+      <span class="ab-txt"><b>${esc(m.name)}</b>${m.role ? `<small>${esc(m.role)}</small>` : ''}${m.about ? `<p>${esc(m.about)}</p>` : ''}</span></${m.link ? 'a' : 'div'}>`).join('');
   } catch { $('#ab-team').innerHTML = '<p class="lib-sub">Team list unavailable.</p>'; }
 };
 // Shut the Modal GPU down now (two-step confirm), instead of waiting for the idle timeout

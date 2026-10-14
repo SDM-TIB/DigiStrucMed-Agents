@@ -1,9 +1,13 @@
 {
-  "_how": "One entry per person, shown in this order on the About page. photo: a file in app/static/img/team/ (square jpg, about 400 px), or empty for initials. role and link are optional.",
+  "_how": "One entry per person, shown in this order on the About page. photo: a file in app/static/img/team/ (square jpg, about 400 px), or empty for initials. role, about and link are optional.",
   "members": [
-    {"name": "Disha Purohit", "role": "", "photo": "", "link": ""},
-    {"name": "Yashrajsinh Chudasama", "role": "", "photo": "", "link": ""},
-    {"name": "Mahsa", "role": "", "photo": "", "link": "https://github.com/Mahsa-for"},
-    {"name": "Steffan Wolter", "role": "", "photo": "", "link": "https://github.com/SteffanWolter"}
+    {"name": "Steffan Wolter", "role": "Leibniz University Hannover",
+     "about": "Studies computer science and works on agentic AI systems that make guideline knowledge usable for language models.",
+     "photo": "", "link": "https://www.linkedin.com/in/steffan-wolter"},
+    {"name": "Mahsa Forghani", "role": "TIB and Leibniz University Hannover",
+     "about": "Works on knowledge graphs and language models, and fine-tuned the model behind Lino.",
+     "photo": "mahsa-forghani.jpg", "link": "https://github.com/Mahsa-for"},
+    {"name": "Disha Purohit", "role": "", "about": "", "photo": "", "link": ""},
+    {"name": "Yashrajsinh Chudasama", "role": "", "about": "", "photo": "", "link": ""}
   ]
 }

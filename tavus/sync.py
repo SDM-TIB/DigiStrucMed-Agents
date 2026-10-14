@@ -29,6 +29,8 @@ def api(method, path, body=None):
       raw = r.read()
       return json.loads(raw) if raw else {}
   except urllib.error.HTTPError as e:
+    if e.code == 304:
+      return {}  # nothing changed
     raise SystemExit(f'{method} {path}: HTTP {e.code} {e.read()[:300].decode(errors="replace")}')
 
 

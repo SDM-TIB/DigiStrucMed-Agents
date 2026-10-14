@@ -375,7 +375,10 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .window.no-side{grid-template-columns:84px minmax(0,1fr)}.window.no-side .side{display:none}
 .about{max-width:1000px}
 .ab-intro p{margin:0 0 12px;max-width:72ch;font-size:15px;line-height:24px}
-.ab-intro p+p{color:var(--muted);font-size:13.5px}
+.ab-intro .ab-lead{font:500 18px/28px var(--display);margin:8px 0 14px}
+.ab-did{margin:4px 0 16px;padding-left:20px;max-width:72ch;font-size:14.5px;line-height:23px}
+.ab-did li{margin-bottom:6px}
+.ab-intro .ab-note{color:var(--muted);font-size:13px}
 .ab-agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin:22px 0 30px}
 .ab-agents article{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--win);animation:rise .4s var(--ease) both}
 .ab-agents b{display:block;font:600 16px/22px var(--display)}
@@ -387,6 +390,11 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .ab-pic{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;margin-bottom:6px;background:var(--accent) center/cover;color:#fff;font:600 28px/1 var(--display)}
 .ab-person b{font-size:14.5px}
+.ab-txt{display:flex;flex-direction:column;gap:3px}
+.ab-person.wide{grid-column:span 2;flex-direction:row;align-items:center;gap:18px;padding:20px;text-align:left}
+.ab-person.wide .ab-pic{margin:0;flex:none}
+.ab-txt p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:19px}
+@media (max-width:760px){.ab-person.wide{grid-column:auto;flex-direction:column;text-align:center}}
 .ab-person small{color:var(--muted);font-size:12.5px;line-height:17px}
 .ab-logos{margin:34px 0 8px}
 .ab-logos .logos{display:flex;align-items:center;flex-wrap:wrap;gap:22px 28px}
@@ -516,7 +524,7 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .boot-main{padding:40px 44px 36px;display:flex;flex-direction:column}
 .boot-main .logos{display:flex;align-items:center;gap:22px;margin-bottom:34px}
 .boot-main .l-luh{height:40px}.boot-main .l-l3s{height:40px}.boot-main .l-caimed{height:26px}.boot-main .logos{flex-wrap:wrap;row-gap:14px}.boot-main .l-tib{height:30px}.boot-main .l-sdm{height:46px}
-.boot .kicker{display:block;font-size:12px;font-weight:650;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.boot .kicker,.about .kicker{display:block;font-size:12px;font-weight:650;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
 .boot h1{font:600 30px/37px var(--display);margin:0 0 10px;color:var(--ink)}
 .boot .lead{margin:0 0 24px;color:var(--ink-2);font-size:15px;line-height:23px;max-width:52ch}
 .dur{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
@@ -552,6 +560,11 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .agent-card p{margin:0 0 10px;font-size:13.5px;line-height:21px;color:var(--ink-2)}
 .agent-card .tags{display:flex;flex-wrap:wrap;gap:6px}
 .agent-card .tags span{height:23px;padding:0 9px;border-radius:12px;background:var(--side);border:1px solid var(--line);font-size:11.5px;font-weight:600;color:var(--ink-2);display:inline-flex;align-items:center}
+.boot-langs{margin-top:6px;animation:rise .5s var(--ease) .24s both}
+.boot-langs .langs{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 8px}
+.boot-langs .langs span{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 8px;border-radius:16px;background:var(--win);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--ink)}
+.boot-langs .langs img{width:22px;height:16.5px;border-radius:3px;box-shadow:0 0 0 1px oklch(0.4 0.04 264 / .12);object-fit:cover}
+.boot-langs p{margin:0;font-size:12.5px;line-height:18px;color:var(--ink-2)}
 @media (max-width:980px){.boot-card{grid-template-columns:1fr}.boot-side{border-left:0;border-top:1px solid var(--line)}.dur{grid-template-columns:repeat(2,1fr)}}
 .att{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 4px 0 10px;border-radius:15px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:650;animation:rise .3s var(--ease) both}
 .att>svg{width:15px;height:15px}
