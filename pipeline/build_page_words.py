@@ -1,4 +1,4 @@
-"""Every word of every guideline page with its position on the original A4 page -> app/data/page_words.json.gz.
+"""Every word of every guideline page with its position on the original A4 page -> app/data/page_words.jsonl.gz.
 
   python pipeline/build_page_words.py <MHH-Dataset-OCR-Pipeline>
 
@@ -22,7 +22,7 @@ from concurrent.futures import ProcessPoolExecutor
 import pymupdf
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-OUT = ROOT / 'app' / 'data' / 'page_words.json.gz'
+OUT = ROOT / 'app' / 'data' / 'page_words.jsonl.gz'
 PARTIAL = OUT.with_name('page_words.partial.jsonl')
 SCALE = 10000
 MIN_WORDS = 20  # fewer words in the text layer than this: treat the page as a scan
@@ -121,11 +121,13 @@ def main(base):
       if n % 20 == 0:
         print(f'ocr {n}/{len(scans)}', flush=True)
   log.close()
-  # compact for the server: words joined by , boxes as little-endian uint16 in base64. a few MB in memory, not hundreds
-  pages = {pid: {'src': r['src'], 'words': ''.join(r['words']),
+  # compact for the server: words joined by \x1f, boxes as little-endian uint16 in base64. a few MB in memory, not hundreds
+  pages = {pid: {'src': r['src'], 'words': '\x1f'.join(r['words']),
                  'boxes': base64.b64encode(array('H', r['boxes']).tobytes()).decode()} for pid, r in done.items() if pid in corpus}
-  with gzip.open(OUT, 'wt', encoding='utf-8') as fh:
-    json.dump({'scale': SCALE, 'pages': pages}, fh, ensure_ascii=False, separators=(',', ':'))
+  with gzip.open(OUT, 'wt', encoding='utf-8') as fh:  # one page per line, so the server reads it line by line
+    fh.write(json.dumps({'scale': SCALE, 'pages': len(pages)}) + '\n')
+    for pid, p in pages.items():
+      fh.write(json.dumps({'id': pid, **p}, ensure_ascii=False, separators=(',', ':')) + '\n')
   missing = len(corpus) - len(pages)
   print(f'{len(pages)} pages -> {OUT} ({OUT.stat().st_size / 1e6:.1f} MB), {missing} pages without words')
   PARTIAL.unlink()

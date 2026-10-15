@@ -165,6 +165,16 @@ window.care = (() => {
                  es: 'Quedan ${left} de ${plan} en {n} espacios de Modal. Lino arranca en el que tiene más crédito. Se reinicia el {d}.',
                  ru: 'Осталось ${left} из ${plan} на {n} рабочих пространствах Modal. Лино запускается там, где больше кредитов. Сброс {d}.',
                  hi: '{n} Modal वर्कस्पेस में ${plan} में से ${left} बचे हैं। लीनो सबसे अधिक क्रेडिट वाले में चलता है। {d} को रीसेट।'},
+    srcPage: {en: 'Page {p}', de: 'Seite {p}', es: 'Página {p}', ru: 'Стр. {p}', hi: 'पृष्ठ {p}'},
+    srcOf: {en: 'source {i} of {n}', de: 'Quelle {i} von {n}', es: 'fuente {i} de {n}', ru: 'источник {i} из {n}', hi: 'स्रोत {i} / {n}'},
+    pageOf: {en: 'Page {i} of {n}', de: 'Seite {i} von {n}', es: 'Página {i} de {n}', ru: 'Страница {i} из {n}', hi: 'पृष्ठ {i} / {n}'},
+    srcRec: {en: 'Recommendation in the guideline knowledge graph', de: 'Empfehlung im Leitlinien-Wissensgraphen', es: 'Recomendación en el grafo de conocimiento de guías',
+             ru: 'Рекомендация в графе знаний рекомендаций', hi: 'दिशानिर्देश नॉलेज ग्राफ़ में सिफ़ारिश'},
+    loadingPage: {en: 'Loading page…', de: 'Seite wird geladen…', es: 'Cargando página…', ru: 'Загрузка страницы…', hi: 'पृष्ठ लोड हो रहा है…'},
+    noImage: {en: 'Page image unavailable', de: 'Seitenbild nicht verfügbar', es: 'Imagen de página no disponible', ru: 'Изображение страницы недоступно', hi: 'पृष्ठ की छवि उपलब्ध नहीं'},
+    pageText: {en: 'Page text', de: 'Seitentext', es: 'Texto de la página', ru: 'Текст страницы', hi: 'पृष्ठ का पाठ'},
+    searchExcerpt: {en: 'Search excerpt from this page', de: 'Such-Ausschnitt dieser Seite', es: 'Extracto de búsqueda de esta página', ru: 'Фрагмент поиска с этой страницы', hi: 'इस पृष्ठ का खोज अंश'},
+    recommendation: {en: 'Recommendation', de: 'Empfehlung', es: 'Recomendación', ru: 'Рекомендация', hi: 'सिफ़ारिश'},
     talk: {en: 'Call 112', de: '112 anrufen', es: 'Llamar al 112', ru: 'Позвонить 112', hi: '112 पर कॉल करें'},
   };
 

@@ -1027,7 +1027,7 @@ function markQuote(text, quote) {
   return m ? esc(text.slice(0, m.index)) + '<mark>' + esc(m[0]) + '</mark>' + esc(text.slice(m.index + m[0].length)) : esc(text);
 }
 // underline on the page image itself: the words found on the original A4 page (app/pagewords.py)
-async function markPage(s, wrap) {
+async function markPage(s, wrap, sheet) {  // marks go on the sheet (the image box), the label above it
   const items = [];
   if (s.highlight) items.push({text: s.highlight, mode: 'exact', label: 'markQuote'});
   if (s.citedBy && langOf(s.citedBy) === langOf((s.snippet || '') + ' ' + (s.title || ''))) items.push({text: s.citedBy, mode: 'near', label: 'markNear'});
@@ -1037,29 +1037,29 @@ async function markPage(s, wrap) {
   if (!r || !(r.rects || []).length || srcList[srcIdx] !== s) return;
   const layer = document.createElement('div'); layer.className = 'pg-marks ' + items[r.item].mode;
   layer.innerHTML = r.rects.map(([x0, y0, x1, y1]) => `<i style="left:${x0 * 100}%;top:${y0 * 100}%;width:${(x1 - x0) * 100}%;height:${(y1 - y0) * 100}%"></i>`).join('');
-  wrap.append(layer);
+  sheet.append(layer);
   const tag = document.createElement('div'); tag.className = 'pg-tag'; tag.textContent = care.t(items[r.item].label, s.answerLang || care.lang);
   wrap.prepend(tag);
   const first = layer.firstElementChild, page = $('#srcx-page');
-  setTimeout(() => page.scrollTo({top: Math.max(0, first.offsetTop + wrap.offsetTop - page.clientHeight / 3), behavior: 'smooth'}), 120);
+  setTimeout(() => page.scrollTo({top: Math.max(0, first.offsetTop + sheet.offsetTop + wrap.offsetTop - page.clientHeight / 3), behavior: 'smooth'}), 120);
 }
 function renderSource() {
   const s = srcList[srcIdx]; if (!s) return;
   $('#srcx-n').textContent = s.n;
   $('#srcx-title').textContent = s.ref ? s.ref + ' · ' + s.title : s.title;
-  $('#srcx-sub').textContent = (s.page ? 'Page ' + s.page : 'Recommendation in the guideline knowledge graph') + (srcList.length > 1 ? ` · source ${srcIdx + 1} of ${srcList.length}` : '');
+  $('#srcx-sub').textContent = (s.page ? care.fill('srcPage', {p: s.page}) : care.t('srcRec')) + (srcList.length > 1 ? ' · ' + care.fill('srcOf', {i: srcIdx + 1, n: srcList.length}) : '');
   $('#srcx-prev').disabled = srcIdx === 0; $('#srcx-next').disabled = srcIdx === srcList.length - 1;
-  const page = $('#srcx-page'); page.innerHTML = '<span class="ph">Loading page…</span>'; page.scrollTop = 0;
+  const page = $('#srcx-page'); page.innerHTML = `<span class="ph">${esc(care.t('loadingPage'))}</span>`; page.scrollTop = 0;
   const img = new Image(); img.alt = `Page ${s.page} of ${s.title}`;
-  img.onload = () => { if (srcList[srcIdx] === s) { page.innerHTML = ''; const wrap = document.createElement('div'); wrap.className = 'pg-wrap'; wrap.append(img); page.append(wrap); markPage(s, wrap); } };
-  img.onerror = () => { if (srcList[srcIdx] === s) page.innerHTML = '<span class="ph">Page image unavailable</span>'; };
+  img.onload = () => { if (srcList[srcIdx] === s) { page.innerHTML = ''; const wrap = document.createElement('div'); wrap.className = 'pg-wrap'; const sheet = document.createElement('div'); sheet.className = 'pg-sheet'; sheet.append(img); wrap.append(sheet); page.append(wrap); markPage(s, wrap, sheet); } };
+  img.onerror = () => { if (srcList[srcIdx] === s) page.innerHTML = `<span class="ph">${esc(care.t('noImage'))}</span>`; };
   page.classList.remove('kx-mode');
   if (s.rec_id) { $('#srcx-n').textContent = s.n; $('#srcx-sub').textContent = (s.search ? 'Guideline knowledge graph' : 'Recommendation in the guideline knowledge graph') + ' · click any node to explore' + (srcList.length > 1 ? ` · source ${srcIdx + 1} of ${srcList.length}` : ''); return kxShow(s); }
   if (s.page_id) img.src = '/api/page-image/' + encodeURIComponent(s.page_id);
   else page.innerHTML = `<div class="kg-src"><span>Guideline knowledge graph · ${esc(s.ref || 'recommendation')}</span><p>${esc(s.snippet || '')}</p></div>`;
   $('#srcx-n').textContent = s.doc ? 'p. ' + s.page : s.n;
-  $('#srcx-sub').textContent = s.doc ? `Page ${srcIdx + 1} of ${srcList.length}` : $('#srcx-sub').textContent;
-  $('.srcx-quote h4').textContent = s.doc ? 'Page text' : s.page_id ? 'Search excerpt from this page' : 'Recommendation';
+  $('#srcx-sub').textContent = s.doc ? care.fill('pageOf', {i: srcIdx + 1, n: srcList.length}) : $('#srcx-sub').textContent;
+  $('.srcx-quote h4').textContent = care.t(s.doc ? 'pageText' : s.page_id ? 'searchExcerpt' : 'recommendation');
   if (s.doc) {
     $('#srcx-quote').className = 'plain'; $('#srcx-quote').textContent = 'Loading…';
     fetch('/api/page/' + encodeURIComponent(s.page_id)).then(r => r.json()).then(x => {
