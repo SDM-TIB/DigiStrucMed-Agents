@@ -601,14 +601,16 @@ window.jrHTML = {
         p.total > (p.items || []).length ? h('span', {className: 'more'}, `+${p.total - p.items.length} on Wikidata`) : null));
   },
   quote(h, p) {
-    return h('article', {className: 'jr-quote'}, p.claim ? h('b', {className: 'claim'}, p.claim) : null, h('blockquote', null, p.quote),
-      h('footer', null, h('span', {className: 'src'}, `${p.ref || p.title} · p. ${p.page}`), p.grade ? h('span', {className: 'grade'}, p.grade) : null,
+    return h('article', {className: 'jr-quote'}, p.claim ? h('span', {className: 'jr-kick'}, care.t('summary')) : null, p.claim ? h('b', {className: 'claim'}, p.claim) : null,
+      h('span', {className: 'jr-kick verbatim'}, care.t('guideline')), h('blockquote', null, p.quote),
+      p.grade ? care.grade(h, p.grade) : null,
+      h('footer', null, h('span', {className: 'src'}, `${p.ref || p.title} · p. ${p.page}`),
         p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: p.pageId, quote: p.quote}}))}, 'Open page') : null));
   },
   excerpt(h, p) {
     const body = p.html ? h('div', {className: 'tbl', ref: el => el && jrTable(el, p.html, p.match)}) : h('blockquote', null, p.text);
-    return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && 'page ' + p.page, p.grade].filter(Boolean).join(' · '))),
-      p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: p.pageId}))}, 'Open page') : null), body);
+    return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && 'page ' + p.page].filter(Boolean).join(' · '))),
+      p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: p.pageId}))}, 'Open page') : null), p.grade ? care.grade(h, p.grade) : null, body);
   }
 };
 function jrTable(el, html, match) {
@@ -801,11 +803,20 @@ function citeify(html) {
   return html.replace(/\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\](?![^<]*>)/g, (_, g) => g.match(/\d+/g).map(n => `<button class="cite" data-n="${n}" aria-label="Source ${n}">${n}</button>`).join(''));
 }
 
+// fixed, hand-written safety texts from care.js. the banner shows when a message sounds like an emergency right now
+function careAlert() {
+  const d = document.createElement('div'); d.className = 'care-alert'; d.setAttribute('role', 'alert'); d.lang = care.lang;
+  d.innerHTML = `<b>${esc(care.t('alertTitle'))}</b><p>${esc(care.t('alert'))}</p><a href="tel:112">${esc(care.t('call'))}</a>`;
+  return d;
+}
+// screen readers hear each finished answer once, not every streamed word
+function announce(text) { const r = $('#sr-live'); r.textContent = ''; setTimeout(() => r.textContent = text, 60); }
 function addAssistant() {
   const el = document.createElement('div'); el.className = 'msg-ai';
   el.innerHTML = '<div class="orb ' + agent.orb + '" aria-hidden="true"></div><div><div class="steps"></div><div class="answer"><div class="thinking"><i></i><i></i><i></i></div></div><div class="refs"></div></div>';
   $(agent.thread).append(el); scrollFeed();
   const st = {el, steps: el.querySelector('.steps'), answer: el.querySelector('.answer'), refs: el.querySelector('.refs'), raw: '', shown: 0, sources: {}, pending: null, frame: 0, lino: agent === AGENTS.lino};
+  if (st.lino) st.steps.insertAdjacentHTML('beforebegin', `<span class="unv">${esc(care.t('unverified'))}</span>`);
   el.addEventListener('click', e => {
     const c = e.target.closest('.cite, .ref'); if (!c) return;
     showSource(st, +c.dataset.n);
@@ -892,7 +903,7 @@ function renderSource() {
   else page.innerHTML = `<div class="kg-src"><span>Guideline knowledge graph · ${esc(s.ref || 'recommendation')}</span><p>${esc(s.snippet || '')}</p></div>`;
   $('#srcx-n').textContent = s.doc ? 'p. ' + s.page : s.n;
   $('#srcx-sub').textContent = s.doc ? `Page ${srcIdx + 1} of ${srcList.length}` : $('#srcx-sub').textContent;
-  $('.srcx-quote h4').textContent = s.doc ? 'Page text' : s.page_id ? 'Passage used by Luna' : 'Recommendation';
+  $('.srcx-quote h4').textContent = s.doc ? 'Page text' : s.page_id ? 'Search excerpt from this page' : 'Recommendation';
   if (s.doc) {
     $('#srcx-quote').className = 'plain'; $('#srcx-quote').textContent = 'Loading…';
     fetch('/api/page/' + encodeURIComponent(s.page_id)).then(r => r.json()).then(x => {
@@ -1150,7 +1161,9 @@ async function sendChat(text) {
   const a = agent, chatHistory = a.history;
   if (a === AGENTS.guido) kgReset(text);
   const story = attached && a === AGENTS.lino;
-  const u = document.createElement('div'); u.className = 'msg-user'; u.textContent = text; $(a.thread).append(u);
+  care.setLang(langOf(text));
+  const u = document.createElement('div'); u.className = 'msg-user'; u.lang = care.lang; u.textContent = text; $(a.thread).append(u);
+  if (care.redFlag(text)) u.after(careAlert());
   if (story) { u.insertAdjacentHTML('afterbegin', '<span class="u-att">Storyboard prompt</span>'); setAttach(false); }
   chatHistory.push({role: 'user', text: story ? STORYBOARD_PROMPT + '\n\n' + text : text});
   const st = addAssistant();
@@ -1185,6 +1198,9 @@ async function sendChat(text) {
     }
     if (tl) await tl.end();
     render(st, true); finishRefs(st);
+    st.el.lang = langOf(st.raw); care.setLang(st.el.lang);  // the answer is longer than the question, so its language is the safer guess
+    if (st.raw.trim()) st.el.querySelector('.refs').insertAdjacentHTML('afterend', `<p class="care-note">${esc(care.t(a === AGENTS.lino ? 'noteLino' : 'note'))}</p>`);
+    announce(`${a.name}: ${st.answer.textContent.slice(0, 900)}`);
     if (a === AGENTS.lino) renderStoryboard(st);
     if (a === AGENTS.guido) chatEvidence(st);
     chatHistory.push({role: 'assistant', text: st.raw});
@@ -1522,8 +1538,9 @@ async function liveBoard(text, who) {
   const key = normSpeech(text).slice(0, 80);
   if (!key || key === stage.lastBoard || text.length < 70) return; stage.lastBoard = key;
   let r;
-  if (WM.on) { const w = winOpen('notes', 'Notes — what Guido said', 'notes', true); const host = document.createElement('div'); host.className = 'jr-host'; w.body.prepend(host); r = jrMount(host); }  // notes open behind; the director decides the front
+  if (WM.on) { const w = winOpen('notes', 'Notes — summary of what Guido said', 'notes', true); const host = document.createElement('div'); host.className = 'jr-host'; w.body.prepend(host); r = jrMount(host); }  // notes open behind; the director decides the front
   else { if (!cx.classList.contains('stage-on')) stageShow(true); r = stageCard(null, true); }
+  if (who === 'lino') { const host = $('#stage-cards').firstElementChild; host?.classList.add('unverified'); host?.insertAdjacentHTML('afterbegin', `<span class="unv">${esc(care.t('unverified'))}</span>`); }
   const comp = jrCompiler();
   try {
     const res = await fetch('/api/board', {method: 'POST', headers: HEADERS, body: JSON.stringify({text, agent: who})});
@@ -1693,6 +1710,10 @@ async function onAppMessage(e) {
   if (m.event_type === 'conversation.replica.stopped_speaking') { face.speaking = false; face.stoppedAt = performance.now(); return; }
   if (m.event_type === 'conversation.utterance') {   // what the face just said -> live board
     const pr = m.properties || {};
+    if (pr.role === 'user' && pr.speech) {  // what the patient said: their language, and the emergency banner if it sounds acute
+      care.setLang(langOf(pr.speech));
+      if (care.redFlag(pr.speech)) { $('#stage-cards .care-alert')?.remove(); if (!cx.classList.contains('stage-on')) stageShow(true); $('#stage-cards').prepend(careAlert()); }
+    }
     if (pr.role === 'replica' && pr.speech && !stage.greeted) { stage.greeted = true; return; }  // greeting: no board
     if (pr.role === 'replica' && pr.speech) {
       const k = normSpeech(pr.speech).slice(0, 60);
