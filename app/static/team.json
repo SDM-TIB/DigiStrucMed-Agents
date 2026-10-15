@@ -3,7 +3,7 @@
   "members": [
     {"name": "Steffan Wolter", "role": "Leibniz University Hannover",
      "about": "Studies computer science and works on agentic AI systems that make guideline knowledge usable for language models.",
-     "photo": "", "link": "https://www.linkedin.com/in/steffan-wolter"},
+     "photo": "steffan-wolter.jpg", "link": "https://www.linkedin.com/in/steffan-wolter"},
     {"name": "Mahsa Forghani", "role": "TIB and Leibniz University Hannover",
      "about": "Works on knowledge graphs and language models, and fine-tuned the model behind Lino.",
      "photo": "mahsa-forghani.jpg", "link": "https://github.com/Mahsa-for"},
