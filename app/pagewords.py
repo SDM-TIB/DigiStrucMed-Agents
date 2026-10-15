@@ -18,6 +18,7 @@ from array import array
 from difflib import SequenceMatcher
 
 import config
+import corpus
 
 PATH = config.DATA / 'page_words.jsonl.gz'  # one page per line: read line by line, never the whole file at once
 TOKEN = re.compile(r'[0-9a-zäöüßàâæçéèêëîïôœùûüÿáíóúñа-яёऀ-ॿ]+')
@@ -66,7 +67,9 @@ def _tokens(words, content):
   return [(t, k) for t, k in out if not content or (len(t) > 3 and t not in STOP)]
 
 
-def locate(page_id, text, mode='exact'):
+def locate(page_id, text, mode='exact', follow=True):
+  """where `text` is on page `page_id`. a quote that runs over the page edge is followed onto the neighbouring page:
+  the result then carries `next` or `prev` with that page's rectangles"""
   _load()
   page = _pages.get(page_id)
   if not page or not text:
@@ -84,7 +87,7 @@ def locate(page_id, text, mode='exact'):
   if not blocks:
     return None
   # the densest run of matches whose page span is not much longer than the quote
-  span, best, lo = len(Q) * (2.2 if content else 1.4) + 8, (0, 0, 0), 0
+  span, best, lo = len(Q) * 1.4 + 8, (0, 0, 0), 0
   for hi in range(len(blocks)):
     while blocks[hi].a + blocks[hi].size - blocks[lo].a > span:
       lo += 1
@@ -92,11 +95,35 @@ def locate(page_id, text, mode='exact'):
     if hit > best[0]:
       best = (hit, lo, hi)
   hit, lo, hi = best
-  cover = hit / len(Q)
-  if cover < (0.35 if content else 0.6):
-    return None
   first, last = P[blocks[lo].a][1], P[blocks[hi].a + blocks[hi].size - 1][1]
-  return {'src': src, 'cover': round(cover, 2), 'rects': _rects(boxes, first, last)}
+  q_first, q_last = blocks[lo].b, blocks[hi].b + blocks[hi].size
+  out = {'src': src, **_shape(boxes, first, last)}
+  _table_row(page_id, text, words, boxes, out)
+  covered = hit
+  # the quote goes on past the page edge: look for the rest on the next (or the previous) page
+  if follow and len(Q) - q_last >= 4 and last >= len(words) - EDGE:
+    nxt = _neighbour(page_id, 1)
+    r = nxt and locate(nxt, ' '.join(Q[q_last:]), 'exact', follow=False)
+    if r:
+      out['next'] = {'page_id': nxt, 'page': int(nxt.rsplit('_p', 1)[1]), **{k: r[k] for k in ('rects', 'kind', 'box')}}
+      covered += round(r['cover'] * (len(Q) - q_last))
+  if follow and q_first >= 4 and first <= EDGE:
+    prv = _neighbour(page_id, -1)
+    r = prv and locate(prv, ' '.join(Q[:q_first]), 'exact', follow=False)
+    if r:
+      out['prev'] = {'page_id': prv, 'page': int(prv.rsplit('_p', 1)[1]), **{k: r[k] for k in ('rects', 'kind', 'box')}}
+      covered += round(r['cover'] * q_first)
+  out['cover'] = round(covered / len(Q), 2)
+  return out if out['cover'] >= 0.6 else None
+
+
+EDGE = 30  # a match this close to the first or last word of a page touches the page edge
+
+
+def _neighbour(page_id, step):
+  doc, n = page_id.rsplit('_p', 1)
+  other = f'{doc}_p{int(n) + step:04d}'
+  return other if other in _pages else None
 
 
 def _near(src, boxes, P, Q):
@@ -121,20 +148,61 @@ def _near(src, boxes, P, Q):
   if cover < 0.35:
     return None
   inside = [k for k in range(lo, hi + 1) if P[k][0] in want]  # trim the window to its first and last matching word
-  return {'src': src, 'cover': round(cover, 2), 'rects': _rects(boxes, P[inside[0]][1], P[inside[-1]][1])}
+  return {'src': src, 'cover': round(cover, 2), **_shape(boxes, P[inside[0]][1], P[inside[-1]][1])}
 
 
-def _rects(boxes, first, last):
-  """one rectangle per line for words first..last, in fractions of the page"""
-  rects = []
+def _shape(boxes, first, last):
+  """the words first..last as one rectangle per line, in fractions of the page, and what they are: prose, or a table
+  row whose cells sit apart on the same line. a table also gets one box around all of it, which the viewer draws"""
+  rects, gaps = [], 0
   for i in range(first, last + 1):
     x0, y0, x1, y1 = boxes[4 * i:4 * i + 4]
     if rects:
       r = rects[-1]
       same_line = abs((y0 + y1) / 2 - (r[1] + r[3]) / 2) < 0.6 * max(1, min(y1 - y0, r[3] - r[1])) and x0 >= r[0] - 50
       if same_line:
+        gaps += x0 - r[2] > CELL_GAP
         r[0], r[1], r[2], r[3] = min(r[0], x0), min(r[1], y0), max(r[2], x1), max(r[3], y1)
         continue
     rects.append([x0, y0, x1, y1])
   s = globals().get('SCALE', 10000)
-  return [[round(v / s, 4) for v in r] for r in rects]
+  rects = [[round(v / s, 4) for v in r] for r in rects]
+  box = [min(r[0] for r in rects), min(r[1] for r in rects), max(r[2] for r in rects), max(r[3] for r in rects)]
+  return {'rects': rects, 'kind': 'table' if gaps >= 2 else 'prose', 'box': box}
+
+
+_TR = re.compile(r'<tr\b.*?</tr>', re.S | re.I)
+_TD = re.compile(r'<t[dh]\b[^>]*>(.*?)</t[dh]>', re.S | re.I)
+_squash = lambda t: re.sub(r'[^a-z0-9]+', '', re.sub(r'<[^>]+>', ' ', t).lower())
+
+
+def _table_row(page_id, text, words, boxes, out):
+  """the quote sits in a table row of the transcription: find the row's other cells (class, level of evidence...)
+  on the same height of the original page, and mark the row as one band with those cells singled out"""
+  page = corpus.PAGE_BY_ID.get(page_id)
+  key = _squash(text)[:60]
+  if not page or '<t' not in page['text'] or len(key) < 20:
+    return
+  row = next((r for r in _TR.findall(page['text']) if key in _squash(r)), None)
+  if not row:
+    return
+  cells = [_squash(c) for c in _TD.findall(row)]
+  short = {c for c in cells if c in GRADES}  # only the class and level cells are singled out: I, IIa, B-NR, C-LD...
+  sc = globals().get('SCALE', 10000)
+  x0, y0, x1, y1 = (v * sc for v in out['box'])
+  line = max(r[3] - r[1] for r in out['rects']) * sc
+  found = []
+  for i, w in enumerate(words):
+    bx = boxes[4 * i:4 * i + 4]
+    mid = (bx[1] + bx[3]) / 2
+    if _squash(w) in short and y0 - line <= mid <= y1 + line and (bx[2] < x0 or bx[0] > x1):
+      found.append([round(v / sc, 4) for v in bx])
+  out['kind'] = 'table'
+  if found:
+    out['cells'] = found
+    out['box'] = [min(out['box'][0], *(f[0] for f in found)), min(out['box'][1], *(f[1] for f in found)),
+                  max(out['box'][2], *(f[2] for f in found)), max(out['box'][3], *(f[3] for f in found))]
+
+
+GRADES = {'i', 'ii', 'iia', 'iib', 'iii', '1', '2a', '2b', '3', 'a', 'b', 'c', 'br', 'bnr', 'cld', 'ceo'}
+CELL_GAP = 350  # a gap wider than 3.5 % of the page between two words of one line: they sit in different table cells

@@ -1026,22 +1026,74 @@ function markQuote(text, quote) {
   const m = text.match(re);
   return m ? esc(text.slice(0, m.index)) + '<mark>' + esc(m[0]) + '</mark>' + esc(text.slice(m.index + m[0].length)) : esc(text);
 }
-// underline on the page image itself: the words found on the original A4 page (app/pagewords.py)
-async function markPage(s, wrap, sheet) {  // marks go on the sheet (the image box), the label above it
-  const items = [];
-  if (s.highlight) items.push({text: s.highlight, mode: 'exact', label: 'markQuote'});
-  if (s.citedBy && langOf(s.citedBy) === langOf((s.snippet || '') + ' ' + (s.title || ''))) items.push({text: s.citedBy, mode: 'near', label: 'markNear'});
-  if (s.snippet && !s.highlight) items.push({text: s.snippet.replace(/\*\*/g, ''), mode: 'exact', label: 'markRead'});
-  if (!items.length || !s.page_id) return;
-  let r; try { r = await post('/api/locate', {page_id: s.page_id, items: items.map(({text, mode}) => ({text, mode}))}); } catch { return; }
-  if (!r || !(r.rects || []).length || srcList[srcIdx] !== s) return;
-  const layer = document.createElement('div'); layer.className = 'pg-marks ' + items[r.item].mode;
-  layer.innerHTML = r.rects.map(([x0, y0, x1, y1]) => `<i style="left:${x0 * 100}%;top:${y0 * 100}%;width:${(x1 - x0) * 100}%;height:${(y1 - y0) * 100}%"></i>`).join('');
-  sheet.append(layer);
-  const tag = document.createElement('div'); tag.className = 'pg-tag'; tag.textContent = care.t(items[r.item].label, s.answerLang || care.lang);
+// a passage on the original A4 page (app/pagewords.py), drawn like an editor's annotation: the rest of the page dims a
+// little, the passage keeps its paper under a soft tint with no gaps between its lines, a thin rule in the margin
+// spans it, a small label says what it is. a table row is one band with its class and level cells ringed. when the
+// passage runs over the page edge, a quiet link at that edge opens the other page with the rest already marked
+const INK = {exact: 'markQuote', near: 'markNear', read: 'markRead'};
+const INK_SHORT = {exact: 'inkQuote', near: 'inkNear', read: 'inkRead'};
+async function markPage(s, wrap, sheet) {
+  let m = s.preset, mode = s.presetMode;
+  if (!m) {
+    const items = [];
+    if (s.highlight) items.push({text: s.highlight, mode: 'exact', kind: 'exact'});
+    if (s.citedBy && langOf(s.citedBy) === langOf((s.snippet || '') + ' ' + (s.title || ''))) items.push({text: s.citedBy, mode: 'near', kind: 'near'});
+    if (s.snippet && !s.highlight) items.push({text: s.snippet.replace(/\*\*/g, ''), mode: 'exact', kind: 'read'});
+    if (!items.length || !s.page_id) return;
+    let r; try { r = await post('/api/locate', {page_id: s.page_id, items: items.map(({text, mode}) => ({text, mode}))}); } catch { return; }
+    if (!r || !(r.rects || []).length || srcList[srcIdx] !== s) return;
+    m = r; mode = items[r.item].kind;
+  }
+  const img = sheet.querySelector('img'), lang = s.answerLang || care.lang;
+  sheet.append(inkLayer(m, mode, img.naturalHeight / img.naturalWidth));
+  const tag = document.createElement('div'); tag.className = 'pg-tag ink-' + mode;
+  tag.innerHTML = `<i></i>${esc(care.t(INK[mode], lang))}`;
   wrap.prepend(tag);
-  const first = layer.firstElementChild, page = $('#srcx-page');
-  setTimeout(() => page.scrollTo({top: Math.max(0, first.offsetTop + sheet.offsetTop + wrap.offsetTop - page.clientHeight / 3), behavior: 'smooth'}), 120);
+  const span = m.kind === 'table' && m.box ? [m.box] : m.rects;  // a table row is labelled at its band, not at its first cell
+  const top = Math.min(...span.map(r => r[1])), left = Math.min(...span.map(r => r[0]));
+  const label = document.createElement('span'); label.className = 'ink-label ink-' + mode; label.textContent = care.t(INK_SHORT[mode], lang);
+  // in the margin beside prose; above a table row, where the margin belongs to the table's own columns
+  label.style.cssText = `right:${(1 - left) * 100 + 2.2}%;top:${top * 100}%`;
+  // only beside prose in the left half, where the page margin is free (not in a column gutter); the bar above names it anyway
+  if (left > 0.11 && left < 0.4 && m.kind !== 'table') sheet.append(label);
+  for (const [dir, other] of [['next', m.next], ['prev', m.prev]]) {
+    if (!other) continue;
+    const go = document.createElement('button'); go.className = 'ink-cont ' + dir;
+    go.innerHTML = dir === 'next' ? `${esc(care.fill('continuesOn', {p: other.page}, lang))}<b aria-hidden="true">→</b>` : `<b aria-hidden="true">←</b>${esc(care.fill('beginsOn', {p: other.page}, lang))}`;
+    go.onclick = () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: other.page_id, marks: other, mode}}));
+    sheet.append(go);
+  }
+  const page = $('#srcx-page');
+  setTimeout(() => page.scrollTo({top: Math.max(0, top * sheet.offsetHeight + sheet.offsetTop + wrap.offsetTop - page.clientHeight / 3), behavior: 'smooth'}), 160);
+}
+function inkLayer(m, mode, ratio) {
+  const W = 1000, H = Math.round(W * ratio), ns = 'http://www.w3.org/2000/svg', id = 'ink' + Math.random().toString(36).slice(2, 8);
+  const R = (x0, y0, x1, y1) => [x0 * W, y0 * H, (x1 - x0) * W, (y1 - y0) * H];
+  // prose: the lines of one passage join into one ribbon, each line reaching down to the next
+  const lines = m.rects.map(r => R(...r)).map(([x, y, w, h]) => [x - 5, y - 3, w + 10, h + 6]);
+  for (let i = 0; i + 1 < lines.length; i++) {
+    const a = lines[i], b = lines[i + 1], gap = b[1] - (a[1] + a[3]);
+    if (gap > 0 && gap < a[3] * 0.9) { a[3] += gap / 2; b[1] -= gap / 2; b[3] += gap / 2; }
+  }
+  const table = m.kind === 'table', box = table ? R(...m.box) : null;
+  if (box) { box[0] -= 8; box[1] -= 6; box[2] += 16; box[3] += 12; }
+  const holes = table ? [box] : lines;
+  const rect = ([x, y, w, h], rx, cls, i) => `<rect class="${cls}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${rx}" style="--i:${i || 0}"/>`;
+  // one margin rule per run of lines that belong together; a jump of more than two lines starts a new one
+  const x0 = Math.min(...holes.map(([x]) => x)), runs = [];
+  for (const [, y, , h] of [...holes].sort((a, b) => a[1] - b[1])) {
+    const r = runs[runs.length - 1];
+    if (r && y - r[1] < 2 * h) r[1] = Math.max(r[1], y + h); else runs.push([y, y + h]);
+  }
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'ink ink-' + mode); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = `<defs><filter id="${id}b" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="6"/></filter>
+    <mask id="${id}m"><rect width="${W}" height="${H}" fill="#fff"/><g filter="url(#${id}b)">${holes.map(h => rect(h, 6, '', 0).replace('<rect class=""', '<rect fill="#000"')).join('')}</g></mask></defs>
+    <rect class="ink-dim" width="${W}" height="${H}" mask="url(#${id}m)"/>
+    ${table ? rect(box, 7, 'ink-band') + (m.cells || []).map((c, i) => { const [x, y, w, h] = R(...c); return rect([x - 6, y - 4, w + 12, h + 8], 5, 'ink-cell', i + 1); }).join('')
+            : lines.map((l, i) => rect(l, 4, 'ink-tint', i)).join('')}
+    ${runs.map(([a, b]) => `<line class="ink-rule" x1="${(x0 - 14).toFixed(1)}" x2="${(x0 - 14).toFixed(1)}" y1="${a.toFixed(1)}" y2="${b.toFixed(1)}" pathLength="1"/>`).join('')}`;
+  return svg;
 }
 function renderSource() {
   const s = srcList[srcIdx]; if (!s) return;
@@ -1203,7 +1255,9 @@ addEventListener('jr-open-concept', e => {
 });
 addEventListener('jr-open-page', e => {
   const id = e.detail.id || e.detail, d = LIB.find(d => d.pages.some(([p]) => p === id)); if (!d) return;
-  openDocument(d); srcIdx = Math.max(0, d.pages.findIndex(([p]) => p === id)); srcList[srcIdx].highlight = e.detail.quote; renderSource();
+  openDocument(d); srcIdx = Math.max(0, d.pages.findIndex(([p]) => p === id)); srcList[srcIdx].highlight = e.detail.quote;
+  if (e.detail.marks) { srcList[srcIdx].preset = e.detail.marks; srcList[srcIdx].presetMode = e.detail.mode; }  // the rest of a passage from the page before
+  renderSource();
 });
 function closeSource() { $('#srcx').classList.add('hidden'); }
 $('#srcx-close').onclick = closeSource;

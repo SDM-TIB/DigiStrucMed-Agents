@@ -175,6 +175,11 @@ window.care = (() => {
     pageText: {en: 'Page text', de: 'Seitentext', es: 'Texto de la página', ru: 'Текст страницы', hi: 'पृष्ठ का पाठ'},
     searchExcerpt: {en: 'Search excerpt from this page', de: 'Such-Ausschnitt dieser Seite', es: 'Extracto de búsqueda de esta página', ru: 'Фрагмент поиска с этой страницы', hi: 'इस पृष्ठ का खोज अंश'},
     recommendation: {en: 'Recommendation', de: 'Empfehlung', es: 'Recomendación', ru: 'Рекомендация', hi: 'सिफ़ारिश'},
+    inkQuote: {en: 'Quote', de: 'Zitat', es: 'Cita', ru: 'Цитата', hi: 'उद्धरण'},
+    inkNear: {en: 'Closest passage', de: 'Nächste Stelle', es: 'Pasaje cercano', ru: 'Ближайший фрагмент', hi: 'निकटतम अंश'},
+    inkRead: {en: 'Luna read this', de: 'Von Luna gelesen', es: 'Leído por Luna', ru: 'Прочитано Луной', hi: 'लूना ने पढ़ा'},
+    continuesOn: {en: 'Continues on page {p}', de: 'Weiter auf Seite {p}', es: 'Continúa en la página {p}', ru: 'Продолжение на стр. {p}', hi: 'पृष्ठ {p} पर जारी'},
+    beginsOn: {en: 'Begins on page {p}', de: 'Beginnt auf Seite {p}', es: 'Empieza en la página {p}', ru: 'Начало на стр. {p}', hi: 'पृष्ठ {p} से शुरू'},
     talk: {en: 'Call 112', de: '112 anrufen', es: 'Llamar al 112', ru: 'Позвонить 112', hi: '112 पर कॉल करें'},
   };
 
