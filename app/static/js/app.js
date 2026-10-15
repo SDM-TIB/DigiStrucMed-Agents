@@ -704,12 +704,8 @@ function switchAgent(id) {
   $('#head-name').textContent = agent.name; $('#head-tagline').textContent = agent.tagline;
   $('#head-orb').classList.toggle('lino', agent.orb === 'lino'); $('#head-orb').classList.toggle('guido', agent.orb === 'guido');
   $('#view-chat').classList.toggle('kg-on', agent === AGENTS.guido); if (agent === AGENTS.guido) kgInit();
-  const SUG = agent === AGENTS.guido ? [
-    ['Tell me about aspirin', 'What can you tell me about aspirin?'],
-    ['Aspirin bleeding risks', 'What are the bleeding risks of aspirin combined with other antithrombotic drugs?'],
-    ['HFrEF drug classes', 'Which drug classes are recommended for HFrEF, and with which class and level of evidence?']] : agent === AGENTS.lino ? [
-    ['Video storyboard', STORYBOARD_PROMPT, 'attach'],
-    ['Side effects of ACE inhibitors', 'What are the common side effects of ACE inhibitors?']] : [];
+  const SUG = agent === AGENTS.guido ? [care.pair('sAspirin'), care.pair('sBleeding'), care.pair('sHfref')]  // in the patient's language
+    : agent === AGENTS.lino ? [[care.t('sStoryboard'), STORYBOARD_PROMPT, 'attach'], care.pair('sAce')] : [];
   $('#suggests').innerHTML = SUG.map(([lv, q, kind], i) => `<button class="sug${kind ? ' sug-att' : ''}" style="animation-delay:${i * 60}ms" data-i="${i}" title="${kind ? 'Attach Mahsa’s storyboard prompt, then describe the video' : esc(q)}">${kind ? '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9.5 5 2.5-5 2.5Z"/></svg>' : ''}${esc(lv)}</button>`).join('');
   $('#suggests').classList.toggle('hidden', !SUG.length);
   $('#suggests').querySelectorAll('.sug').forEach(b => b.onclick = () => { const [, q, kind] = SUG[b.dataset.i]; if (kind === 'attach') setAttach(true); else $('#msg').value = q; $('#msg').focus(); });
@@ -728,7 +724,7 @@ function renderGpu() {
   $('#lino-time').textContent = st === 'online' ? 'online' : st === 'waking' ? 'waking' : 'offline';
   $('#guido-dot').className = 'presence'; $('#guido-time').textContent = 'online';
   // lino's call needs his gpu. asleep, the button stays but turns grey and opens the start screen to wake him
-  const asleep = sel && st !== 'online', label = !asleep ? 'Video Call' : st === 'waking' ? 'Lino is waking up…' : 'Wake up Lino for a call';
+  const asleep = sel && st !== 'online', label = care.t(!asleep ? 'videoCall' : st === 'waking' ? 'linoWaking' : 'wakeForCall');
   $('#start').classList.toggle('hidden', !agent.video); $('#start').classList.toggle('asleep', asleep);
   $('#start span').textContent = label; $('#start').setAttribute('aria-label', label);
   $('#start').title = asleep ? 'Lino runs on a GPU that sleeps when unused. Wake it to call him.' : '';

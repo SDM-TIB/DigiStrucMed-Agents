@@ -305,12 +305,13 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .ref{display:inline-flex;align-items:center;gap:7px;max-width:340px;height:30px;padding:0 11px 0 4px;border:1px solid var(--line);border-radius:15px;background:var(--win);font-size:12.5px;color:var(--ink-2);transition:border-color .15s,background .15s,color .15s;animation:rise .35s var(--ease) both}
 .ref:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-softer)}
 .ref .n{flex:none;display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700}
-.ref .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.ref .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;min-width:0}
+.refs .ref{max-width:min(340px,100%)}
 .ref .pg{flex:none;color:var(--muted)}
 /* source overlay */
 .srcx{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:28px;background:oklch(0.2 0.02 264 / .45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:fadein .25s var(--ease) both}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
-.srcx-card{width:min(1180px,100%);height:min(920px,100%);display:grid;grid-template-rows:auto minmax(0,1fr);background:var(--win);border-radius:16px;overflow:hidden;box-shadow:0 40px 80px oklch(0.2 0.05 264 / .4);animation:pop .35s var(--ease) both}
+.srcx-card{width:min(1180px,100%);height:min(920px,100%);display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);background:var(--win);border-radius:16px;overflow:hidden;box-shadow:0 40px 80px oklch(0.2 0.05 264 / .4);animation:pop .35s var(--ease) both}
 @keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
 .srcx-head{display:flex;align-items:center;gap:14px;padding:16px 16px 16px 22px;border-bottom:1px solid var(--line)}
 .srcx-head .n{display:grid;place-items:center;min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:var(--accent);color:var(--win);font-weight:700;font-size:13px}
