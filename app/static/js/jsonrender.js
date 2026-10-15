@@ -11,7 +11,7 @@ const h = React.createElement, any = z.record(z.string(), z.any());
 const C = d => ({props: any, description: d});
 const catalog = defineCatalog(schema, {components: {
   Board: C('Container with a short title'), Point: C('Key point with icon, title, text'), Stat: C('Short value with label'),
-  Warning: C('Caution'), Chips: C('Labelled list of short items'), ConceptCard: C('Concept header with image and identifiers'),
+  Warning: C('Caution'), Chips: C('Labelled list of short items'), Steps: C('Ordered steps'), Compare: C('Two options side by side'), Ask: C('Questions to ask next'), ConceptCard: C('Concept header with image and identifiers'),
   IdList: C('Identifier list'), RelationList: C('Labelled relation chips'), Excerpt: C('Guideline table excerpt'), Quote: C('Verbatim guideline quote with source'), Note: C('Small note')}, actions: {}});
 const Icon = ({name}) => h('span', {className: 'jr-ic', style: {'--ic': `url(${window.jrIcon(name)})`}});
 const {registry} = defineRegistry(catalog, {components: {
@@ -25,7 +25,8 @@ const {registry} = defineRegistry(catalog, {components: {
   RelationList: ({props}) => window.jrHTML.relations(h, props),
   Excerpt: ({props}) => window.jrHTML.excerpt(h, props),
   Quote: ({props}) => window.jrHTML.quote(h, props),
-  Note: ({props}) => h('p', {className: 'jr-note'}, props.text)}});
+  Note: ({props}) => h('p', {className: 'jr-note'}, props.text),
+  Steps: ({props}) => window.jrHTML.steps(h, props), Compare: ({props}) => window.jrHTML.compare(h, props), Ask: ({props}) => window.jrHTML.ask(h, props)}});
 const Fallback = ({element}) => null;
 window.JR = {
   ready: true,

@@ -24,6 +24,8 @@ import evidence
 import gpu
 import guido
 import kg
+import check
+import followups
 import lino
 import triage
 import luna
@@ -175,6 +177,8 @@ class Handler(BaseHTTPRequestHandler):
       return self.send(200, {k: p.get(k) for k in ('id', 'title', 'ref', 'page', 'plain')}) if p else self.send(404, {'error': 'Unknown page'})
     if path == '/api/gpu':
       return self.send(200, gpu.status(self.session()))
+    if path == '/api/board-schema':
+      return self.send(200, board.schema())
     if path == '/api/settings':
       return self.send(200, {'modal': gpu.credits(), 'lino': gpu.status(self.session())})
     if path.startswith('/api/page-image/'):
@@ -214,6 +218,10 @@ class Handler(BaseHTTPRequestHandler):
       return self.send(200, evidence.board(body.get('text', '')))
     if self.path == '/api/board':
       return self.stream(board.board(body.get('text', '')))
+    if self.path == '/api/check':  # lino's statements against the guidelines, after he answered
+      return self.send(200, check.check(body.get('question', ''), body.get('answer', '')))
+    if self.path == '/api/followups':  # questions to ask next and to take to the doctor
+      return self.send(200, followups.suggest(body.get('question', ''), body.get('answer', '')))
     if self.path == '/api/triage':  # does what the patient said call for action now? decides which fixed banner shows
       res = triage.assess(body.get('message', ''), body.get('conversation') or [])
       if res.get('level') not in (None, 'none'):
