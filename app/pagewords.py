@@ -19,7 +19,7 @@ from difflib import SequenceMatcher
 
 import config
 
-PATH = config.DATA / 'page_words.json.gz'
+PATH = config.DATA / 'page_words.jsonl.gz'  # one page per line: read line by line, never the whole file at once
 TOKEN = re.compile(r'[0-9a-zäöüßàâæçéèêëîïôœùûüÿáíóúñа-яёऀ-ॿ]+')
 STOP = set('the a an and or of in on to for with by is are be as at from that this these those it its was were not no can may '
            'should than then there their which who what when where how also into per der die das und oder ein eine einer eines im '
@@ -28,22 +28,22 @@ _pages, _lock = None, threading.Lock()
 
 
 def _load():
-  """page id -> (src, words, boxes as array of uint16 in 1/scale of the page). loaded once, on first use"""
+  """page id -> (src, words joined by \x1f, boxes as uint16 in 1/scale of the page). loaded once, on first use"""
   global _pages
   with _lock:
     if _pages is None:
       if not PATH.exists():
         _pages = {}
         return
-      with gzip.open(PATH, 'rt', encoding='utf-8') as fh:
-        data = json.load(fh)
       out = {}
-      for pid, p in data['pages'].items():
-        words = p['words'].split('\x1f') if isinstance(p['words'], str) else p['words']
-        boxes = array('H', base64.b64decode(p['boxes'])) if isinstance(p['boxes'], str) else array('H', p['boxes'])
-        out[pid] = (p['src'], words, boxes)
+      with gzip.open(PATH, 'rt', encoding='utf-8') as fh:
+        globals()['SCALE'] = json.loads(fh.readline()).get('scale', 10000)
+        for line in fh:
+          p = json.loads(line)
+          words = p['words'] if isinstance(p['words'], str) else '\x1f'.join(p['words'])  # split per lookup, not up front
+          boxes = array('H', base64.b64decode(p['boxes'])) if isinstance(p['boxes'], str) else array('H', p['boxes'])
+          out[p['id']] = (p['src'], words, boxes)
       _pages = out
-      globals()['SCALE'] = data.get('scale', 10000)
 
 
 def available():
@@ -72,6 +72,7 @@ def locate(page_id, text, mode='exact'):
   if not page or not text:
     return None
   src, words, boxes = page
+  words = words.split('\x1f')
   content = mode == 'near'
   P = _tokens(words, content)
   Q = [t for t in TOKEN.findall(str(text).lower()) if not content or (len(t) > 3 and t not in STOP)][:200]
