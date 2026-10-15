@@ -203,6 +203,35 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .thinking i:nth-child(2){animation-delay:.15s}.thinking i:nth-child(3){animation-delay:.3s}
 @keyframes dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
 .refs{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+/* patient care: grade explained, safety note, emergency banner, unverified label (texts in js/care.js) */
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.gx{margin:10px 0 2px;font-size:12.5px;line-height:18px}
+.gx summary{display:inline-flex;align-items:center;gap:8px;cursor:pointer;list-style:none;border-radius:12px}
+.gx summary::-webkit-details-marker{display:none}
+.gx summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gx-tag{height:22px;padding:0 10px;border-radius:11px;display:inline-flex;align-items:center;font-weight:650}
+.gx-raw{color:var(--muted);font-variant-numeric:tabular-nums}
+.gx-i{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font:700 10px/1 var(--ui);font-style:italic;border:1.3px solid currentColor;color:var(--muted)}
+.gx[open] .gx-i{background:var(--ink);border-color:var(--ink);color:var(--win)}
+.jr-ex>.gx{margin:10px 16px 8px}
+.gx ul{margin:8px 0 0;padding:10px 12px 10px 28px;border-radius:10px;background:var(--side);color:var(--ink-2)}
+.gx li+li{margin-top:4px}
+.tone-yes .gx-tag{background:oklch(0.93 0.06 150);color:oklch(0.40 0.12 150)}
+.tone-lean .gx-tag{background:oklch(0.94 0.05 190);color:oklch(0.42 0.09 200)}
+.tone-maybe .gx-tag{background:oklch(0.95 0.06 85);color:oklch(0.45 0.10 70)}
+.tone-no .gx-tag{background:oklch(0.93 0.05 25);color:oklch(0.48 0.17 25)}
+.tone-none .gx-tag{background:var(--accent-soft);color:var(--accent)}
+.jr-kick{display:block;font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:2px 0 4px}
+.jr-kick.verbatim{margin-top:10px}
+.care-note{margin:12px 0 0;font-size:12.5px;line-height:18px;color:var(--muted)}
+.care-alert{margin:10px 0 4px auto;max-width:560px;padding:14px 16px;border-radius:14px;background:oklch(0.97 0.025 25);border:1.5px solid oklch(0.70 0.16 25);color:oklch(0.32 0.09 25);animation:rise .3s var(--ease) both}
+.care-alert b{display:block;font-size:14.5px}
+.care-alert p{margin:4px 0 10px;font-size:13.5px;line-height:20px}
+.care-alert a{display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:18px;background:oklch(0.55 0.19 25);color:#fff;font-weight:650;text-decoration:none}
+.unv{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 10px;margin-bottom:6px;border-radius:11px;font-size:12px;font-weight:600;background:oklch(0.95 0.05 85);color:oklch(0.43 0.10 65)}
+.unv::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+.jr-host.unverified .jr-board{background:var(--side)}
+.jr-host.unverified .jr-stat strong,.jr-host.unverified .jr-warn{filter:saturate(.35)}
 .ref{display:inline-flex;align-items:center;gap:7px;max-width:340px;height:30px;padding:0 11px 0 4px;border:1px solid var(--line);border-radius:15px;background:var(--win);font-size:12.5px;color:var(--ink-2);transition:border-color .15s,background .15s,color .15s;animation:rise .35s var(--ease) both}
 .ref:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-softer)}
 .ref .n{flex:none;display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700}
@@ -803,7 +832,7 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .jr-quote blockquote{margin:0;padding:8px 12px;border-left:3px solid oklch(0.72 0.14 75);border-radius:0 8px 8px 0;background:oklch(0.97 0.04 95);font-size:13.5px;line-height:20px;color:var(--ink)}
 .jr-quote blockquote::before{content:'\201C'}.jr-quote blockquote::after{content:'\201D'}
 .jr-quote footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
-.jr-quote .grade{height:20px;padding:0 8px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:650;display:inline-flex;align-items:center}
+.jr-quote .grade,.jr-ex>.grade{height:20px;padding:0 8px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:650;display:inline-flex;align-items:center}
 .jr-quote footer button{margin-left:auto;height:26px;padding:0 10px;border-radius:13px;border:1px solid var(--line);background:var(--win);font-size:12px;font-weight:600;color:var(--accent)}
 .jr-quote footer button:hover{border-color:var(--accent)}
 .jr-board .jr-ex{margin:2px 0 4px;box-shadow:none;border:1px solid var(--line)}
