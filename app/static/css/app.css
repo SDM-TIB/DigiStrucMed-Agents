@@ -227,6 +227,10 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .care-alert{margin:10px 0 4px auto;max-width:560px;padding:14px 16px;border-radius:14px;background:oklch(0.97 0.025 25);border:1.5px solid oklch(0.70 0.16 25);color:oklch(0.32 0.09 25);animation:rise .3s var(--ease) both}
 .care-alert b{display:block;font-size:14.5px}
 .care-alert p{margin:4px 0 10px;font-size:13.5px;line-height:20px}
+.care-alert.urgent{background:oklch(0.97 0.03 85);border-color:oklch(0.75 0.13 75);color:oklch(0.33 0.07 65)}
+.care-alert.urgent a{background:oklch(0.50 0.11 65)}
+.care-alert.support{background:oklch(0.97 0.02 290);border-color:oklch(0.70 0.10 290);color:oklch(0.33 0.07 290)}
+.care-alert.support a{background:oklch(0.50 0.13 290)}
 .care-alert a{display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:18px;background:oklch(0.55 0.19 25);color:#fff;font-weight:650;text-decoration:none}
 .unv{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 10px;margin-bottom:6px;border-radius:11px;font-size:12px;font-weight:600;background:oklch(0.95 0.05 85);color:oklch(0.43 0.10 65)}
 .unv::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
