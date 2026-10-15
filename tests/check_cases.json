@@ -1,0 +1,13 @@
+{
+  "_how": "Hand-written statements for app/check.py (Lino's guideline check), each with the verdict a guideline reader would give. Run: python tests/check_eval.py. Each case runs three times; it counts as correct only if all three agree with the label. Not real patient data, and a handful of cases, not a validation.",
+  "cases": [
+    {"question": "Pain killers?", "answer": "Ibuprofen is a safe painkiller for people with heart failure.", "want": "contradicted"},
+    {"question": "Schmerzmittel?", "answer": "Ibuprofen ist ein sicheres Schmerzmittel und kann bei Herzinsuffizienz bedenkenlos genommen werden.", "want": "contradicted"},
+    {"question": "Salt?", "answer": "People with heart failure should eat more than 10 grams of salt a day to keep blood pressure stable.", "want": "contradicted"},
+    {"question": "Salz?", "answer": "Bei Herzinsuffizienz wird empfohlen, mehr als 10 Gramm Salz pro Tag zu essen.", "want": "contradicted"},
+    {"question": "SGLT2?", "answer": "SGLT2 inhibitors such as dapagliflozin are recommended in HFrEF to reduce hospitalisation.", "want": "supported"},
+    {"question": "Sport?", "answer": "Regelmäßiges körperliches Training wird für stabile Patienten mit Herzinsuffizienz empfohlen.", "want": "supported"},
+    {"question": "Beta-blockers?", "answer": "Beta-blockers are recommended for patients with HFrEF to reduce the risk of death.", "want": "supported"},
+    {"question": "Verapamil?", "answer": "Verapamil and diltiazem are good choices for patients with HFrEF.", "want": "contradicted"}
+  ]
+}

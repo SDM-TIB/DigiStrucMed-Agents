@@ -27,7 +27,9 @@ SPLIT = (
   "Split the answer below into its medical statements: claims about a condition, a treatment, a drug, a dose, a "
   "test, a risk or a recommendation. Skip greetings, questions, advice to see a doctor, and anything without medical "
   "content. For each statement copy one sentence or clause from the answer exactly as written, character for "
-  "character, in its language. Give English search terms for looking it up in clinical guidelines.\n"
+  "character, in its language. Give English search terms for looking it up in clinical guidelines, phrased the way a "
+  "guideline would: include the drug or treatment class and common synonyms (e.g. 'metoprolol beta-blocker', "
+  "'spironolactone mineralocorticoid receptor antagonist MRA').\n"
   'Return JSON only: {"claims": [{"text": "exact words from the answer", "query": "english search terms"}]}. '
   f"At most {MAX_CLAIMS} statements, the most important first. None: {{\"claims\": []}}.")
 
@@ -43,14 +45,14 @@ QUESTIONS = {
   'passage': {
     'type': 'choice',
     'instructions': 'Which passage in `passages` is the most relevant to `claim`?',
-    'criteria': {f'p{n}': f'passage {n}' for n in range(1, PAGES + 1)}},
+    'criteria': {f'p{n}': f'passage {n}' for n in range(1, PAGES + 3)}},
 }
 
 
 def _claims(question, answer):
   raw, _ = llm.complete([{'role': 'system', 'content': SPLIT},
                          {'role': 'user', 'content': f'Question: {question[:500]}\n\nAnswer:\n{answer[:3000]}'}],
-                        max_tokens=700, response_format={'type': 'json_object'})
+                        max_tokens=700, response_format={'type': 'json_object'}, temperature=0)  # same answer, same statements
   out = json.loads(raw[raw.index('{'):raw.rindex('}') + 1]).get('claims') or []
   squash = lambda t: re.sub(r'\s+', ' ', t).strip()
   plain = squash(answer)
@@ -63,7 +65,8 @@ def _claims(question, answer):
 
 
 def _judge(claim):
-  hits = corpus.bm25(claim['query'], k=PAGES)
+  # the english search terms find most pages; the statement itself catches what they miss (as evidence.py does)
+  hits = list(dict.fromkeys(corpus.bm25(claim['query'], k=PAGES) + corpus.bm25(claim['text'], k=2)))[:PAGES + 2]
   if not hits:
     return {**claim, 'verdict': 'not_addressed', 'p': 1.0, 'source': None}
   passages = [{'n': n, 'source': f"{corpus.PAGES[i].get('ref') or corpus.PAGES[i]['title']}, page {corpus.PAGES[i]['page']}",
