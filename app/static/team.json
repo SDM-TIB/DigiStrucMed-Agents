@@ -6,8 +6,6 @@
      "photo": "steffan-wolter.jpg", "link": "https://www.linkedin.com/in/steffan-wolter"},
     {"name": "Mahsa Forghani", "role": "TIB and Leibniz University Hannover",
      "about": "Works on knowledge graphs and language models, and fine-tuned the model behind Lino.",
-     "photo": "mahsa-forghani.jpg", "link": "https://github.com/Mahsa-for"},
-    {"name": "Disha Purohit", "role": "", "about": "", "photo": "", "link": ""},
-    {"name": "Yashrajsinh Chudasama", "role": "", "about": "", "photo": "", "link": ""}
+     "photo": "mahsa-forghani.jpg", "link": "https://github.com/Mahsa-for"}
   ]
 }
