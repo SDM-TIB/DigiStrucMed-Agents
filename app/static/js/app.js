@@ -622,7 +622,7 @@ window.jrHTML = {
   excerpt(h, p) {
     const body = p.html ? h('div', {className: 'tbl', ref: el => el && jrTable(el, p.html, p.match)}) : h('blockquote', null, p.text);
     return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && 'page ' + p.page].filter(Boolean).join(' · '))),
-      p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: p.pageId}))}, care.t('openPage')) : null), p.grade ? care.grade(h, p.grade) : null, body);
+      p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: p.pageId, quote: p.text || p.match}}))}, care.t('openPage')) : null), p.grade ? care.grade(h, p.grade) : null, body);
   }
 };
 function jrTable(el, html, match) {
