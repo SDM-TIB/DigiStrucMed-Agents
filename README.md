@@ -1,6 +1,21 @@
+<div align="center">
+
 # TIB Chat
 
-Three ways to answer a heart failure question from clinical guidelines, side by side, in chat and in video calls.
+**Three ways to answer a heart failure question from clinical guidelines, side by side, in chat and in video calls.**
+
+<a href="https://luna-demo-gowp4c46da-ey.a.run.app"><img src="docs/hero.webp" alt="TIB Chat start screen: Luna, Lino and Guido, five languages. Click to open the live demo." width="100%"></a>
+
+<a href="https://luna-demo-gowp4c46da-ey.a.run.app"><img src="https://img.shields.io/badge/Live_demo-Open_TIB_Chat-2563eb?style=for-the-badge" alt="Open the live demo"></a>
+
+[![check and deploy](https://github.com/SDM-TIB/DigiStrucMed-Agents/actions/workflows/deploy.yml/badge.svg)](https://github.com/SDM-TIB/DigiStrucMed-Agents/actions/workflows/deploy.yml)
+![Languages](https://img.shields.io/badge/languages-EN_·_DE_·_ES_·_RU_·_HI-0ea5e9)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+The demo asks for the team password. Ask the DigiStrucMed team for it.
+
+</div>
+
 
 | Agent | How it answers | Runs on |
 | --- | --- | --- |
