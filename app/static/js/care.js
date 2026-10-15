@@ -180,6 +180,18 @@ window.care = (() => {
     inkRead: {en: 'Luna read this', de: 'Von Luna gelesen', es: 'Leído por Luna', ru: 'Прочитано Луной', hi: 'लूना ने पढ़ा'},
     continuesOn: {en: 'Continues on page {p}', de: 'Weiter auf Seite {p}', es: 'Continúa en la página {p}', ru: 'Продолжение на стр. {p}', hi: 'पृष्ठ {p} पर जारी'},
     beginsOn: {en: 'Begins on page {p}', de: 'Beginnt auf Seite {p}', es: 'Empieza en la página {p}', ru: 'Начало на стр. {p}', hi: 'पृष्ठ {p} से शुरू'},
+    videoCall: {en: 'Video Call', de: 'Videoanruf', es: 'Videollamada', ru: 'Видеозвонок', hi: 'वीडियो कॉल'},
+    linoWaking: {en: 'Lino is waking up…', de: 'Lino wacht auf…', es: 'Lino se está despertando…', ru: 'Лино просыпается…', hi: 'लीनो जाग रहा है…'},
+    wakeForCall: {en: 'Wake up Lino for a call', de: 'Lino für einen Anruf wecken', es: 'Despertar a Lino para llamar', ru: 'Разбудить Лино для звонка', hi: 'कॉल के लिए लीनो को जगाएँ'},
+    sAspirin: {en: ['Tell me about aspirin', 'What can you tell me about aspirin?'], de: ['Was ist mit Aspirin?', 'Was sagen die Leitlinien zu Aspirin?'],
+               es: ['Háblame de la aspirina', '¿Qué dicen las guías sobre la aspirina?'], ru: ['Расскажи про аспирин', 'Что говорят рекомендации об аспирине?'], hi: ['एस्पिरिन के बारे में', 'दिशानिर्देश एस्पिरिन के बारे में क्या कहते हैं?']},
+    sBleeding: {en: ['Aspirin bleeding risks', 'What are the bleeding risks of aspirin combined with other antithrombotic drugs?'], de: ['Blutungsrisiko Aspirin', 'Wie hoch ist das Blutungsrisiko von Aspirin zusammen mit anderen Gerinnungshemmern?'],
+                es: ['Riesgo de sangrado', '¿Qué riesgo de sangrado tiene la aspirina combinada con otros antitrombóticos?'], ru: ['Риск кровотечений', 'Каков риск кровотечений при аспирине вместе с другими антитромботиками?'], hi: ['रक्तस्राव का जोखिम', 'अन्य खून पतला करने वाली दवाओं के साथ एस्पिरिन से रक्तस्राव का जोखिम क्या है?']},
+    sHfref: {en: ['HFrEF drug classes', 'Which drug classes are recommended for HFrEF, and with which class and level of evidence?'], de: ['Medikamente bei HFrEF', 'Welche Medikamentenklassen werden bei HFrEF empfohlen, mit welcher Empfehlungsklasse und Evidenz?'],
+             es: ['Fármacos en HFrEF', '¿Qué clases de fármacos se recomiendan en la HFrEF y con qué clase y nivel de evidencia?'], ru: ['Препараты при HFrEF', 'Какие классы препаратов рекомендованы при HFrEF и с каким классом и уровнем доказательств?'], hi: ['HFrEF की दवाएँ', 'HFrEF में किन दवा वर्गों की सिफ़ारिश है, किस श्रेणी और प्रमाण स्तर के साथ?']},
+    sStoryboard: {en: 'Video storyboard', de: 'Video-Storyboard', es: 'Guion de vídeo', ru: 'Сценарий видео', hi: 'वीडियो स्टोरीबोर्ड'},
+    sAce: {en: ['Side effects of ACE inhibitors', 'What are the common side effects of ACE inhibitors?'], de: ['Nebenwirkungen ACE-Hemmer', 'Welche Nebenwirkungen haben ACE-Hemmer häufig?'],
+           es: ['Efectos de los IECA', '¿Cuáles son los efectos secundarios frecuentes de los IECA?'], ru: ['Побочные эффекты иАПФ', 'Какие частые побочные эффекты у ингибиторов АПФ?'], hi: ['ACE इनहिबिटर के दुष्प्रभाव', 'ACE इनहिबिटर के आम दुष्प्रभाव क्या हैं?']},
     talk: {en: 'Call 112', de: '112 anrufen', es: 'Llamar al 112', ru: 'Позвонить 112', hi: '112 पर कॉल करें'},
   };
 
@@ -230,6 +242,7 @@ window.care = (() => {
     get lang() { return lang; },
     setLang(l) { if (!LANGS.includes(l) || l === lang) return; lang = l; document.documentElement.lang = l; window.dispatchEvent(new Event('care-lang')); },
     fill: (key, vars, l) => t(key, l).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? ''),
+    pair: key => { const v = (T[key] || {})[lang] || (T[key] || {}).en; return v ? [...v] : ['', '']; },
     redFlag: text => RED.test(String(text || '')),  // only when the triage model cannot be reached: a missed emergency is worse
   };
 })();
