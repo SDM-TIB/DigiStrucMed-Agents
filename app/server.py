@@ -27,6 +27,7 @@ import kg
 import check
 import followups
 import lino
+import pagewords
 import triage
 import luna
 import storage
@@ -218,6 +219,12 @@ class Handler(BaseHTTPRequestHandler):
       return self.send(200, evidence.board(body.get('text', '')))
     if self.path == '/api/board':
       return self.stream(board.board(body.get('text', '')))
+    if self.path == '/api/locate':  # where on the original page: the first of the texts that is found there
+      for i, it in enumerate((body.get('items') or [])[:4]):
+        r = pagewords.locate(str(body.get('page_id', '')), str(it.get('text', ''))[:3000], 'near' if it.get('mode') == 'near' else 'exact')
+        if r:
+          return self.send(200, {**r, 'item': i})
+      return self.send(200, {'rects': []})
     if self.path == '/api/check':  # lino's statements against the guidelines, after he answered
       return self.send(200, check.check(body.get('question', ''), body.get('answer', '')))
     if self.path == '/api/followups':  # questions to ask next and to take to the doctor

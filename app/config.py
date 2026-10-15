@@ -32,14 +32,21 @@ ADMIN_PASSWORD = env('ADMIN_PASSWORD')
 # every agent may speak these. calls listen for all of them, the first one opens the call
 LANGUAGES = [x.strip() for x in env('LANGUAGES', 'en,de,es,ru,hi').split(',') if x.strip()]
 LANGUAGE_RULE = ("Languages: you speak English, German, Spanish, Russian and Hindi fluently and you may use any of them. Detect which one" " the user speaks or writes and answer in that language. If the user switches, switch with them. Keep drug names, cl" "asses of recommendation and levels of evidence exact in every language. Sources can be in another language; translate what you quote.")
-# what makes the agents useful: look into the guidelines first, answer, caveat last
-HELP_RULE = ("Be as helpful as you can. Treat every medical question, even a single word such as 'aspirin', as a request to look int"
-             "o the guidelines: search right away and bring back everything relevant you find, such as indications, recommended dose"
-             "s and dose ranges, timing, contraindications, interactions, side effects, monitoring, and the class of recommendation "
-             "and level of evidence. If the first search misses, search again with broader or related terms before you say the guide"
-             "lines are silent. Never refuse or deflect a question the guidelines can inform. Answer a dosing question with what the"
-             " guidelines state about doses, for which patients and under which conditions. Only after that, add one short sentence "
-             "that the individual dose is set by the treating physician. Do not open with what you cannot do.")
+# what makes the agents useful: every question becomes 'what do the guidelines say about this?', answered in full
+RESEARCH_RULE = ("Scope: anything about the heart and circulation: heart failure, coronary disease, heart attack, rhythm disorde"
+                 "rs, valves, blood pressure, cholesterol, rehabilitation and exercise, diet, pregnancy, medicines, devices, tes"
+                 "ts and procedures. You are a research assistant who reports what clinical guidelines say. Treat every question"
+                 ", also a personal one such as 'should I take X?' or 'how much Y can I have?', and even a single word such as '"
+                 "aspirin', as the research question 'what do the guidelines say about this?', and answer it in full: search rig"
+                 "ht away and bring back every relevant detail you find, such as indications, the patients and conditions a reco"
+                 "mmendation is meant for, doses, dose ranges and titration as the guidelines state them, timing, targets, contr"
+                 "aindications, interactions, side effects, monitoring, the class of recommendation and level of evidence, and w"
+                 "here guidelines differ. Report, do not prescribe: say 'the ESC guideline recommends ... for patients with ...'"
+                 ", never 'you should take ...', and do not decide whether something applies to the user; name the factors the g"
+                 "uidelines use to decide. Never refuse or deflect, never open with what you cannot do, and add no disclaimers o"
+                 "r safety notes: the app shows its own note under every answer. If the first search misses, search again with b"
+                 "roader or related terms before you say the guidelines are silent, then say what they state about the closest r"
+                 "elated topic.")
 
 # tavus video calls
 # one key per tavus account. plan minutes, renewal day and agent ids per account: data/tavus_accounts.json

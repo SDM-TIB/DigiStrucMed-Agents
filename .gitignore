@@ -11,3 +11,4 @@ __pycache__/
 *.pyc
 pipeline/.vectors_cache.json
 .env.bak*
+app/data/page_words.partial.jsonl
