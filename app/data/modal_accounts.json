@@ -1,0 +1,29 @@
+{
+  "_how": "One entry per Modal workspace in Lino's GPU pool. The token itself is a secret (MODAL_TOKEN_ID/SECRET, MODAL_EXTRA_TOKENS); token_sha256 is the first 12 hex characters of the sha256 of its token id. url is where Lino answers in that workspace. plan_usd: monthly free credits; they reset on the first of the month. Written by deploy/deploy_new_modal.py.",
+  "accounts": [
+    {
+      "name": "steffan-wolter55",
+      "token_sha256": "c39986a6a311",
+      "url": "https://steffan-wolter55--lino-server.eu-west.modal.direct",
+      "plan_usd": 30.0
+    },
+    {
+      "name": "aliexpresssteffan0",
+      "token_sha256": "f75cf2ef5bf0",
+      "url": "https://aliexpresssteffan0--lino-server.eu-west.modal.direct",
+      "plan_usd": 30.0
+    },
+    {
+      "name": "steffanwolter",
+      "token_sha256": "7c1acac750f3",
+      "url": "https://steffanwolter--lino-server.eu-west.modal.direct",
+      "plan_usd": 30.0
+    },
+    {
+      "name": "woltersteffan3",
+      "token_sha256": "850b2649b63f",
+      "url": "https://woltersteffan3--lino-server.eu-west.modal.direct",
+      "plan_usd": 30.0
+    }
+  ]
+}

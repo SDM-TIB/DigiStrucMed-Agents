@@ -3,7 +3,7 @@
   python deploy/deploy.py app      # Cloud Run service (secrets to Secret Manager, then a source deploy of app/)
   python deploy/deploy.py app --code-only   # only the source deploy. what GitHub Actions runs: no .env, no secret
                                             # values, the service keeps the Secret Manager references it already has
-  python deploy/deploy.py gpu      # Lino's vLLM server on Modal (creates the Modal secret, then modal deploy)
+  python deploy/deploy.py gpu      # Lino's vLLM server in every Modal workspace of the pool (deploy_new_modal.py --all)
   python deploy/deploy.py assets push|pull   # videos and the LoRA adapter, kept in the bucket, not in git
 
 needs: gcloud (logged in), and for `gpu` the modal package with a token (pip install modal, modal token new).
@@ -18,12 +18,11 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SECRETS = ('TAVUS_API_KEY', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
-           'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
-SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'LINO_URL', 'MAX_CALL_SECONDS',
-            'TAVUS_PLAN_MINUTES', 'TAVUS_PERIOD_START', 'TAVUS_USED_OFFSET_MIN')
+SECRETS = ('TAVUS_API_KEY', 'TAVUS_EXTRA_KEYS', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
+           'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'MODAL_EXTRA_TOKENS', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
+SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'MAX_CALL_SECONDS')
 # large files that live in the bucket under assets/, not in git
-ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter'}
+ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter', 'tavus/knowledge_base': 'assets/tavus-kb'}
 
 
 def dotenv():
@@ -101,11 +100,7 @@ def source_deploy(env, project, region, service, bucket, secrets_flag):
 
 
 def deploy_gpu(env):
-  run('modal', 'secret', 'create', '--force', 'lino-api-key', f'LINO_API_KEY={env["LINO_API_KEY"]}', quiet=True)
-  if not run('modal', 'volume', 'ls', 'lino-model', 'lino', check=False, quiet=True).strip():
-    print('preparing merged weights (once, a few minutes)')
-    run('modal', 'run', 'gpu/serve.py::prepare')
-  print(run('modal', 'deploy', 'gpu/serve.py'))
+  run(sys.executable, str(ROOT / 'deploy' / 'deploy_new_modal.py'), '--all')
 
 
 def assets(env, direction):

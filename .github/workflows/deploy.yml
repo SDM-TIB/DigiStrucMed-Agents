@@ -64,8 +64,4 @@ jobs:
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           LLM_FALLBACK_MODEL: ${{ vars.LLM_FALLBACK_MODEL }}
           LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
-          LINO_URL: ${{ vars.LINO_URL }}
           MAX_CALL_SECONDS: ${{ vars.MAX_CALL_SECONDS }}
-          TAVUS_PLAN_MINUTES: ${{ vars.TAVUS_PLAN_MINUTES }}
-          TAVUS_PERIOD_START: ${{ vars.TAVUS_PERIOD_START }}
-          TAVUS_USED_OFFSET_MIN: ${{ vars.TAVUS_USED_OFFSET_MIN }}

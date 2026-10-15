@@ -42,11 +42,11 @@ HELP_RULE = ("Be as helpful as you can. Treat every medical question, even a sin
              "that the individual dose is set by the treating physician. Do not open with what you cannot do.")
 
 # tavus video calls
+# one key per tavus account. plan minutes, renewal day and agent ids per account: data/tavus_accounts.json
 TAVUS_API_KEY = env('TAVUS_API_KEY')
+TAVUS_EXTRA_KEYS = env('TAVUS_EXTRA_KEYS')  # comma separated. a new account: add its key here, then run tavus/sync.py
+TAVUS_KEYS = [k.strip() for k in [TAVUS_API_KEY, *TAVUS_EXTRA_KEYS.split(',')] if k.strip()]
 MAX_CALL_SECONDS = int(env('MAX_CALL_SECONDS', '300'))
-TAVUS_PLAN_MINUTES = float(env('TAVUS_PLAN_MINUTES', '120'))
-TAVUS_PERIOD_START = env('TAVUS_PERIOD_START')            # ISO date, empty = first of the month
-TAVUS_USED_OFFSET_MIN = float(env('TAVUS_USED_OFFSET_MIN', '0'))  # calibrate against the tavus dashboard
 
 # the llm behind luna, guido and the live boards. any openai compatible api works.
 # default and recommendation: gemini 3.5 flash-lite through google's openai endpoint. fast, cheap, good at tools
@@ -56,9 +56,11 @@ LLM_MODEL = env('LLM_MODEL', 'gemini-3.5-flash-lite')
 LLM_FALLBACK_MODEL = env('LLM_FALLBACK_MODEL', 'gemini-3.1-flash-lite')  # own rate limit, used when the main model is out of quota. empty disables
 LLM_REASONING_EFFORT = env('LLM_REASONING_EFFORT', 'low')  # empty for apis that don't know the parameter
 
-# lino lives on a modal gpu that sleeps when nobody talks to it
-LINO_URL = env('LINO_URL').rstrip('/')
+# lino lives on a modal gpu that sleeps when nobody talks to it. one modal workspace per token, each with its own
+# monthly credits and its own copy of lino. names and urls: data/modal_accounts.json (deploy/deploy_new_modal.py)
 LINO_API_KEY = env('LINO_API_KEY')
+MODAL_TOKENS = [(i.strip(), s.strip()) for i, s in [(env('MODAL_TOKEN_ID'), env('MODAL_TOKEN_SECRET')),
+                *(p.split(':', 1) for p in env('MODAL_EXTRA_TOKENS').split(',') if ':' in p)] if i.strip() and s.strip()]
 
 # cloudflare workers ai, clef-flash directs guido's shared screen
 CF_ACCOUNT_ID = env('CF_ACCOUNT_ID')

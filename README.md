@@ -20,7 +20,7 @@ The demo asks for the team password. Ask the DigiStrucMed team for it.
 | Agent | How it answers | Runs on |
 | --- | --- | --- |
 | **Luna** | Searches 2,780 guideline pages (BM25) and cites the pages she read. | Any OpenAI compatible LLM. Gemini 3.5 Flash-Lite by default |
-| **Lino** | Answers from memory. Llama 3.2 1B, fine-tuned with NeSyCoT rules mined from the guideline knowledge graph. No retrieval, no guardrails. | vLLM on a Modal L4 that sleeps when unused |
+| **Lino** | Answers from memory. Llama 3.2 1B, fine-tuned with NeSyCoT rules mined from the guideline knowledge graph. No retrieval, no guardrails. | vLLM on a Modal L4 that sleeps when unused, from a pool of Modal workspaces |
 | **Guido** | Walks the guideline knowledge graph (Think-on-Graph), shows every hop live and cites each recommendation with class and level of evidence. | Same LLM as Luna |
 
 All three speak English, German, Spanish, Russian and Hindi. They answer in the language you use and switch when you switch, in chat and in calls (`LANGUAGES`).
@@ -34,9 +34,9 @@ This is a research demo. It is not clinical decision support and nothing it says
 ```
 browser ─── Cloud Run (app/, one python process, stdlib http server)
               ├── llm.py      ─── any /chat/completions api      Luna, Guido, live boards
-              ├── lino.py     ─── vLLM on Modal (gpu/serve.py)   Lino
-              ├── gpu.py          wakes and parks the Modal gpu
-              ├── tavus.py    ─── Tavus                          video calls
+              ├── lino.py     ─── vLLM on Modal (gpu/serve.py)   Lino, in one workspace of the pool
+              ├── gpu.py          picks a Modal workspace, wakes and parks its gpu
+              ├── tavus.py    ─── Tavus, several accounts        video calls
               ├── director.py ─── Cloudflare Workers AI          guido's screen layout
               ├── wikidata.py ─── query.wikidata.org             live concept facts
               └── storage.py  ─── private GCS bucket             page renders, usage log
@@ -49,12 +49,16 @@ The server keeps state in memory (gpu timer, call timers, usage log), so it runs
 ```
 app/            the Cloud Run service. deployed as is
   server.py     routes. start here
-  data/         corpus, knowledge graph, concept links, Tavus ids (all built by pipeline/)
+  data/         corpus, knowledge graph, concept links (built by pipeline/). tavus_accounts.json and
+                modal_accounts.json: the account pools, without keys
   static/       index.html, dashboard.html, css, js, images. videos are in the bucket
 gpu/            Lino on Modal. serve.py serves, bench.py measures tokens per second
-tavus/          the three video agents and their tools as json. sync.py pushes them to Tavus
+tavus/          the three video agents and their tools as json. sync.py pushes them to every Tavus account.
+                knowledge_base.json lists Luna's 132 knowledge base texts (the texts are in the bucket)
 pipeline/       rebuilds app/data from the MHH export and guidelineKG.nt
 deploy/         deploy.py: Cloud Run, Modal, and the large files in the bucket
+  deploy_new_tavus.py   adds a Tavus account: agents, Luna's knowledge base, key to Secret Manager
+  deploy_new_modal.py   adds a Modal workspace: Lino's weights and vLLM server, token to Secret Manager
 ```
 
 ## Run it locally
@@ -75,8 +79,8 @@ Then open http://localhost:8080. Without `PAGE_BUCKET` the server reads page ren
 
 1. Create a Google Cloud project, a private bucket and log in with `gcloud auth login`. Put the ids in `.env`.
 2. Upload the large files: `python deploy/deploy.py assets push`. They come from whoever has a working copy.
-3. Deploy Lino: `pip install modal`, `modal token new`, then `python deploy/deploy.py gpu`. Copy the printed URL into `LINO_URL`.
-4. Create the video agents: `python tavus/sync.py`. Pick faces in the Tavus dashboard first and put their ids into `tavus/pals/*.json` as `default_face_id`. Luna's `document_ids` only exist in our Tavus account, so remove them on a new one.
+3. Deploy Lino: `pip install modal`, create a token in the Modal dashboard, put a long random `LINO_API_KEY` in `.env`, then `python deploy/deploy_new_modal.py <token-id> <token-secret>` for every workspace.
+4. Create the video agents: `python deploy/deploy_new_tavus.py <api-key> --plan <minutes> --since <first day of the plan>` for every Tavus account.
 5. Deploy the app: `python deploy/deploy.py app`. It stores every secret in Secret Manager and prints the URL.
 
 Cloudflare is optional. Without `CF_ACCOUNT_ID` the screen share keeps its default layout.
@@ -117,11 +121,39 @@ If the language model fails after the walk has found evidence, Guido still answe
 
 Dense vectors are optional. `python pipeline/build_kg_vectors.py` embeds every node into `app/data/kg_vectors.npz`, and the same fusion uses them. The free Gemini tier allows only 1000 embeddings a day, so this needs a paid key, and every question then costs one embedding call. The demo runs without them.
 
+## More accounts: growing the pools
+
+Video call minutes (Tavus) and GPU credits (Modal) come in monthly allowances per account. The app spreads the work over several accounts of each, so adding capacity means adding an account, not changing code. Both scripts can be run again: they only create what is missing.
+
+**A Tavus account** (one API key, 60 minutes a month on the free plan):
+
+```bash
+python deploy/deploy_new_tavus.py <api-key> --plan 60 --since 2026-10-15 --deploy
+```
+
+It puts the key into `TAVUS_EXTRA_KEYS` in `.env`, creates Luna, Lino and Guido with their tools in the new account, copies Luna's knowledge base there (132 texts, each checked against its sha256, handed to Tavus as signed links to the private bucket that expire after 3 hours) and records the account in `app/data/tavus_accounts.json`. `--deploy` then stores the key in Secret Manager and deploys the app. Signing the links needs the Service Account Token Creator role on the app's runtime service account. `python deploy/deploy_new_tavus.py --all` checks every account.
+
+**A Modal workspace** (one token, $30 of credits a month on the starter plan):
+
+```bash
+python deploy/deploy_new_modal.py <token-id> <token-secret> --deploy
+```
+
+It creates the Modal Secret `lino-api-key` in that workspace, merges Llama 3.2 1B and the NeSyCoT LoRA into its volume once, deploys `gpu/serve.py`, waits until Lino answers (one cold start, about 4 minutes of L4 time) and records the workspace and its URL in `app/data/modal_accounts.json`. The token goes to `MODAL_EXTRA_TOKENS` in `.env` and with `--deploy` to Secret Manager. `python deploy/deploy_new_modal.py --all` redeploys Lino everywhere, for example after changing `gpu/serve.py`.
+
+**How the work is spread.**
+
+- *Tavus.* A call goes to the account whose minutes expire first (at its renewal) and still cover a full call of `MAX_CALL_SECONDS`, then to the account with the most minutes left. If Tavus refuses (minutes used up, too many calls at once), the next account takes the call. Each account renews monthly on the day of its `period_start`.
+- *Modal.* Waking Lino picks the workspace with the most credits left, preferring workspaces with at least $3, which covers the longest hold on the start screen. Lino stays in that workspace until the GPU sleeps again, so a conversation never moves between machines. A workspace that does not come up within 10 minutes is skipped for an hour, and the wake moves on to the next one. Modal credits reset on the first of the month.
+- *Settings* shows every Tavus key and Modal workspace with the last characters of its key, the share left, the amount, the renewal date, and which one is in use or next.
+
+The keys and tokens themselves live only in `.env` and Secret Manager. The json files in `app/data` hold the first 12 hex characters of a sha256 of each key, which the server matches against the keys it was given.
+
 ## Things to know
 
 - **Costs.** Tavus bills call minutes, so every call ends after `MAX_CALL_SECONDS`. The Modal gpu costs money while awake. The start screen asks how long to keep it up, and Settings has a button that shuts it down. Only Lino needs the gpu. Luna and Guido run on the LLM API and are always there.
 - **Several visitors at once.** There are no accounts. The team password gives each browser its own random session id in a signed cookie. Each session holds its own lease on the gpu, so the gpu stays up while anyone still uses Lino, and Shut down only drops your own lease unless you are signed in as admin. A call can only be ended by the session that started it.
-- **Tavus minutes.** Tavus has no balance API. The app sums call durations since `TAVUS_PERIOD_START` and applies `TAVUS_USED_OFFSET_MIN`, calibrated by hand against the Tavus dashboard.
+- **Tavus minutes are an estimate.** Tavus has no balance API, so the app sums each account's call durations since its period start. `used_offset_min` in `tavus_accounts.json` calibrates one account against the Tavus dashboard for the period in `offset_period`.
 - **About us.** The team on the About page comes from `app/static/team.json`. Put photos in `app/static/img/team/` and their file names into the json.
 - **Usage log.** `/dashboard` shows logins, chats, calls and gpu actions with ip, browser and session. It has its own `ADMIN_PASSWORD`. IPs and questions are personal data, so tell your visitors.
 - **Link quality.** UMLS links from the MHH export are rank-1 retrieval candidates, not confirmed links, and the UI marks them as candidates. The MHH Wikidata candidates are never used: spot checks found wrong items.
