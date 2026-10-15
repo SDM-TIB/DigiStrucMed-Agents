@@ -29,8 +29,9 @@ async function showBoot(afterLogin) {
   let st = {status: 'offline'};
   try { st = await (await fetch('/api/gpu')).json(); } catch {}
   gpuState = st;
-  if (st.status === 'online' && !afterLogin) return showApp();   // reload while it is already running
-  $('#login').classList.add('hidden'); $('#app').classList.add('hidden'); $('#boot').classList.remove('hidden');
+  if (st.status === 'online' && !afterLogin) return enterApp();   // reload while it is already running
+  $('#login').classList.add('hidden'); $('#boot').classList.remove('hidden');
+  if (!bootModal) $('#app').classList.add('hidden');
   const cold = Math.max(60, Math.round((st.last_cold_start_s || 220) / 10) * 10);
   document.querySelectorAll('.boot-cold').forEach(e => e.textContent = `${Math.round(cold / 60)} minutes`);
   bootEntered = false; bootTavus();
@@ -74,10 +75,28 @@ $('#boot-go').onclick = async () => {
   $('#boot-go').disabled = true;
   try { gpuState = await post('/api/gpu/wake', {hold_s: bootHold}); } catch (e) { gpuState = {status: 'offline'}; }
   $('#boot-go').disabled = false;
-  if (gpuState.status === 'online') return showApp();
+  if (gpuState.status === 'online') return enterApp();
   bootWait();
 };
-$('#boot-skip2').onclick = $('#boot-luna').onclick = () => { switchAgent('luna'); showApp(); };
+$('#boot-skip2').onclick = $('#boot-luna').onclick = () => { if (bootModal) return closeBootModal(); switchAgent('luna'); showApp(); };
+// the same start screen opens as a dialog over the chat from lino's grey call button. closing it keeps a wake going:
+// the chat shows the progress and the call button turns on once lino is up
+let bootModal = false;
+function openBootModal() {
+  bootModal = true; const b = $('#boot');
+  b.classList.add('as-modal'); b.setAttribute('role', 'dialog'); b.setAttribute('aria-modal', 'true');
+  showBoot(false);
+}
+function closeBootModal() {
+  if (!bootModal) return;
+  bootModal = false; clearTimeout(bootPoll); const b = $('#boot');
+  b.classList.add('hidden'); b.classList.remove('as-modal'); b.removeAttribute('role'); b.removeAttribute('aria-modal');
+  pollGpu(); $('#start').focus();
+}
+function enterApp() { if (bootModal) closeBootModal(); else showApp(); }
+$('#boot-x').onclick = closeBootModal;
+$('#boot').addEventListener('click', e => { if (bootModal && e.target === $('#boot')) closeBootModal(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && bootModal) closeBootModal(); });
 // remaining Tavus video minutes (estimated from the call history; Tavus has no balance endpoint)
 async function tavusMinutes() {
   try { const x = await (await fetch('/api/tavus/usage')).json(); if (!x.ok) throw 0; return x; } catch { return null; }
@@ -90,7 +109,7 @@ async function bootTavus() {
   el.querySelector('span').innerHTML = tavusText(x); el.classList.toggle('low', x.remaining_min < 10); el.classList.toggle('out', x.remaining_min <= 0);
 }
 $('#boot-retry').onclick = () => { $('#boot-err').classList.add('hidden'); $('#boot-go').click(); };
-$('#boot-enter').onclick = () => showApp();
+$('#boot-enter').onclick = () => enterApp();
 function bootWait() {
   $('#boot-choose').classList.add('hidden'); $('#boot-wait').classList.remove('hidden'); $('#boot-wait').classList.remove('boot-wait-done');
   $('#boot-enter').classList.add('hidden'); $('#boot-err').classList.add('hidden'); bootTick();
@@ -114,7 +133,7 @@ async function bootTick() {
     $('#boot-state').textContent = 'Ready'; $('#boot-wtitle').textContent = `Lino is awake for at least ${fmtHold(st.hold_s || bootHold)}`;
     $('#boot-eta').textContent = `started in ${fmtClock(st.cold_start_s || 0)}`;
     $('#boot-enter').classList.remove('hidden'); $('#boot-enter').focus();
-    if (!bootEntered) { bootEntered = true; bootPoll = setTimeout(showApp, 2200); }
+    if (!bootEntered) { bootEntered = true; bootPoll = setTimeout(enterApp, 2200); }
   } else {
     $('#boot-state').textContent = 'Not started'; $('#boot-err').classList.remove('hidden');
   }
@@ -693,7 +712,11 @@ function renderGpu() {
   $('#lino-dot').className = 'presence ' + (st === 'online' ? '' : st === 'waking' ? 'wake' : 'off');
   $('#lino-time').textContent = st === 'online' ? 'online' : st === 'waking' ? 'waking' : 'offline';
   $('#guido-dot').className = 'presence'; $('#guido-time').textContent = 'online';
-  $('#start').classList.toggle('hidden', !agent.video || (sel && st !== 'online'));  // lino's call needs his gpu
+  // lino's call needs his gpu. asleep, the button stays but turns grey and opens the start screen to wake him
+  const asleep = sel && st !== 'online', label = !asleep ? 'Video Call' : st === 'waking' ? 'Lino is waking up…' : 'Wake up Lino for a call';
+  $('#start').classList.toggle('hidden', !agent.video); $('#start').classList.toggle('asleep', asleep);
+  $('#start span').textContent = label; $('#start').setAttribute('aria-label', label);
+  $('#start').title = asleep ? 'Lino runs on a GPU that sleeps when unused. Wake it to call him.' : '';
   $('#wake-btn-t').textContent = `Ping ${who} to wake up`;
   $('#wake-orb').className = 'orb lino sleepy-lino';
   if (sel) {
@@ -1268,7 +1291,7 @@ function openCall(from) {
   $('#cx-wait-text').textContent = 'Connecting to ' + agent.name + '…';
   openOverlay(from || $('#start')); syncToggles(); startPreview();
 }
-$('#start').onclick = () => openCall($('#start'));
+$('#start').onclick = () => $('#start').classList.contains('asleep') ? openBootModal() : openCall($('#start'));
 function openPicker() {
   const list = $('#picker-list'); list.innerHTML = '';
   Object.entries(AGENTS).forEach(([id, a], i) => {
