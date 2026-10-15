@@ -600,17 +600,29 @@ window.jrHTML = {
         : h('a', {key: i, href: x.url, target: '_blank', rel: 'noopener', style: {animationDelay: i * 25 + 'ms'}}, x.label)),
         p.total > (p.items || []).length ? h('span', {className: 'more'}, `+${p.total - p.items.length} on Wikidata`) : null));
   },
+  steps(h, p) {
+    return h('section', {className: 'jr-steps'}, p.title ? h('b', null, p.title) : null,
+      h('ol', null, (p.items || []).map((t, i) => h('li', {key: i, style: {animationDelay: i * 80 + 'ms'}}, h('span', {className: 'n'}, String(i + 1)), h('span', null, t)))));
+  },
+  compare(h, p) {
+    const col = (t, items, k) => h('div', {className: 'col ' + k}, h('b', null, t), h('ul', null, (items || []).map((x, i) => h('li', {key: i}, x))));
+    return h('section', {className: 'jr-compare'}, col(p.leftTitle, p.left, 'l'), h('span', {className: 'vs', 'aria-hidden': 'true'}, 'vs'), col(p.rightTitle, p.right, 'r'));
+  },
+  ask(h, p) {
+    return h('section', {className: 'jr-ask'}, h('span', {className: 'jr-kick'}, care.t('youCouldAsk')),
+      h('div', null, (p.items || []).map((q, i) => h('span', {key: i, className: 'q'}, q))));
+  },
   quote(h, p) {
     return h('article', {className: 'jr-quote'}, p.claim ? h('span', {className: 'jr-kick'}, care.t('summary')) : null, p.claim ? h('b', {className: 'claim'}, p.claim) : null,
       h('span', {className: 'jr-kick verbatim'}, care.t('guideline')), h('blockquote', null, p.quote),
       p.grade ? care.grade(h, p.grade) : null,
       h('footer', null, h('span', {className: 'src'}, `${p.ref || p.title} · p. ${p.page}`),
-        p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: p.pageId, quote: p.quote}}))}, 'Open page') : null));
+        p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: p.pageId, quote: p.quote}}))}, care.t('openPage')) : null));
   },
   excerpt(h, p) {
     const body = p.html ? h('div', {className: 'tbl', ref: el => el && jrTable(el, p.html, p.match)}) : h('blockquote', null, p.text);
     return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && 'page ' + p.page].filter(Boolean).join(' · '))),
-      p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: p.pageId}))}, 'Open page') : null), p.grade ? care.grade(h, p.grade) : null, body);
+      p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: p.pageId}))}, care.t('openPage')) : null), p.grade ? care.grade(h, p.grade) : null, body);
   }
 };
 function jrTable(el, html, match) {
@@ -638,7 +650,8 @@ function jrFallback(el) {
     Warning: p => h('div', {className: 'jr-warn'}, icon(p.icon || 'triangle-alert'), h('p', null, p.text)),
     Chips: p => h('div', {className: 'jr-chips'}, p.label ? h('span', {className: 'jr-lab'}, p.label) : null, (p.items || []).map(t => h('span', {className: 'jr-chip'}, String(t)))),
     ConceptCard: (p, k) => jrHTML.concept(h, p, k), IdList: p => jrHTML.ids(h, p), RelationList: p => jrHTML.relations(h, p),
-    Excerpt: p => jrHTML.excerpt(h, p), Quote: p => jrHTML.quote(h, p), Note: p => h('p', {className: 'jr-note'}, p.text)};
+    Excerpt: p => jrHTML.excerpt(h, p), Quote: p => jrHTML.quote(h, p), Note: p => h('p', {className: 'jr-note'}, p.text),
+    Steps: p => jrHTML.steps(h, p), Compare: p => jrHTML.compare(h, p), Ask: p => jrHTML.ask(h, p)};
   const build = (spec, key, depth = 0) => {
     const e = spec.elements[key]; if (!e || depth > 8 || !R[e.type]) return null;
     return R[e.type](e.props || {}, (e.children || []).map(c => build(spec, c, depth + 1)));
@@ -701,7 +714,7 @@ function switchAgent(id) {
   $('#suggests').classList.toggle('hidden', !SUG.length);
   $('#suggests').querySelectorAll('.sug').forEach(b => b.onclick = () => { const [, q, kind] = SUG[b.dataset.i]; if (kind === 'attach') setAttach(true); else $('#msg').value = q; $('#msg').focus(); });
   setAttach(false);
-  $('#msg').placeholder = agent === AGENTS.luna ? 'Ask Luna about heart guidelines…' : `Ask ${agent.name}…`;
+  $('#msg').placeholder = agent === AGENTS.luna ? care.t('askLuna') : care.fill('askAgent', {name: agent.name});
   renderGpu(); $('#msg').focus(); scrollFeed();
 }
 $('#item-lino').onclick = () => switchAgent('lino');
@@ -803,6 +816,7 @@ function citeify(html) {
   return html.replace(/\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\](?![^<]*>)/g, (_, g) => g.match(/\d+/g).map(n => `<button class="cite" data-n="${n}" aria-label="Source ${n}">${n}</button>`).join(''));
 }
 
+addEventListener('care-lang', () => { if (!attached) $('#msg').placeholder = agent === AGENTS.luna ? care.t('askLuna') : care.fill('askAgent', {name: agent.name}); $('#dq-label').textContent = care.t('myQuestions'); });
 // fixed, hand-written safety texts from care.js. the banner shows when a message sounds like an emergency right now
 function careAlert(level = 'emergency', l = care.lang) {
   const [title, text, button] = {emergency: ['alertTitle', 'alert', 'call'], urgent: ['urgentTitle', 'urgent', 'call'], support: ['supportTitle', 'support', 'talk']}[level];
@@ -822,6 +836,85 @@ async function triage(message, conversation, place) {
 }
 // screen readers hear each finished answer once, not every streamed word
 function announce(text) { const r = $('#sr-live'); r.textContent = ''; setTimeout(() => r.textContent = text, 60); }
+// lino's statements against the guidelines (app/check.py). his words stay as they are; under them, each statement with
+// a verdict and the guideline text word for word, so the patient sees where a memory-only answer holds and where not
+const VERDICT = {supported: '✓', contradicted: '!', not_addressed: '?', unclear: '?'};
+function checkCard(lang) {
+  const box = document.createElement('section'); box.className = 'gcheck'; box.lang = lang;
+  box.innerHTML = `<header><b>${esc(care.t('checkTitle', lang))}</b><span class="gc-busy">${esc(care.t('checking', lang))}</span></header><ol></ol>`;
+  return box;
+}
+function fillCheck(box, res, lang) {
+  box.querySelector('.gc-busy')?.remove();
+  const claims = (res && res.claims) || [];
+  if (res && res.error || !claims.length) { box.querySelector('ol').outerHTML = `<p class="gc-none">${esc(care.t('checkNone', lang))}</p>`; return; }
+  box.querySelector('ol').innerHTML = claims.map(c => `<li class="v-${c.verdict}"><details><summary><span class="gc-ic" aria-hidden="true">${VERDICT[c.verdict] || '?'}</span>
+    <span class="gc-claim">${esc(c.text)}</span><span class="gc-v">${esc(care.t(c.verdict, lang))}</span></summary>
+    ${c.source ? `<blockquote>${esc(c.source.text)}</blockquote><footer><span>${esc(c.source.ref || c.source.title)} · p. ${c.source.page}</span>
+      <button data-page="${esc(c.source.page_id)}" data-quote="${esc(c.source.text.replace(/^…\s*|\s*…$/g, '').slice(0, 160))}">${esc(care.t('openPage', lang))}</button></footer>` : ''}</details></li>`).join('');
+  box.insertAdjacentHTML('beforeend', `<p class="gc-how">${esc(care.t('checkHow', lang))}</p>`);
+  box.onclick = e => { const b = e.target.closest('button[data-page]'); if (b) window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: b.dataset.page, quote: b.dataset.quote}})); };
+}
+async function guidelineCheck(question, answer, after, place) {
+  const lang = langOf(answer), box = checkCard(lang);
+  place ? place(box) : after.before(box);
+  let res = null;
+  try { res = await post('/api/check', {question, answer}); } catch {}
+  fillCheck(box, res, lang);
+  return res;
+}
+// next steps under an answer: what to ask next (sends it), what to take to the doctor (collects it)
+async function nextSteps(question, answer, el) {
+  if (!answer || answer.length < 40 || /^\s*[\[{]/.test(answer)) return;
+  let res; try { res = await post('/api/followups', {question, answer}); } catch { return; }
+  if (!res || res.error || !(res.ask || []).length && !(res.doctor || []).length) return;
+  const lang = langOf(answer), box = document.createElement('div'); box.className = 'next'; box.lang = lang;
+  const row = (kind, label, items) => items.length ? `<div class="next-row ${kind}"><span>${esc(care.t(label, lang))}</span>${items.map(q =>
+    `<button data-kind="${kind}" ${kind === 'doctor' ? `title="${esc(care.t('addToList', lang))}"` : ''}>${kind === 'doctor' ? '<i aria-hidden="true">+</i>' : ''}${esc(q)}</button>`).join('')}</div>` : '';
+  box.innerHTML = row('ask', 'askNext', res.ask || []) + row('doctor', 'forDoctor', res.doctor || []);
+  box.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.kind === 'ask') { if (!chatBusy) sendChat(b.textContent); return; }
+    addDoctorQuestion(b.textContent.replace(/^\+/, '').trim(), lang); b.classList.add('done'); b.disabled = true;
+  };
+  (el.querySelector('.care-note') || el.querySelector('.refs')).after(box); scrollFeed();
+}
+// the patient's own list of questions for their doctor. kept in this browser only
+const DQ_KEY = 'tib-doctor-questions';
+const dqLoad = () => { try { return JSON.parse(localStorage.getItem(DQ_KEY) || '[]'); } catch { return []; } };
+const dqSave = list => { try { localStorage.setItem(DQ_KEY, JSON.stringify(list)); } catch {} renderDoctorQuestions(); };
+function addDoctorQuestion(q, lang) {
+  const list = dqLoad(); if (!list.includes(q)) dqSave([...list, q]);
+  status(care.t('added', lang)); $('#dq-label').textContent = care.t('myQuestions', lang);
+}
+function renderDoctorQuestions() {
+  const list = dqLoad(), btn = $('#dq-btn');
+  btn.classList.toggle('hidden', !list.length); btn.querySelector('b').textContent = list.length;
+  $('#dq-list').innerHTML = list.length ? list.map((q, i) => `<li><span>${esc(q)}</span><button data-i="${i}" aria-label="Remove">×</button></li>`).join('')
+    : `<li class="empty">${esc(care.t('noQuestions'))}</li>`;
+}
+function openDoctorQuestions() {
+  const l = care.lang;
+  $('#dq-title').textContent = care.t('myQuestions', l); $('#dq-copy').textContent = care.t('copy', l); $('#dq-clear').textContent = care.t('clear', l);
+  renderDoctorQuestions(); $('#dq').classList.remove('hidden'); $('#dq-copy').focus();
+}
+const closeDoctorQuestions = () => { $('#dq').classList.add('hidden'); $('#dq-btn').focus(); };
+$('#dq-btn').onclick = openDoctorQuestions;
+$('#dq-x').onclick = closeDoctorQuestions;
+$('#dq').addEventListener('click', e => { if (e.target === $('#dq')) closeDoctorQuestions(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dq').classList.contains('hidden')) closeDoctorQuestions(); });
+$('#dq-list').onclick = e => { const b = e.target.closest('button[data-i]'); if (b) { const list = dqLoad(); list.splice(+b.dataset.i, 1); dqSave(list); } };
+$('#dq-clear').onclick = () => dqSave([]);
+$('#dq-copy').onclick = () => navigator.clipboard.writeText(dqLoad().map((q, i) => `${i + 1}. ${q}`).join('\n'))
+  .then(() => { $('#dq-copy').textContent = care.t('copied'); setTimeout(() => $('#dq-copy').textContent = care.t('copy'), 1600); }).catch(() => {});
+setTimeout(() => { $('#dq-label').textContent = care.t('myQuestions'); renderDoctorQuestions(); });
+// parts of a cited answer without any citation get a quiet marker: the patient sees what is not backed by a source
+function markUncited(st) {
+  if (!st.answer.querySelector('.cite')) return;
+  st.answer.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li').forEach(n => {
+    if (!n.querySelector('.cite') && n.textContent.trim().length > 80) { n.classList.add('uncited'); n.title = care.t('uncited', langOf(st.raw)); }
+  });
+}
 function addAssistant() {
   const el = document.createElement('div'); el.className = 'msg-ai';
   el.innerHTML = '<div class="orb ' + agent.orb + '" aria-hidden="true"></div><div><div class="steps"></div><div class="answer"><div class="thinking"><i></i><i></i><i></i></div></div><div class="refs"></div></div>';
@@ -1192,10 +1285,10 @@ async function sendChat(text) {
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
         if (!line.startsWith('data:')) continue;
         const ev = JSON.parse(line.slice(5));
-        if (ev.type === 'tool_call' && ev.name === 'search_guidelines') step(st, 'search', `Searching guidelines for <span class="q">“${esc(ev.args.query || '')}”</span>`, true);
-        else if (ev.type === 'sources') { ev.items.forEach(s => st.sources[s.n] = s); if (st.pending && !tl) st.pending.querySelector('.label').insertAdjacentHTML('beforeend', ` · ${ev.items.length} pages`); }
-        else if (ev.type === 'tool_call' && ev.name === 'read_page') step(st, 'read', 'Reading the full page', true);
-        else if (ev.type === 'read') { const s = ev.item; if (st.pending) st.pending.querySelector('.label').innerHTML = `Reading <span class="q">${esc(s.ref || s.title)}</span>, page ${s.page}`; }
+        if (ev.type === 'tool_call' && ev.name === 'search_guidelines') step(st, 'search', `${esc(care.t('searching'))} <span class="q">“${esc(ev.args.query || '')}”</span>`, true);
+        else if (ev.type === 'sources') { ev.items.forEach(s => st.sources[s.n] = s); if (st.pending && !tl) st.pending.querySelector('.label').insertAdjacentHTML('beforeend', ` · ${ev.items.length} ${esc(care.t('pages'))}`); }
+        else if (ev.type === 'tool_call' && ev.name === 'read_page') step(st, 'read', esc(care.t('readingFull')), true);
+        else if (ev.type === 'read') { const s = ev.item; if (st.pending) st.pending.querySelector('.label').innerHTML = care.fill('reading', {ref: `<span class="q">${esc(s.ref || s.title)}</span>`, page: s.page}); }
         else if (ev.type === 'text' && tl) tl.push({kind: 'text', delta: ev.delta});
         else if (ev.type === 'text') {
           settle(st);
@@ -1213,6 +1306,9 @@ async function sendChat(text) {
     if (st.raw.trim()) st.el.querySelector('.refs').insertAdjacentHTML('afterend', `<p class="care-note">${esc(care.t(a === AGENTS.lino ? 'noteLino' : 'note'))}</p>`);
     announce(`${a.name}: ${st.answer.textContent.slice(0, 900)}`);
     if (a === AGENTS.lino) renderStoryboard(st);
+    if (a !== AGENTS.lino) markUncited(st);
+    if (a === AGENTS.lino) guidelineCheck(text, st.raw, st.el.querySelector('.care-note'));
+    nextSteps(text, st.raw, st.el);
     if (a === AGENTS.guido) chatEvidence(st);
     chatHistory.push({role: 'assistant', text: st.raw});
     $(a.preview).textContent = st.raw.replace(/\[\d+\]|[*#_]/g, '').slice(0, 80);
@@ -1545,6 +1641,30 @@ function speakable(t, max = 2600) {
   const cut = t.slice(0, max), i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
   return i > max * 0.5 ? cut.slice(0, i + 1) : cut;
 }
+// the board catalogue from the server (board.py COMPONENTS): types, word limits, icons. an element that breaks it
+// is dropped on its own, an over-long text is cut at its word limit, an unknown icon becomes sparkles
+let BOARD_SCHEMA = null;
+fetch('/api/board-schema').then(r => r.ok ? r.json() : null).then(s => BOARD_SCHEMA = s).catch(() => {});
+function jrValidate(spec) {
+  const S = BOARD_SCHEMA; if (!S || !spec || !spec.elements) return spec;
+  const words = (t, n) => { const w = String(t).trim().split(/\s+/); return w.length > n ? w.slice(0, n).join(' ') + '…' : w.join(' '); };
+  const out = {root: spec.root, elements: {}};
+  for (const [key, e] of Object.entries(spec.elements)) {
+    const c = e && S.components[e.type]; if (!c) continue;
+    const props = {}; let ok = true;
+    for (const [name, kind] of Object.entries(c.props)) {
+      const v = (e.props || e)[name];  // models sometimes put props next to type instead of inside props
+      if (v == null || v === '') continue;
+      if (kind === 'icon') props[name] = S.icons.includes(v) ? v : 'sparkles';
+      else if (kind[0] === 'text') props[name] = words(v, kind[1]);
+      else if (Array.isArray(v)) props[name] = v.filter(x => typeof x === 'string' && x.trim() && (kind[0] !== 'questions' || x.trim().endsWith('?'))).slice(0, kind[1]).map(x => words(x, kind[2]));
+    }
+    for (const r of c.required) if (props[r] == null || (Array.isArray(props[r]) && !props[r].length)) ok = false;
+    if (ok) out.elements[key] = {type: e.type, props, children: e.children || []};
+  }
+  for (const e of Object.values(out.elements)) e.children = e.children.filter(k => out.elements[k]);
+  return out.elements[out.root] ? out : {root: '', elements: {}};
+}
 // live board: the llm restructures what was said into a json-render spec, streamed as SpecStream patches
 async function liveBoard(text, who) {
   const key = normSpeech(text).slice(0, 80);
@@ -1564,10 +1684,10 @@ async function liveBoard(text, who) {
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
         if (!line.startsWith('data:')) continue;
         const ev = JSON.parse(line.slice(5));
-        if (ev.type === 'delta') { const {result, newPatches} = comp.push(ev.text); if (newPatches.length && result.root) r.set(result, true); }
+        if (ev.type === 'delta') { const {result, newPatches} = comp.push(ev.text); if (newPatches.length && result.root) r.set(jrValidate(result), true); }
       }
     }
-    const fin = comp.push('\n').result; if (fin.root) r.set(fin, false);
+    const fin = comp.push('\n').result; if (fin.root) r.set(jrValidate(fin), false);
   } catch {}
 }
 // guido narrates in the language of the question. en, de, es, ru and hi, like the agents themselves
@@ -1715,6 +1835,7 @@ async function linoCall(m, p) {
   echo(spoken);                          // Lino's own words, verbatim
   toolResult(m, p, spoken, ok);          // on_resolve add_to_context: kept in history, not re-spoken
   liveBoard(output, 'lino');
+  if (ok) guidelineCheck(question, output, null, box => { if (!cx.classList.contains('stage-on')) stageShow(true); $('#stage-cards .stage-empty')?.remove(); $('#stage-cards').prepend(box); });
 }
 async function onAppMessage(e) {
   const m = e?.data; if (!m) return;
