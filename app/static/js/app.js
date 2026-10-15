@@ -82,7 +82,8 @@ $('#boot-skip2').onclick = $('#boot-luna').onclick = () => { switchAgent('luna')
 async function tavusMinutes() {
   try { const x = await (await fetch('/api/tavus/usage')).json(); if (!x.ok) throw 0; return x; } catch { return null; }
 }
-function tavusText(x) { return `≈ <b>${x.remaining_min.toFixed(1)} of ${x.plan_min} min</b> video call time left · ${x.used_min} min used in ${x.calls} calls since ${new Date(x.since).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}`; }
+const tvDay = (d, month = 'short') => new Date(d).toLocaleDateString('en-GB', {day: 'numeric', month});
+function tavusText(x) { return `≈ <b>${x.remaining_min.toFixed(1)} of ${x.plan_min} min</b> video call time left · ${x.accounts.length} Tavus accounts · next renewal ${tvDay(x.next_renewal)}`; }
 async function bootTavus() {
   const el = $('#boot-tavus'), x = await tavusMinutes();
   if (!x) { el.querySelector('span').textContent = 'Video call minutes unavailable'; return; }
@@ -385,19 +386,32 @@ $('#gpu-off').onclick = async () => {
   b.disabled = false; b.classList.remove('confirm'); t.textContent = 'Shut down GPU';
   loadSettings();
 };
+// one row per tavus key or modal workspace: name, key hint, share left, amount, renewal, and where the next call or wake goes
+function accountRows(sel, rows, fmt) {
+  $(sel).innerHTML = rows.map(a => {
+    if (a.error) return `<div class="acct off"><div class="acct-id"><b>${esc(a.name)}</b><code>${esc(a.key || '')}</code></div><small>unreachable</small></div>`;
+    const [pct, amount, renews] = fmt(a), p = Math.max(0, Math.min(100, pct));
+    const tag = a.active ? '<em class="on">in use</em>' : a.next ? '<em>next</em>' : '';
+    return `<div class="acct${p <= 0 ? ' empty' : p < 15 ? ' low' : ''}"><div class="acct-id"><b>${esc(a.name)}</b><code>${esc(a.key || '')}</code>${tag}</div>
+      <div class="acct-bar" role="img" aria-label="${Math.round(p)}% left"><i style="width:${p}%"></i></div>
+      <div class="acct-num"><b>${Math.round(p)}%</b><small>${amount} · ${renews}</small></div></div>`;
+  }).join('');
+}
 async function loadSettings() {
   tavusMinutes().then(x => {
     if (!x) { $('#tv-note').textContent = 'Video call minutes are unavailable right now.'; return; }
     $('#tv-min').textContent = x.remaining_min.toFixed(1);
     $('#tv-gauge').style.setProperty('--pct', Math.max(0, Math.min(100, 100 * x.remaining_min / x.plan_min)));
-    $('#tv-note').innerHTML = `${x.used_min} of ${x.plan_min} plan minutes used in ${x.calls} calls since ${new Date(x.since).toLocaleDateString('en-GB', {day: 'numeric', month: 'long'})}. Estimated from the call history (Tavus offers no balance API).`;
+    $('#tv-note').textContent = `${x.used_min} of ${x.plan_min} plan minutes used in ${x.calls} calls over ${x.accounts.length} Tavus accounts. A call goes to the account whose minutes expire first. Estimated from the call history (Tavus has no balance API).`;
+    accountRows('#tv-accts', x.accounts, a => [100 * a.remaining_min / a.plan_min, `${a.remaining_min.toFixed(1)} of ${a.plan_min} min`, `renews ${tvDay(a.renews)}`]);
   });
   try {
     const x = await (await fetch('/api/settings')).json();
     if (x.modal && x.modal.ok) {
       $('#credit-pct').textContent = Math.round(x.modal.remaining_pct) + '%';
       $('#gauge').style.setProperty('--pct', x.modal.remaining_pct);
-      $('#credit-note').textContent = `${Math.round(x.modal.used_pct)}% of this month's plan credits used. Resets on ${new Date(x.modal.resets).toLocaleDateString('en-GB', {day: 'numeric', month: 'long'})}.`;
+      $('#credit-note').textContent = `$${x.modal.remaining_usd.toFixed(2)} of $${x.modal.plan_usd} left over ${x.modal.accounts.length} Modal workspaces. Lino wakes in the one with the most credits. Resets on ${tvDay(x.modal.resets, 'long')}.`;
+      accountRows('#modal-accts', x.modal.accounts, a => [a.remaining_pct, `$${a.remaining_usd.toFixed(2)} of $${a.plan_usd}`, `resets ${tvDay(a.resets)}`]);
     } else $('#credit-note').textContent = 'Credit information is unavailable right now.';
     const st = x.lino.status;
     $('#set-lino-dot').className = 'presence ' + (st === 'online' ? '' : st === 'waking' ? 'wake' : 'off');

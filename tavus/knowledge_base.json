@@ -1,0 +1,798 @@
+{
+  "_how": "Luna's Tavus knowledge base: 132 English MHH guideline documents (2,378 pages), built on 2026-10-07 by medit/output/tavus_mhh_demo_07_10/build_knowledge_base.py. The texts are in the bucket under assets/tavus-kb/<file> (python deploy/deploy.py assets pull puts them in tavus/knowledge_base/). deploy/deploy_new_tavus.py uploads them to a new account and checks every sha256.",
+  "tag": "mhh-demo-kb-20261007-v1",
+  "documents": [
+    {
+      "file": "0074e29f31a1f0feb082e0064bee46f60bf6b5ae3f8703d1231341374ed97e52.txt",
+      "name": "MHH guideline 0074e29f31a1",
+      "sha256": "ace56eced4bd1ceacf7270cc618315bfb56c7749e7df43e980bc497eae6dcdd4",
+      "pages": 36
+    },
+    {
+      "file": "03f999f43342b523ef8ea8334b7569ba6a8408421e54b30f8f8a2513456bec53.txt",
+      "name": "MHH guideline 03f999f43342",
+      "sha256": "057e10e3494a337c8c119dc902ba707f48456f2c84a9a4a5d9ad79e53b6ab010",
+      "pages": 17
+    },
+    {
+      "file": "01097b946c126c9b25b68533078b70506c8f3b5ef09d987a529c14aa554fb11e.txt",
+      "name": "MHH guideline 01097b946c12",
+      "sha256": "09234b3ec8a74f456d3758b54e0eb4cef65b15d9b66b74932b440bb6e1fa4636",
+      "pages": 20
+    },
+    {
+      "file": "09ac95762f6d1123e025abc480455ce3be54b1a04b2b6ffd7375f9b73d0a4eee.txt",
+      "name": "MHH guideline 09ac95762f6d",
+      "sha256": "7aea230c1b1ea730687ae8c997bad2d5543340fba9dea7ef4fcb1f4ba5823d3f",
+      "pages": 37
+    },
+    {
+      "file": "101623b3c97d37cfaa1ee5f4467291ac3f66fd605e1f265a97a9715b780246cd.txt",
+      "name": "MHH guideline 101623b3c97d",
+      "sha256": "fd4c9085b122a8a61ee3382c67c2facd831ec96754a882e0ec927f43bd01c5f8",
+      "pages": 2
+    },
+    {
+      "file": "0a0f1df65c060068077be27b88499e4049337676a36ed6a32d5377a5654f0274.txt",
+      "name": "MHH guideline 0a0f1df65c06",
+      "sha256": "5dad2f23712eaa8215268c00ca5207588179de0cd4b76b04f7446118486a7d8f",
+      "pages": 1
+    },
+    {
+      "file": "0a5b07262fb6deaea1305147b46e84b8a0e692c3bf4e3b142d88ada7ab765548.txt",
+      "name": "MHH guideline 0a5b07262fb6",
+      "sha256": "7be23187fc4969e768c6695f1f578c5e1514b5c1cde41e25b99d70a715984273",
+      "pages": 48
+    },
+    {
+      "file": "1660f0cf060aadc2df42df40fa6b8f5ec46afd68baa4d3c015f44793cac177c9.txt",
+      "name": "MHH guideline 1660f0cf060a",
+      "sha256": "a01849c542ef8ec5bf1208108404decf3c061c0c314173ae45ea88ec66876eb6",
+      "pages": 1
+    },
+    {
+      "file": "11d7190874698aed7538cf1f99164999747bb0ecdcb2204466c8984a4b354052.txt",
+      "name": "MHH guideline 11d719087469",
+      "sha256": "cf78cb75afa0bbc28203742aee0bbcdc6a83f6728135a43ff58b6828f20492fe",
+      "pages": 4
+    },
+    {
+      "file": "1818e717d963d75d8d594b782bac7ce00c8827ed62d7f47c6d075bfc71827fd2.txt",
+      "name": "MHH guideline 1818e717d963",
+      "sha256": "2389311e75c07c6f9ae1c7d4513a9674a1e57bb2cdd9d9243a09ad9a79f875b5",
+      "pages": 7
+    },
+    {
+      "file": "1ca6b12bf60a843c31976df4cf836e2353b6d17302421e94558c45f07a8d6778.txt",
+      "name": "MHH guideline 1ca6b12bf60a",
+      "sha256": "3900bb627495d217616faff75eed8f6b5c7abccfb5ed9c1dd678339b748c2fd1",
+      "pages": 6
+    },
+    {
+      "file": "1fefba718ed2faf2c082c3295dd2857c950904bef3574d703b79fa6313b86282.txt",
+      "name": "MHH guideline 1fefba718ed2",
+      "sha256": "d8983ddba6b1f11ec6329b8a99be6255be35159db7ac926edce1e17f6f513435",
+      "pages": 9
+    },
+    {
+      "file": "24efc1a1dcc0dff765182b937fd2b90ca7a2a29bf18fd570cf5e997d6abd7971.txt",
+      "name": "MHH guideline 24efc1a1dcc0",
+      "sha256": "a7dd212da4d0825b0349e86efc38ab0ecd16d57f2b6d33323b27cb8f7cc50474",
+      "pages": 5
+    },
+    {
+      "file": "1d4ae21bdadbacafa8087e019976dde180c346c5d4626772c2b286528336efac.txt",
+      "name": "MHH guideline 1d4ae21bdadb",
+      "sha256": "f4db1e545da64ec5a9e631e6b1998711a82e2d77953634e635f41cf180e7d84a",
+      "pages": 111
+    },
+    {
+      "file": "28f957dab7eeeaae1cc0da0c1e8e94b95fff265be5f1ca60a3ffc6bf43254e14.txt",
+      "name": "MHH guideline 28f957dab7ee",
+      "sha256": "d22f5bd4a73b53c3aea3fbf5de1d903437a8f165a1faa9e4537e317eddc56732",
+      "pages": 38
+    },
+    {
+      "file": "2ad46b290204e7bf6c768d5af3830c3757dc252c01b01a1baa2c1d3e533eb62f.txt",
+      "name": "MHH guideline 2ad46b290204",
+      "sha256": "246baca0d143fa3b9affca3bafd3513b1b6f0b2016f6c4cb28e72c177e4eedbb",
+      "pages": 2
+    },
+    {
+      "file": "2a4e0a03c759820e54ca2a2585a29fc954c8ebe7f5ddcc89a4ac1de2a7892697.txt",
+      "name": "MHH guideline 2a4e0a03c759",
+      "sha256": "5fcacc84b0aae2813c3690154c865dca4f52d5bd2a4acbfe2cf00509329c53dc",
+      "pages": 11
+    },
+    {
+      "file": "2b6290b9ec9e0199863d75426f4eb32800b1dbc4c89274d4f3da3dea703a1dad.txt",
+      "name": "MHH guideline 2b6290b9ec9e",
+      "sha256": "dd18f735c1b4b2cdee87e3acf4971bf502da338dbf39602874da6f1f7d174770",
+      "pages": 65
+    },
+    {
+      "file": "2c1c5c3ded37a0c429fe5bfae1403cfe267504307074fa018ea57f52691032c5.txt",
+      "name": "MHH guideline 2c1c5c3ded37",
+      "sha256": "ffdd67c09007089d4e5570e504ddb51e7a96fdc49424312f2126216ae2815d1e",
+      "pages": 5
+    },
+    {
+      "file": "2d4596bf5a2293bce12bde125c4c909f40ffa7b4a195087dba8cfc4861260a7d.txt",
+      "name": "MHH guideline 2d4596bf5a22",
+      "sha256": "63304c5e93127ea2e3b25f93369c558ece835353a2ac4c1c773c2e687f4ff52c",
+      "pages": 193
+    },
+    {
+      "file": "30bf1540bdb9cf87046c6dc6f24fc53941877cffe81b57fa9bc58e2c90f483fc.txt",
+      "name": "MHH guideline 30bf1540bdb9",
+      "sha256": "6e863ae8856d82604d5325cc80ad24ca759905240ef133d0746004559c4b3385",
+      "pages": 2
+    },
+    {
+      "file": "30375018d7b4c3ccf39a5ec35166af0d4c104cf9eb0bcd3687d2f6edd11d5c4b.txt",
+      "name": "MHH guideline 30375018d7b4",
+      "sha256": "667f25f855ce5ee77fbb72073d26f8db2147182b29419dc8e8b61597782e4650",
+      "pages": 5
+    },
+    {
+      "file": "30472531b3f28a24f81c229d3f19a7dc136919e092f7e345eed9d4b49f319cdd.txt",
+      "name": "MHH guideline 30472531b3f2",
+      "sha256": "f8a9a48672fac372cf570c64356951a50ac047a0d2e5fdec44a117c79fe3b2a6",
+      "pages": 17
+    },
+    {
+      "file": "345994686c15413d2c2e3bc2493c2960bf7d82a9370193c1b10efa6fc77af626.txt",
+      "name": "MHH guideline 345994686c15",
+      "sha256": "cf04cc88c2efba8b1f37b8d9be769276776ac34933b8a87d922b3f41e3a2af8c",
+      "pages": 4
+    },
+    {
+      "file": "3756890c1e5fc6e4f303d0d69c5e6674192365d99b5559676ac7dc7c72e24ed8.txt",
+      "name": "MHH guideline 3756890c1e5f",
+      "sha256": "bd267edc5b16c9810758119690e80f1586c145377065c9dc90e183da2833ce81",
+      "pages": 31
+    },
+    {
+      "file": "388a7d65f585b8208248ff052cc4f6577efb9349c5ac28e18c5d715a21f04071.txt",
+      "name": "MHH guideline 388a7d65f585",
+      "sha256": "3632bef67540c986421591c49aa318da536fde43fdde564a91a6f5519164d801",
+      "pages": 1
+    },
+    {
+      "file": "3a3d8364f29fea972155f20a2cc2cf45ae217fa9619111a4f3a9251ad1518ef4.txt",
+      "name": "MHH guideline 3a3d8364f29f",
+      "sha256": "8e2bececcfbfdb92d31543e1fa9a1199fde37ffbf034f1974feea16c05b2e0e5",
+      "pages": 11
+    },
+    {
+      "file": "3a5755a100f79957616489499d8d37b22ab61f389ef45c4dd90cb2ed786ac012.txt",
+      "name": "MHH guideline 3a5755a100f7",
+      "sha256": "9436b53d0084ae960bda4ad8613ade627c6c250a03470d3dd02737ae5b7501ca",
+      "pages": 2
+    },
+    {
+      "file": "3c2193354cb279495862bf4dca9707f30672900d69d3918ab0d2676876bd68c7.txt",
+      "name": "MHH guideline 3c2193354cb2",
+      "sha256": "8c858be030079cea3ebce4bf9703cb77305c010b9b4cf68999056f68e39bf260",
+      "pages": 4
+    },
+    {
+      "file": "3dbbe6a3a2072efaca31005b05d1cf5526f2dd7b8eda19aa469e53305ecb0580.txt",
+      "name": "MHH guideline 3dbbe6a3a207",
+      "sha256": "22ae693699b77e3eb7699e1e348c0ed0f204431748ab19c323d8d842adb21f27",
+      "pages": 7
+    },
+    {
+      "file": "3e59b3f9f18db738e310141eaae57e69a15c1a4d9e65e4de980a0d8350eea667.txt",
+      "name": "MHH guideline 3e59b3f9f18d",
+      "sha256": "bf610a5ec299a3dc07a3371d9f6ffb8d278633579d0036934ee58652c6d1d74f",
+      "pages": 4
+    },
+    {
+      "file": "3fe093e6738405d4e7d0f0ff5dca80573b3ec9cb2ac77968f08caa1d8b56790a.txt",
+      "name": "MHH guideline 3fe093e67384",
+      "sha256": "37fbeb0fc05032131ae26296bc17aaa667b006d40fff1523d2abe2486dfdd3ca",
+      "pages": 2
+    },
+    {
+      "file": "404229dfe845796afbe6d76a3c7c5e86afe44a4a11680a8505e8b7f2dd509b39.txt",
+      "name": "MHH guideline 404229dfe845",
+      "sha256": "e9fe7d6e48a9a5b75ced851c4299181bd07c89febde71c8d42d436474324b062",
+      "pages": 2
+    },
+    {
+      "file": "40d5e5e79d772240e69a512e31731d4560824c46e221d347bee4333c232e92a6.txt",
+      "name": "MHH guideline 40d5e5e79d77",
+      "sha256": "ec0f66dd2fb66955a6ec73ba0607b524b1c63662d9f42b268a3d5fdc0c745357",
+      "pages": 9
+    },
+    {
+      "file": "43133194350434f05ed365ba00a5e53174f7958c09608e3af3dcef4bd7a7d4cc.txt",
+      "name": "MHH guideline 431331943504",
+      "sha256": "8c15865fa315501b7f9c06ad649e7b7426a8d58247151d3250c79757155bfe51",
+      "pages": 2
+    },
+    {
+      "file": "43204eb005113090db3476895a76cc14f70698fd23b8582928d6dd3b8f43e10b.txt",
+      "name": "MHH guideline 43204eb00511",
+      "sha256": "9ab9bb49bfee0c122680d857cdb27637e58c54de55d1bf2b9542304cb4f86fea",
+      "pages": 84
+    },
+    {
+      "file": "44336e3b4a21ff8efff461ed12d53a68e5f8aab8e1db51c522edbe9a78a9bc07.txt",
+      "name": "MHH guideline 44336e3b4a21",
+      "sha256": "b8801de106c40f3ad8f70c8c95a4f3a993b935b52ca0b74a6c9f1be555e5a690",
+      "pages": 13
+    },
+    {
+      "file": "49b55a405981c081111a252654221827112264c9954c6683ed605378731ee5f7.txt",
+      "name": "MHH guideline 49b55a405981",
+      "sha256": "8edc46792a7fdbab63cf8f04f979845fcd49999f17a139bed30620d571a780f1",
+      "pages": 2
+    },
+    {
+      "file": "4c8026d79c69769417bbd10d31eab8e70d1ce571e76143ac003acbf9ceed9752.txt",
+      "name": "MHH guideline 4c8026d79c69",
+      "sha256": "2665847daefafd095e931207690861f1643a1e5546ec27a18fe795e5b80cb995",
+      "pages": 4
+    },
+    {
+      "file": "4e1d2b1ed9a083f827a468ac82768833ba9ec73316b28592db9585e4117dc993.txt",
+      "name": "MHH guideline 4e1d2b1ed9a0",
+      "sha256": "2822a22d38c2ea2651847fb67276c1fa5ca382c1d9fd82827653f5ca101ca020",
+      "pages": 5
+    },
+    {
+      "file": "4ea321b17c51f02a673712af1e290aabf1193a9afe83cff4bd6d248fccbfe663.txt",
+      "name": "MHH guideline 4ea321b17c51",
+      "sha256": "1e3d1a08ab3b093b082e3ce05e39364a1fa5ea15cb36a1c16fff6d0fc11dd4c5",
+      "pages": 12
+    },
+    {
+      "file": "4fff5210763f12ab825417095bafca36bf5dca08cbe30f68ff5a9abdadf5cd83.txt",
+      "name": "MHH guideline 4fff5210763f",
+      "sha256": "9a2b74af51d9745469105ba13ddcd23664d6c16df91df24fcf9ef4d37114daa0",
+      "pages": 11
+    },
+    {
+      "file": "5135b2c5e09711b52576a138e078c3f017dad7147a48872a67c537a637a3582b.txt",
+      "name": "MHH guideline 5135b2c5e097",
+      "sha256": "e39529eb1c10c7c9407fe5cfcdd9b005a2ecae745aff5f3f5621e5ccd3e9009a",
+      "pages": 1
+    },
+    {
+      "file": "52d9ef3e15b3646dea60e2d34d30d9ad7ac44f0de9e9612367188d98a9734447.txt",
+      "name": "MHH guideline 52d9ef3e15b3",
+      "sha256": "27573b8b67385ac7ebcf51a4d6ca6f8a65b860e924891bcba656c92c42af7c94",
+      "pages": 6
+    },
+    {
+      "file": "58f849907b52e99bd23af800f8d763a8229c9f259761916e6f9cd2caf9fafd1d.txt",
+      "name": "MHH guideline 58f849907b52",
+      "sha256": "c45a15d95d9c63d272dd78c4000754ce33e3b6104d6854000ef75bd5b3102b64",
+      "pages": 132
+    },
+    {
+      "file": "5e23f3626c72f5543147dd190725499e8f7d5b2007877737ada2943d4e13be79.txt",
+      "name": "MHH guideline 5e23f3626c72",
+      "sha256": "473c01a3b277774e355cf080f2e68c113ecc1cc4fdb6a9443682478814b63b59",
+      "pages": 25
+    },
+    {
+      "file": "5eae3e0f474849aed66b9019e9873e5252bc6c7790b9c74bec42e60967478875.txt",
+      "name": "MHH guideline 5eae3e0f4748",
+      "sha256": "a1d131ffe2396cc03d952136a2bc205960292f455f6299ee7f8f7c25eab307f7",
+      "pages": 1
+    },
+    {
+      "file": "5ec34bac9b8f489d7ae0417768e749a250668926a23aba05a6f92f4da610f87f.txt",
+      "name": "MHH guideline 5ec34bac9b8f",
+      "sha256": "5ab5514d1bf77d87d87736a91722aec6bc8eb1f6b3c6a3ed41fbb8684e302eb4",
+      "pages": 7
+    },
+    {
+      "file": "5eec0a2bc19e1e1859b20de0ddfa347c22a7455a685fa4850e86c4ee5396088e.txt",
+      "name": "MHH guideline 5eec0a2bc19e",
+      "sha256": "9afa130637662fab0cf98b62284836e01361f7d7742eed76ee2a4b9a64027302",
+      "pages": 23
+    },
+    {
+      "file": "5fe9ed0df1cb7479cd25f5f929eccd70fcb161a4e08487a1e110238384fe54f8.txt",
+      "name": "MHH guideline 5fe9ed0df1cb",
+      "sha256": "5f1aeeea74d779a91f524a854ba8c5b09d1d7893863d7afbdac0528f548d097b",
+      "pages": 2
+    },
+    {
+      "file": "62f828b957d75b3e72a351a223e5f545019ea68e22754f0e589e99afd9bcadf3.txt",
+      "name": "MHH guideline 62f828b957d7",
+      "sha256": "877bdcdc9a30e259e86fce6998850dfb8bfa063beacf813b14a7054ae0a7e7b6",
+      "pages": 1
+    },
+    {
+      "file": "6342abf554836b9d5e4fb95b38d26c5f98a3ab831ae1050feca2b48a189a459c.txt",
+      "name": "MHH guideline 6342abf55483",
+      "sha256": "eed0062832a4b7d20d92f855f0d7e31676e401e4ebc2363a168fa0d52da0f918",
+      "pages": 18
+    },
+    {
+      "file": "65dfa44b945ddb9680e26d8ecc11034cf228e5c76b57a547761247dbb090c417.txt",
+      "name": "MHH guideline 65dfa44b945d",
+      "sha256": "9657f93ab861a79540cf5af8ae8a10cb26acb65214c3c0b2010988646e52481a",
+      "pages": 4
+    },
+    {
+      "file": "666578202d037fb54219b9d0edc32532708280f89313338818d2ece423cc3a01.txt",
+      "name": "MHH guideline 666578202d03",
+      "sha256": "a6e38dadabdbbd03e2b48f1f13f7f3d2c8f0665e3b76a4b1fb95adb89aca7731",
+      "pages": 2
+    },
+    {
+      "file": "66b005a6484e5a6e96e40015102d69efc8bc0d0cc9a2a807f86d748d49b3068d.txt",
+      "name": "MHH guideline 66b005a6484e",
+      "sha256": "410c97ee5f306e75a802efa9ae9c23ff06066d3235a40686e62f933bb22a2a95",
+      "pages": 138
+    },
+    {
+      "file": "66f14f762d9ed93be7e45532f52e341584cfa69a96a4b48ae6ab5277a1a358e7.txt",
+      "name": "MHH guideline 66f14f762d9e",
+      "sha256": "85f39aa3b16248b1452ca7d58c1b79f984718c8ee348442f6c2cb39c219758a2",
+      "pages": 128
+    },
+    {
+      "file": "6a504a9edd9562cc946c0467042deebe7788235f72a350965d63ba8c46d57336.txt",
+      "name": "MHH guideline 6a504a9edd95",
+      "sha256": "e6b0a59a123f6743da0edf5a0c203da100e28bb9481949b05ebe72711b109281",
+      "pages": 3
+    },
+    {
+      "file": "6ed52cdf724db04223b4d1c2e62f3c35f6b42bc19bc5e3198277d681d47e1eb9.txt",
+      "name": "MHH guideline 6ed52cdf724d",
+      "sha256": "73f02afbb874c5f833a5233c04bd2a90d8347b10324eafe698fb57ecc2de22d4",
+      "pages": 42
+    },
+    {
+      "file": "6f7f68aec921e310ba7fe14bb797065b4f312bc45cf52128042491ddf46b435d.txt",
+      "name": "MHH guideline 6f7f68aec921",
+      "sha256": "99d247d6b829f46e68cda13eaae770baf732af0f1baecaf69565f11fbccd1890",
+      "pages": 2
+    },
+    {
+      "file": "6f84a35723de1c42229f3511fb7e603de84b87f73f63b37ba97d1cf22ed7bba0.txt",
+      "name": "MHH guideline 6f84a35723de",
+      "sha256": "55d181ec300ca00c06c1297b82d7e42205342dcf903c49d42d66b3c61a92a817",
+      "pages": 7
+    },
+    {
+      "file": "7194c645ef178ece84a513c58d06db7c7f501aea13ae4e71c7d2f60bccf020c5.txt",
+      "name": "MHH guideline 7194c645ef17",
+      "sha256": "40643ad532789b24c5b6bca87c1540e89f96bbc407bac067588ed899df5992d8",
+      "pages": 1
+    },
+    {
+      "file": "72436ee376a65a4b00b92cf367104bc08a3f4c3229c4184d6cdbbd4a1bf2cdef.txt",
+      "name": "MHH guideline 72436ee376a6",
+      "sha256": "ff494dd99f36e49c13343f541d33217eee65124755fb10eb1973489f8542c462",
+      "pages": 19
+    },
+    {
+      "file": "75211227f915829b65380f8d4782fd339259cd80265d4056a786fc79a75920be.txt",
+      "name": "MHH guideline 75211227f915",
+      "sha256": "5c5ef18b2d3c4d2e12e5a1c9830e38e67240dfc7817bf523fbe1856c0e59306d",
+      "pages": 16
+    },
+    {
+      "file": "768e18f1eeabdbc60efa436a98e404979a7b66e6f8b22133183e14bad0dcbfba.txt",
+      "name": "MHH guideline 768e18f1eeab",
+      "sha256": "09445f20743ef48cac9c608e4f5f214ba02969d17991bef2f3f1ea061eb8ea9b",
+      "pages": 94
+    },
+    {
+      "file": "7aec4ec1131889ac540caed507eb9b2996e7d4c1bcf3ca4e1283145519329692.txt",
+      "name": "MHH guideline 7aec4ec11318",
+      "sha256": "7753e0f0c1f52ecdb2621adf243c4d73c8f2e6e4711e6a7979df54568173be69",
+      "pages": 2
+    },
+    {
+      "file": "81f4d36355979a30fb4d7b1c6d1ab118cfc89688d44885b6cbf33e1fb0cec66a.txt",
+      "name": "MHH guideline 81f4d3635597",
+      "sha256": "88d4ba6916d404ca833b8d33788885d94e0679e615f5748dc956037cf6c8615a",
+      "pages": 1
+    },
+    {
+      "file": "82e1217ba41c477dc9e61dfc070d0ce8ef0cb5a159e0b5356c4c7fab15880f27.txt",
+      "name": "MHH guideline 82e1217ba41c",
+      "sha256": "42c0738a6353ceb2db8aa73045f4ff711571ba3db1c740223fc212ec0387995a",
+      "pages": 10
+    },
+    {
+      "file": "83af96dfb237112dd4c905ab5fe76468448ba0009b2159415f925add810370e1.txt",
+      "name": "MHH guideline 83af96dfb237",
+      "sha256": "865ad2a42d1feaa1afdd32109a94a0efcf742441ff05ddab94013c08e9b170f8",
+      "pages": 1
+    },
+    {
+      "file": "842f77a6cbac8f668c19713f8e9ae281474a0bd50eb8fcc6d2f0045cb6a17d98.txt",
+      "name": "MHH guideline 842f77a6cbac",
+      "sha256": "7445d3f219f9ed0a72679c3135a384c485be49139e8c394af9d6bda3ed28d0b3",
+      "pages": 2
+    },
+    {
+      "file": "857c6d37df94ad6a4b1e0cf59d9f14ed54f7ca28e8caab8c6a7f09569baaa218.txt",
+      "name": "MHH guideline 857c6d37df94",
+      "sha256": "4a636a823be807d8b6214806efcb25fb26b3cfb451fb5b69fb2532b8072c13f9",
+      "pages": 18
+    },
+    {
+      "file": "882e1e945368435b88e8d1385c9b3a9ad8cf95ea954d557a01ef7370d34e5560.txt",
+      "name": "MHH guideline 882e1e945368",
+      "sha256": "e131f518925a553ddf0998e488f45a1f5dd64f11a7393214b6d45345176c10b3",
+      "pages": 12
+    },
+    {
+      "file": "8a5895ffaacb530b78ba2ae2c01d2cdc00e6ce005a62d10ee233e8d29de57d3a.txt",
+      "name": "MHH guideline 8a5895ffaacb",
+      "sha256": "9418c01a41bb1134251b848a593bc3e249e43f6f9b22503832b45658f07bcede",
+      "pages": 4
+    },
+    {
+      "file": "8ff62589c7ad018eb3aef106a2d2acfee7b077a9b6e42c24e9452a8ebb2d7d7e.txt",
+      "name": "MHH guideline 8ff62589c7ad",
+      "sha256": "89594cab364e01f89bee504f122729d3f1bf27f5916a116ed333cb78da078b75",
+      "pages": 13
+    },
+    {
+      "file": "94c1ad49868f6541828541d0dbd53ab18e6779a1e11d420fa2164ab6120c5d01.txt",
+      "name": "MHH guideline 94c1ad49868f",
+      "sha256": "7b01966fffa693f090f248ddaeeb1af5566c17e15757c75de8b407bbb9650ca1",
+      "pages": 21
+    },
+    {
+      "file": "976e11bd943dbbb6b4799d51517f0fe0f36b100bea77dc6ace0a0eab27383abc.txt",
+      "name": "MHH guideline 976e11bd943d",
+      "sha256": "1f9a600db33b0788ba8396d7b265a772f754908867bfaa3d72672a8c5373478a",
+      "pages": 1
+    },
+    {
+      "file": "97cd7669b4c57bd723be94869f672e531aa296b1ac4bbed28bbb3278ae80088b.txt",
+      "name": "MHH guideline 97cd7669b4c5",
+      "sha256": "aaaba6baa2bd5e07b366e334ecf13c81e1e8fb539ee406dfa4a452c46c3ae8dd",
+      "pages": 6
+    },
+    {
+      "file": "993d8cbc71c1c2d76f68055863e18deea6bc2703776cba51253c1e672a03b691.txt",
+      "name": "MHH guideline 993d8cbc71c1",
+      "sha256": "84b44cbb5ec5935f82e72a430af3e5c35187fed6fc14bc628bac27ba474a15fa",
+      "pages": 53
+    },
+    {
+      "file": "99dae3cbec6654ed40a504701763ad62d504bfea505ac8602e77ce870b714a63.txt",
+      "name": "MHH guideline 99dae3cbec66",
+      "sha256": "46c73f801d04336f535b20bda41fc0917af874fd9f0009dbda1b89507974da54",
+      "pages": 3
+    },
+    {
+      "file": "99e9127436e59946e2c9458028ed4084e7a671000f0b785879cba2f2b45d8362.txt",
+      "name": "MHH guideline 99e9127436e5",
+      "sha256": "9341dd0ba563eba24b1ad416e97e8920db280d991a534866417d8b690fd4fa72",
+      "pages": 23
+    },
+    {
+      "file": "a15aaba208c0cb0da0c17216799fce847c2cf89193e3375da66f380850e1240b.txt",
+      "name": "MHH guideline a15aaba208c0",
+      "sha256": "2f7e59a2361b168ba13da00e63993eb3a0fc8757344980618abe4bbd2364a075",
+      "pages": 7
+    },
+    {
+      "file": "a3725daedc38a7c806b08a843657159c8ab6ee8b73d3ae3d7fc95f7a27f3102c.txt",
+      "name": "MHH guideline a3725daedc38",
+      "sha256": "a1e05088d3f5761c5fe56e848b56ff657cd2aed78ed4d98ab25f5cd40911261c",
+      "pages": 2
+    },
+    {
+      "file": "a3754f98eadc01936dec9951f3d5bc2d61fc7081247ef2d28c130fc6b12a1cdd.txt",
+      "name": "MHH guideline a3754f98eadc",
+      "sha256": "5b0e5174e3d5d0192e55c9caf5e6a91bb3ba012aa3a5bb7ecf1ad40235601e06",
+      "pages": 1
+    },
+    {
+      "file": "a780129fbbd8f05416e3a7a656a2d048b4b6fc3bb9d2043a394b30e11eaad1e3.txt",
+      "name": "MHH guideline a780129fbbd8",
+      "sha256": "a19271fbc007a07696df6e56137ea0d1b1d2be08b8faab6f5ac707a7e42a21d4",
+      "pages": 4
+    },
+    {
+      "file": "a81565fe67d1599dc9f06042b2cef1397cb53a3e3a84f0afff2172cdee675bdf.txt",
+      "name": "MHH guideline a81565fe67d1",
+      "sha256": "cf3d8c03c75ac67be0119aecec8468da8eb384b8b0037f65e5fb576107a42387",
+      "pages": 2
+    },
+    {
+      "file": "a87408716214d53d13c9ba8e0a71ed128e432427b9fd19f3db741ec2ad3ae9e5.txt",
+      "name": "MHH guideline a87408716214",
+      "sha256": "c1fe3c09ebc5d35b1025c08ede21ddea47b8edee40bfd63683d2da9cadd807d4",
+      "pages": 8
+    },
+    {
+      "file": "a8bb3e0e0fb44bba9ae97a1c9fdc29fbb6d6ba369e97a463234b9c84bf01fb89.txt",
+      "name": "MHH guideline a8bb3e0e0fb4",
+      "sha256": "f80ab74860e7feb585c1bb76ff30ae462f2a8278924e4bf683a98d4e71d22ec2",
+      "pages": 5
+    },
+    {
+      "file": "a8d659f172c05b122e27312303d3c4eaa6ba9016d4e238301602aaafdcfb934c.txt",
+      "name": "MHH guideline a8d659f172c0",
+      "sha256": "aa1ed4c252bc0e6dd228721c2cc42f70f44c470767a588791162d89d52df4ed6",
+      "pages": 29
+    },
+    {
+      "file": "a8f149c465b88e4868c051ad494d4b4c2fa23b9818cd3b95c5c2139adcb27257.txt",
+      "name": "MHH guideline a8f149c465b8",
+      "sha256": "5a2a34ae1e84f17c169e0ba589ac4d83a46453fcec9bda4982776b46b55997b4",
+      "pages": 4
+    },
+    {
+      "file": "acb201d73848ec3261a3da53c160433cbcf8c36a2d098b15ee7742ab86ebd687.txt",
+      "name": "MHH guideline acb201d73848",
+      "sha256": "712506a006a785b5c58c13101f1f2bf89d12796a92eff374ce607ad0e944d5d1",
+      "pages": 7
+    },
+    {
+      "file": "adffd3f361c095d55cd414b9ace2030ef3b8601e9d7bbaad891fdee917a5e63d.txt",
+      "name": "MHH guideline adffd3f361c0",
+      "sha256": "73e05938d2440bd9cd0431f1d5bbe4af393f775c62ff2dd635942aa2954e6942",
+      "pages": 11
+    },
+    {
+      "file": "ae9e7d0d0b66973ac1b9b12439bff120a615e932f8fefb57046b387c203d2960.txt",
+      "name": "MHH guideline ae9e7d0d0b66",
+      "sha256": "e0e9bf7b5818d3cc363b0ed0cd81c201d1732cfcf5032ad3b4b020b305900fce",
+      "pages": 1
+    },
+    {
+      "file": "af1237246c19baac0eb1a5c9985105cb6f2f300cfa8d4a924b108ae26c046b4c.txt",
+      "name": "MHH guideline af1237246c19",
+      "sha256": "4df8687b5d62e63b19dd2a7b77169033e0c2e2923a01334ec3aa8ea449116d84",
+      "pages": 4
+    },
+    {
+      "file": "b3712b061955f3241868a1c3e487846006d434fa568dc482b8420e04c1e30914.txt",
+      "name": "MHH guideline b3712b061955",
+      "sha256": "041c005c498cab3f69f4ac31aeea4207069d4eab395b8a6a8a7aa1e17754ded0",
+      "pages": 3
+    },
+    {
+      "file": "b7055603233c1c0f4eb95d296872d2466b7c6c1ce628b32a168905ebfc01f3e7.txt",
+      "name": "MHH guideline b7055603233c",
+      "sha256": "19efb439a9ba9954914916cf1e7916eb83b85f13f1101dc323e7b1fe42ee2344",
+      "pages": 14
+    },
+    {
+      "file": "b93693b6b6ba02a411c81792267b4938b59954cc550f64e139fd7c891d516fcb.txt",
+      "name": "MHH guideline b93693b6b6ba",
+      "sha256": "3f111ba15f5174c12e1ca90d5fee113af95642e9f3c5570f969d859cf2012f46",
+      "pages": 2
+    },
+    {
+      "file": "ba7d2b1f92aad8b9f3cda9f3bad3decd664d776dc42f0f66c611534ea613ffb3.txt",
+      "name": "MHH guideline ba7d2b1f92aa",
+      "sha256": "6003f4b2b4dcbbbb517be855520820360bc5525d26239546cf719ac3bc08c531",
+      "pages": 5
+    },
+    {
+      "file": "be1f1819e0ea692bb7a9a14bf4037a021e8de62cfc8f39b023e51a0248ae1d8b.txt",
+      "name": "MHH guideline be1f1819e0ea",
+      "sha256": "0e0c0fd73440fa79ab830a3960b7f73e2734c5a5f359e471bca2c011cf427ce9",
+      "pages": 1
+    },
+    {
+      "file": "bf58f8d4264b546d8bfe5ad3bfd6e1f766dc7ae85f0a9b365eb4866f3108c09d.txt",
+      "name": "MHH guideline bf58f8d4264b",
+      "sha256": "47ad94df5e3ed3971b286b3e9509a967db63e4d73255c5518264f8fe70924afe",
+      "pages": 8
+    },
+    {
+      "file": "c64833b8bc8651d04cc5009d9b0fc443ff1f60cab575c8b000d7e65df7e941ad.txt",
+      "name": "MHH guideline c64833b8bc86",
+      "sha256": "82052faaf025cc455e59ba7c16149ecfdee56ce45566332d9fa06287a588a1e8",
+      "pages": 30
+    },
+    {
+      "file": "c76297e82356bde870fd685da271baa25777eaf6adf8927e3024f522c093c2a2.txt",
+      "name": "MHH guideline c76297e82356",
+      "sha256": "401d825a29fb2cb03bf69061ba7755b25790c7c8a7f6a41bdf61790adc3d8c2e",
+      "pages": 2
+    },
+    {
+      "file": "c779493e6901b281850931d2351177c95adb7c4e2fb5257771c5d1eb35791ffb.txt",
+      "name": "MHH guideline c779493e6901",
+      "sha256": "eadd0acab434c5c272ff552a099463242fb780d16f307fc1367254e5aca701c6",
+      "pages": 1
+    },
+    {
+      "file": "c7b78000a6ae0ca2a1009fab6be8ee1ba4753797692747fd8c1293c2ecf59c64.txt",
+      "name": "MHH guideline c7b78000a6ae",
+      "sha256": "4f2eea910ac5e5b709b11987357c991b37cb5c32544d0f6d29b454ad5503f34e",
+      "pages": 16
+    },
+    {
+      "file": "c9b622e59086338ff07ae7c00f273349004a77a33c1fd11d20321aef88adfc3c.txt",
+      "name": "MHH guideline c9b622e59086",
+      "sha256": "80a014e0d6cb7e10f589a96e5f81de4d09959eea2b5758be7e13314b8947a08f",
+      "pages": 25
+    },
+    {
+      "file": "c9f3e469dfc95c2526bfdf9df9c0c4666cb9ef666259b0f74ec941db8b78662b.txt",
+      "name": "MHH guideline c9f3e469dfc9",
+      "sha256": "42beb9c6d1c96bbd550728dee482f82fb01153c0d66fc79c0e2e55048316fd1b",
+      "pages": 1
+    },
+    {
+      "file": "cbed980053d149349ef9ddc5219c97148442615cb0a07dfe6cb4571bf22fad4e.txt",
+      "name": "MHH guideline cbed980053d1",
+      "sha256": "c494fb209fef9efc7e5a0f7b6fb1cda74f19ccbf7823d6216876efe54507e7c1",
+      "pages": 36
+    },
+    {
+      "file": "cfb1a60c41ecc5928a31e4e725fe9fe5eac3fbd0c321ce2d39c2c44543bbc84e.txt",
+      "name": "MHH guideline cfb1a60c41ec",
+      "sha256": "f3ee1568eda7baf2c2faca78f5133a7eb0dd1f23de9cf77194e7541bce7c88fd",
+      "pages": 1
+    },
+    {
+      "file": "d06d4d37b9d12572838e4975f78d68ada14fd6c605ed9d3ae1fd8621d9d681c6.txt",
+      "name": "MHH guideline d06d4d37b9d1",
+      "sha256": "9825e7f36c079fefa66e8eae230bd8dd0608d337413e64841e7dab64863aa2c5",
+      "pages": 16
+    },
+    {
+      "file": "d1710bde778e9e1be7f11ed2fef05ae0e7ef558d8677a37c27ae7f454230f712.txt",
+      "name": "MHH guideline d1710bde778e",
+      "sha256": "cdb454c00c81f01f1f53f7bcc2bf404ab1260e56bad4bbc68f9bf87fe64d219b",
+      "pages": 130
+    },
+    {
+      "file": "d29f3f6dc8a46fed6e74730075ee5cba4f10b31166aeb579161a61e406a907a9.txt",
+      "name": "MHH guideline d29f3f6dc8a4",
+      "sha256": "65a4999c2d5b9ea79ff1465c59582dcdacedb17707d46a4f7cad4714524f302c",
+      "pages": 3
+    },
+    {
+      "file": "d2f60de7dd122a2a340f572e388f2517c62899c762e90ddc93b07d00446086fd.txt",
+      "name": "MHH guideline d2f60de7dd12",
+      "sha256": "b3a58c79c0f84234a7569685c8c06e884b6f931aa234616a347626e00d83ad38",
+      "pages": 1
+    },
+    {
+      "file": "d30b2e95fb9d7d7778de8f39f87fde424e1edcdcec29e5931d37a4644749a1db.txt",
+      "name": "MHH guideline d30b2e95fb9d",
+      "sha256": "a47181d57629d33588581f13961846d293eb4a19a6a70d5ebebcca1980150a97",
+      "pages": 80
+    },
+    {
+      "file": "d37603c4873cfeeea6b15a132fe96dd8f9526b7935a7e82dc39d2c1df9b50b75.txt",
+      "name": "MHH guideline d37603c4873c",
+      "sha256": "4a83f1d01c84d76652e522d0198e3ec399b7c63af4d13209fa30b5516842c2a8",
+      "pages": 15
+    },
+    {
+      "file": "d7ca9e6f25c3284faaf3744794cfac52dfd78a4177e6fb9f7e139b41f858b47f.txt",
+      "name": "MHH guideline d7ca9e6f25c3",
+      "sha256": "26096bf53be653777c5c2cfe28f96c2345dd0a4cd58c778e634f7adf8d97e842",
+      "pages": 48
+    },
+    {
+      "file": "e13802af5df455d97ae79b9c917bbe0bbb883e6a95e3a195374c67797d862926.txt",
+      "name": "MHH guideline e13802af5df4",
+      "sha256": "3521981888d92f6a0ed7c4260cae822d9d3db50c6be48355558afcee5f1d3632",
+      "pages": 2
+    },
+    {
+      "file": "e2c209fcba1343d22dbdb8dda53553370304b52ffdfd18d7c1b3f3e3d8d81e5e.txt",
+      "name": "MHH guideline e2c209fcba13",
+      "sha256": "94dd30e58b4ef190b65d5aaec51ab0799fc06aba0a0f2210613b07ad9102559c",
+      "pages": 2
+    },
+    {
+      "file": "e31d991df39650d53218d45d7f225582c91bf2eafa3de6635d0471f74ef19d64.txt",
+      "name": "MHH guideline e31d991df396",
+      "sha256": "db866fb02f98ad52d914665fe64dd6ca10408b4f48fade4d20fa1158939a8218",
+      "pages": 13
+    },
+    {
+      "file": "e5f20076152902f9b102f37b1a83cdc79baea0d42000f6c76a83acfae0e39670.txt",
+      "name": "MHH guideline e5f200761529",
+      "sha256": "015d39db427b023aa5a5881ba7759b829ff6ad917d3b925c4227ff7f3fce248c",
+      "pages": 19
+    },
+    {
+      "file": "e7bd8a9769fcd2b5f1c1b7dc09ae49052c5524e2a476d7932ca6a05a0e55561b.txt",
+      "name": "MHH guideline e7bd8a9769fc",
+      "sha256": "f2437ed322f94e3719d350b34ca1ab46c580a90372e1fa03c13eccd7475dab9e",
+      "pages": 15
+    },
+    {
+      "file": "e80862707140014ae554769409bcfb08f392edc24731a64a20993dc20e0edbd7.txt",
+      "name": "MHH guideline e80862707140",
+      "sha256": "fb475948e09708a2c7f09bae1d0ac3a3bc91a1374442345d5132d5f208fb034b",
+      "pages": 39
+    },
+    {
+      "file": "ec5026bb3ad00d0b41a51f25649d88162ba1fa206a906217db40318432848b58.txt",
+      "name": "MHH guideline ec5026bb3ad0",
+      "sha256": "95071d2d98cd39a730d82b2e14b22f288355bdcca96227a3366952c75d86d6b8",
+      "pages": 2
+    },
+    {
+      "file": "f018fdfdcad01351dc4b8cf46c261b860149baa277d86d660d943b16f2ad7723.txt",
+      "name": "MHH guideline f018fdfdcad0",
+      "sha256": "999c395af897219143eba03124f42135edcdfa5ad16488c435f92a03c4da7f67",
+      "pages": 3
+    },
+    {
+      "file": "f31eeb92b4c69a6fa83ca1ed9e29522a23837921b228216beab22458e39b5324.txt",
+      "name": "MHH guideline f31eeb92b4c6",
+      "sha256": "c5adc5db59ee0a03fb5398d1b744f8ccdaf643b383af7265ea99a385ba764f38",
+      "pages": 7
+    },
+    {
+      "file": "f38d338cf77a22cfe29f627234b781b57319a0a28d4673ebb844f13880c2722b.txt",
+      "name": "MHH guideline f38d338cf77a",
+      "sha256": "6aff240dad4e9c360f7c8a94b2a8d57a92d38b49f40ee32648ba0d221fdb20cd",
+      "pages": 23
+    },
+    {
+      "file": "f4bfee74bbe5a72fc68b56dd7772983d3c474a06f108cb810264a1d42c1afb56.txt",
+      "name": "MHH guideline f4bfee74bbe5",
+      "sha256": "7ac83b38a8b4caaa2ff906919ec2b7cd31b1e7998ad692a151af04770b11ac6e",
+      "pages": 5
+    },
+    {
+      "file": "f5aa3a90b3855412b9af7237de45c00a3ca3016eaa7a639bf1aeddb875c973af.txt",
+      "name": "MHH guideline f5aa3a90b385",
+      "sha256": "43cf4f7d295b85b87ce72b097bb50c6904b47387e969cb3630495e21bab39907",
+      "pages": 2
+    },
+    {
+      "file": "f77450cccf16be137354e5042da9fcffc8a516e21d112682b2a3afb821ec1e1e.txt",
+      "name": "MHH guideline f77450cccf16",
+      "sha256": "e94a46920aa04a3ac022bc3cc7dc4ff81b220636b8e61b0d81f0d3742d4d1994",
+      "pages": 2
+    },
+    {
+      "file": "f849160a95fd2bd3d9416ab697fb034dd1d7e47b35a82a65b3d72eddc9612bd7.txt",
+      "name": "MHH guideline f849160a95fd",
+      "sha256": "a9eecb21f8fb36122c86d04634f9e719216750e1bfe4af91b1ce0332d1ac2a71",
+      "pages": 2
+    },
+    {
+      "file": "facb630377c4f893273ba94c7093b2a7a1b1cc7c45a316a5377dbb52d4cdffe8.txt",
+      "name": "MHH guideline facb630377c4",
+      "sha256": "c06ee51f2289ce86d5d26a54b1369eea8b12687a6024381060b4ca394cccaca6",
+      "pages": 11
+    },
+    {
+      "file": "fad357e4df0e0242583065859612c2daa68298e698b6a9ff321e6ac9181300cb.txt",
+      "name": "MHH guideline fad357e4df0e",
+      "sha256": "8d31f61b49c76705e002201b7bb90fcea6e70ebb0af10de346c867ec5155bd5c",
+      "pages": 1
+    },
+    {
+      "file": "fcaa8bf6cf2180d2f818abb91d43f6ee249a2a1e4f72b1ca735e4cc6e42be882.txt",
+      "name": "MHH guideline fcaa8bf6cf21",
+      "sha256": "2f59a3e50632ecbc652bdf27e86339059d8abf0e32206b3b4fd734682586d285",
+      "pages": 9
+    },
+    {
+      "file": "fe13e5ca2d57801a1874905e5bb8b4847faff548c437bee37fae52473e381f22.txt",
+      "name": "MHH guideline fe13e5ca2d57",
+      "sha256": "215178eb146e197abd7f49a84fd4b0a9ab5c77891284c0d13d862683b960812a",
+      "pages": 3
+    },
+    {
+      "file": "fe6e379db81338a80f225f90de0f51499e07926ed0501296344166afba9f6b63.txt",
+      "name": "MHH guideline fe6e379db813",
+      "sha256": "0a83674807b6ecdb3102f53094e73fa41d1ca3531856fe2b6e7699e3e1c46236",
+      "pages": 1
+    }
+  ]
+}

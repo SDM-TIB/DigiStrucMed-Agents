@@ -20,7 +20,9 @@ SYSTEM = (
   "from this graph, so you have internalized those relationships. Answer each "
   "question using this medical-guideline knowledge, directly and concisely."
 )
-MODEL = llm.Endpoint(config.LINO_URL + '/v1', config.LINO_API_KEY, 'lino', {'temperature': 0, 'repetition_penalty': 1.1})
+def model():
+  """lino in whichever modal workspace the gpu pool woke"""
+  return llm.Endpoint(gpu.url() + '/v1', config.LINO_API_KEY, 'lino', {'temperature': 0, 'repetition_penalty': 1.1})
 
 
 def chat(messages):
@@ -29,7 +31,7 @@ def chat(messages):
     return
   try:
     # 1024 tokens: storyboards come back as json with several scenes
-    for kind, val in llm.stream(llm.history(messages, keep=10, max_chars=4000, system=SYSTEM), max_tokens=1024, ep=MODEL, timeout=120):
+    for kind, val in llm.stream(llm.history(messages, keep=10, max_chars=4000, system=SYSTEM), max_tokens=1024, ep=model(), timeout=120):
       if kind == 'text':
         yield {'type': 'text', 'delta': val}
     yield {'type': 'done'}
@@ -42,7 +44,7 @@ def chat(messages):
 def answer(question):
   """one shot answer for the video call. it gets spoken verbatim, so cut at the last full sentence"""
   messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': str(question)[:2000]}]
-  text, finish = llm.complete(messages, max_tokens=400, ep=MODEL)
+  text, finish = llm.complete(messages, max_tokens=400, ep=model())
   if finish == 'length':
     cut = max(text.rfind('. '), text.rfind('! '), text.rfind('? '), text.rfind('.\n'))
     text = text[:cut + 1] if cut > len(text) * 0.4 else text

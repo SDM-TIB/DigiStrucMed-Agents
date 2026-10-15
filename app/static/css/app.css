@@ -404,6 +404,27 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .set-kicker{font-size:12px;font-weight:600;color:var(--accent)}
 .set-card h3{margin:3px 0 6px;font:600 18px/24px var(--display)}
 .set-card p{margin:0;color:var(--muted);font-size:13.5px;line-height:20px}
+/* settings: one row per tavus key and modal workspace */
+.set-card:has(.acct-list:not(:empty)){display:grid;grid-template-columns:auto minmax(0,1fr);grid-column:1/-1}
+.acct-list{grid-column:1/-1;display:grid;gap:8px;border-top:1px solid var(--line);padding-top:16px}
+.acct-list:empty{display:none}
+.acct{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(80px,2fr) minmax(150px,1.2fr);align-items:center;gap:16px;padding:8px 10px;border-radius:10px}
+.acct:nth-child(odd){background:var(--side)}
+.acct-id{display:flex;align-items:center;gap:8px;min-width:0}
+.acct-id b{font-size:13.5px;font-weight:600}
+.acct-id code{font:12px/16px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
+.acct-id em{font-style:normal;font-size:11px;font-weight:600;padding:1px 7px;border-radius:9px;background:var(--accent-soft);color:var(--accent)}
+.acct-id em.on{background:oklch(0.93 0.06 150);color:oklch(0.42 0.12 150)}
+.acct-bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.acct-bar i{display:block;height:100%;border-radius:4px;background:var(--accent);transition:width .6s var(--ease)}
+.acct.low .acct-bar i{background:oklch(0.72 0.15 65)}
+.acct.empty .acct-num b{color:var(--danger)}
+.acct-num{display:flex;align-items:baseline;gap:8px;min-width:0}
+.acct-num b{font-size:13.5px;font-variant-numeric:tabular-nums;min-width:38px}
+.acct-num small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct.off small{color:var(--muted)}
+@media (max-width:700px){.acct{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px}.acct-num{display:contents}.acct-num b{grid-column:2;grid-row:1;text-align:right}
+  .acct-bar{grid-column:1/-1;grid-row:2}.acct-num small{grid-column:1/-1;grid-row:3}}
 .gauge{position:relative;width:120px;height:120px;flex:none}
 .gauge svg{width:120px;height:120px;transform:rotate(-90deg)}
 .gauge circle{fill:none;stroke-width:10}

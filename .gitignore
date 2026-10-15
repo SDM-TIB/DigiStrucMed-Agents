@@ -4,6 +4,7 @@
 app/static/videos/*.mp4
 app/static/videos/*.jpg
 gpu/adapter/
+tavus/knowledge_base/
 page_images/
 # python
 __pycache__/
