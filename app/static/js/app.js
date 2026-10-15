@@ -23,7 +23,7 @@ function showApp() { $('#login').classList.add('hidden'); $('#boot').classList.a
 
 /* start screen: choose how long the GPU stays awake, start it, explain the agents while it boots */
 let bootHold = 3600, bootPoll = 0, bootEntered = false;
-const fmtHold = sec => sec < 3600 ? `${sec / 60} minutes` : sec === 3600 ? '1 hour' : `${sec / 3600} hours`;
+const fmtHold = sec => sec < 3600 ? care.fill('minutes', {n: sec / 60}) : sec === 3600 ? care.t('hour1') : care.fill('hours', {n: sec / 3600});
 const fmtClock = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
 async function showBoot(afterLogin) {
   let st = {status: 'offline'};
@@ -33,7 +33,7 @@ async function showBoot(afterLogin) {
   $('#login').classList.add('hidden'); $('#boot').classList.remove('hidden');
   if (!bootModal) $('#app').classList.add('hidden');
   const cold = Math.max(60, Math.round((st.last_cold_start_s || 220) / 10) * 10);
-  document.querySelectorAll('.boot-cold').forEach(e => e.textContent = `${Math.round(cold / 60)} minutes`);
+  document.querySelectorAll('.boot-cold').forEach(e => e.textContent = care.fill('minutes', {n: Math.round(cold / 60)}));
   bootEntered = false; bootTavus();
   if (st.status === 'waking') return bootWait();
   $('#boot-choose').classList.remove('hidden'); $('#boot-wait').classList.add('hidden');
@@ -41,9 +41,9 @@ async function showBoot(afterLogin) {
   setTimeout(() => $('#boot-go').focus(), 50);
 }
 // Duration dial: four snap points on a track (click, drag or arrow keys); shows until when the GPU stays up at least.
-const DIAL = [[300, '5', 'minutes', 'Quick test'], [1800, '30', 'minutes', 'Quick look'], [3600, '1', 'hour', 'Demo or talk'], [7200, '2', 'hours', 'Workshop'], [10800, '3', 'hours', 'Full session']];
+const DIAL = [[300, '5', 'unitMin', 'useQuick'], [1800, '30', 'unitMin', 'useLook'], [3600, '1', 'unitHour', 'useDemo'], [7200, '2', 'unitHours', 'useWorkshop'], [10800, '3', 'unitHours', 'useFull']];  // care.js keys
 let dialIdx = 2;
-$('#dial-stops').innerHTML = DIAL.map(([, n, u], i) => `<button data-i="${i}" tabindex="-1"><i></i>${n} ${u === 'minutes' ? 'min' : 'h'}</button>`).join('');
+$('#dial-stops').innerHTML = DIAL.map(([, n, u], i) => `<button data-i="${i}" tabindex="-1"><i></i>${n} ${u === 'unitMin' ? 'min' : 'h'}</button>`).join('');
 function setDial(i, instant) {
   dialIdx = Math.max(0, Math.min(DIAL.length - 1, i)); const [sec, n, unit, use] = DIAL[dialIdx], pct = 100 * dialIdx / (DIAL.length - 1);
   bootHold = sec;
@@ -51,10 +51,10 @@ function setDial(i, instant) {
   document.querySelectorAll('#dial-stops button').forEach((b, k) => { b.classList.toggle('on', k === dialIdx); b.classList.toggle('past', k < dialIdx); });
   const num = $('#dial-num');
   if (num.textContent !== n && !instant) { num.classList.remove('tick'); void num.offsetWidth; num.classList.add('tick'); }
-  num.textContent = n; $('#dial-unit').textContent = unit; $('#dial-use').textContent = use;
+  num.textContent = n; $('#dial-unit').textContent = care.t(unit); $('#dial-use').textContent = care.t(use);
   const t = new Date(Date.now() + ((gpuState.last_cold_start_s || 220) + sec) * 1000);
   $('#dial-until').textContent = t.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-  const tr = $('#dial-track'); tr.setAttribute('aria-valuenow', dialIdx); tr.setAttribute('aria-valuetext', `${n} ${unit}`);
+  const tr = $('#dial-track'); tr.setAttribute('aria-valuenow', dialIdx); tr.setAttribute('aria-valuetext', `${n} ${care.t(unit)}`);
   document.querySelectorAll('.boot-hold').forEach(e => e.textContent = fmtHold(sec));
 }
 (function dialInput() {
@@ -101,8 +101,8 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && bootModal) closeBoo
 async function tavusMinutes() {
   try { const x = await (await fetch('/api/tavus/usage')).json(); if (!x.ok) throw 0; return x; } catch { return null; }
 }
-const tvDay = (d, month = 'short') => new Date(d).toLocaleDateString('en-GB', {day: 'numeric', month});
-function tavusText(x) { return `≈ <b>${x.remaining_min.toFixed(1)} of ${x.plan_min} min</b> video call time left · ${x.accounts.length} Tavus accounts · next renewal ${tvDay(x.next_renewal)}`; }
+const tvDay = (d, month = 'short') => new Date(d).toLocaleDateString({de: 'de-DE', es: 'es-ES', ru: 'ru-RU', hi: 'hi-IN'}[care.lang] || 'en-GB', {day: 'numeric', month});
+function tavusText(x) { return care.fill('tvLeft', {left: x.remaining_min.toFixed(1), plan: x.plan_min, n: x.accounts.length, d: tvDay(x.next_renewal)}); }  // care.js text, numbers only from the server
 async function bootTavus() {
   const el = $('#boot-tavus'), x = await tavusMinutes();
   if (!x) { el.querySelector('span').textContent = 'Video call minutes unavailable'; return; }
@@ -130,7 +130,7 @@ async function bootTick() {
   } else if (st.status === 'online') {
     $('#boot-wait').classList.add('boot-wait-done');
     $('#boot-fill').style.width = '100%'; ['#bs-1', '#bs-2', '#bs-3'].forEach(k => $(k).classList.add('on', 'done'));
-    $('#boot-state').textContent = 'Ready'; $('#boot-wtitle').textContent = `Lino is awake for at least ${fmtHold(st.hold_s || bootHold)}`;
+    $('#boot-state').textContent = care.t('ready'); $('#boot-wtitle').textContent = care.fill('linoAwake', {t: fmtHold(st.hold_s || bootHold)});
     $('#boot-eta').textContent = `started in ${fmtClock(st.cold_start_s || 0)}`;
     $('#boot-enter').classList.remove('hidden'); $('#boot-enter').focus();
     if (!bootEntered) { bootEntered = true; bootPoll = setTimeout(enterApp, 2200); }
@@ -410,7 +410,7 @@ function accountRows(sel, rows, fmt) {
   $(sel).innerHTML = rows.map(a => {
     if (a.error) return `<div class="acct off"><div class="acct-id"><b>${esc(a.name)}</b><code>${esc(a.key || '')}</code></div><small>unreachable</small></div>`;
     const [pct, amount, renews] = fmt(a), p = Math.max(0, Math.min(100, pct));
-    const tag = a.active ? '<em class="on">in use</em>' : a.next ? '<em>next</em>' : '';
+    const tag = a.active ? `<em class="on">${esc(care.t('inUse'))}</em>` : a.next ? `<em>${esc(care.t('nextUp'))}</em>` : '';
     return `<div class="acct${p <= 0 ? ' empty' : p < 15 ? ' low' : ''}"><div class="acct-id"><b>${esc(a.name)}</b><code>${esc(a.key || '')}</code>${tag}</div>
       <div class="acct-bar" role="img" aria-label="${Math.round(p)}% left"><i style="width:${p}%"></i></div>
       <div class="acct-num"><b>${Math.round(p)}%</b><small>${amount} · ${renews}</small></div></div>`;
@@ -421,16 +421,16 @@ async function loadSettings() {
     if (!x) { $('#tv-note').textContent = 'Video call minutes are unavailable right now.'; return; }
     $('#tv-min').textContent = x.remaining_min.toFixed(1);
     $('#tv-gauge').style.setProperty('--pct', Math.max(0, Math.min(100, 100 * x.remaining_min / x.plan_min)));
-    $('#tv-note').textContent = `${x.used_min} of ${x.plan_min} plan minutes used in ${x.calls} calls over ${x.accounts.length} Tavus accounts. A call goes to the account whose minutes expire first. Estimated from the call history (Tavus has no balance API).`;
-    accountRows('#tv-accts', x.accounts, a => [100 * a.remaining_min / a.plan_min, `${a.remaining_min.toFixed(1)} of ${a.plan_min} min`, `renews ${tvDay(a.renews)}`]);
+    $('#tv-note').textContent = care.fill('tvNote', {used: x.used_min, plan: x.plan_min, calls: x.calls, n: x.accounts.length});
+    accountRows('#tv-accts', x.accounts, a => [100 * a.remaining_min / a.plan_min, `${a.remaining_min.toFixed(1)} ${care.t('of')} ${a.plan_min} min`, care.fill('renews', {d: tvDay(a.renews)})]);
   });
   try {
     const x = await (await fetch('/api/settings')).json();
     if (x.modal && x.modal.ok) {
       $('#credit-pct').textContent = Math.round(x.modal.remaining_pct) + '%';
       $('#gauge').style.setProperty('--pct', x.modal.remaining_pct);
-      $('#credit-note').textContent = `$${x.modal.remaining_usd.toFixed(2)} of $${x.modal.plan_usd} left over ${x.modal.accounts.length} Modal workspaces. Lino wakes in the one with the most credits. Resets on ${tvDay(x.modal.resets, 'long')}.`;
-      accountRows('#modal-accts', x.modal.accounts, a => [a.remaining_pct, `$${a.remaining_usd.toFixed(2)} of $${a.plan_usd}`, `resets ${tvDay(a.resets)}`]);
+      $('#credit-note').textContent = care.fill('creditNote', {left: x.modal.remaining_usd.toFixed(2), plan: x.modal.plan_usd, n: x.modal.accounts.length, d: tvDay(x.modal.resets, 'long')});
+      accountRows('#modal-accts', x.modal.accounts, a => [a.remaining_pct, `$${a.remaining_usd.toFixed(2)} ${care.t('of')} $${a.plan_usd}`, care.fill('resets', {d: tvDay(a.resets)})]);
     } else $('#credit-note').textContent = 'Credit information is unavailable right now.';
     const st = x.lino.status;
     $('#set-lino-dot').className = 'presence ' + (st === 'online' ? '' : st === 'waking' ? 'wake' : 'off');
@@ -816,7 +816,40 @@ function citeify(html) {
   return html.replace(/\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\](?![^<]*>)/g, (_, g) => g.match(/\d+/g).map(n => `<button class="cite" data-n="${n}" aria-label="Source ${n}">${n}</button>`).join(''));
 }
 
-addEventListener('care-lang', () => { if (!attached) $('#msg').placeholder = agent === AGENTS.luna ? care.t('askLuna') : care.fill('askAgent', {name: agent.name}); $('#dq-label').textContent = care.t('myQuestions'); });
+// the fixed texts of index.html in the patient's language: static/js/i18n.json, keyed by the english text. conversation
+// content (answers, cards, banners) is not touched, it carries its own language
+const I18N = {dict: null, text: new WeakMap(), attr: new WeakMap()};
+const I18N_SKIP = 'script,style,.thread,#stage-cards,.gcheck,.next,.care-alert,#srcx-quote,#feed,.jr-host,#dq-list,.langs';
+function translatePage() {
+  const all = I18N.dict, l = care.lang, dict = all && all[l];
+  if (!all) return;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n; (n = walker.nextNode());) {
+    if (!n.parentElement || n.parentElement.closest(I18N_SKIP)) continue;
+    // [english original, what we last wrote]. if the node shows something else now, the app rewrote it: that is the new original
+    const mem = I18N.text.get(n), raw = mem && n.nodeValue === mem[1] ? mem[0] : n.nodeValue, key = raw.trim();
+    if (!key || !/\p{L}/u.test(key)) continue;
+    const tr = l === 'en' ? key : dict && dict[key], next = tr ? raw.replace(key, tr) : raw;
+    I18N.text.set(n, [raw, next]);
+    if (next !== n.nodeValue) n.nodeValue = next;  // only real changes, so the observer below settles
+  }
+  for (const a of ['aria-label', 'placeholder', 'title', 'alt']) document.querySelectorAll(`[${a}]`).forEach(el => {
+    if (el.closest(I18N_SKIP) || el.id === 'msg') return;
+    const mem = (I18N.attr.get(el) || {})[a], cur = el.getAttribute(a);
+    const key = mem && cur === mem[1] ? mem[0] : cur;  // as with text: a value the app set since is the new original
+    const tr = l === 'en' ? key : dict && dict[key], next = tr || key;
+    I18N.attr.set(el, {...I18N.attr.get(el), [a]: [key, next]});
+    if (next !== cur) el.setAttribute(a, next);
+  });
+}
+// texts the app sets later (gpu state, boot steps, settings) are translated as they appear, in batches
+let i18nTimer = 0;
+new MutationObserver(() => { if (care.lang !== 'en' && !i18nTimer) i18nTimer = setTimeout(() => { i18nTimer = 0; translatePage(); }, 150); })
+  .observe(document.body, {subtree: true, childList: true, characterData: true});
+fetch('/static/js/i18n.json').then(r => r.ok ? r.json() : null).then(d => { I18N.dict = d; translatePage(); }).catch(() => {});
+addEventListener('care-lang', translatePage);
+care.setLang((navigator.language || 'en').slice(0, 2).toLowerCase());  // until the patient writes, the browser's language
+addEventListener('care-lang', () => { setDial(dialIdx, true); if (!attached) $('#msg').placeholder = agent === AGENTS.luna ? care.t('askLuna') : care.fill('askAgent', {name: agent.name}); $('#dq-label').textContent = care.t('myQuestions'); });
 // fixed, hand-written safety texts from care.js. the banner shows when a message sounds like an emergency right now
 function careAlert(level = 'emergency', l = care.lang) {
   const [title, text, button] = {emergency: ['alertTitle', 'alert', 'call'], urgent: ['urgentTitle', 'urgent', 'call'], support: ['supportTitle', 'support', 'talk']}[level];
@@ -923,7 +956,8 @@ function addAssistant() {
   if (st.lino) st.steps.insertAdjacentHTML('beforebegin', `<span class="unv">${esc(care.t('unverified'))}</span>`);
   el.addEventListener('click', e => {
     const c = e.target.closest('.cite, .ref'); if (!c) return;
-    showSource(st, +c.dataset.n);
+    const block = c.classList.contains('cite') ? c.closest('p, li') : null;  // the sentence that cites it, without its [n] buttons
+    showSource(st, +c.dataset.n, block ? [...block.childNodes].filter(n => !(n.classList && n.classList.contains('cite'))).map(n => n.textContent).join('').trim() : '');
   });
   return st;
 }
@@ -975,11 +1009,12 @@ function openDocument(d) {
   srcList = d.pages.map(([id, page]) => ({n: page, page_id: id, title: d.title, ref: d.ref, page, doc: true}));
   srcIdx = 0; renderSource(); $('#srcx').classList.remove('hidden'); $('#srcx-close').focus();
 }
-function showSource(st, n) {
+function showSource(st, n, citedBy = '') {
   const cited = [...st.el.querySelectorAll('.ref')].map(r => +r.dataset.n);
   srcList = (cited.length ? cited : Object.keys(st.sources).map(Number)).map(k => st.sources[k]).filter(Boolean);
   srcIdx = Math.max(0, srcList.findIndex(x => x.n === n));
   if (!srcList.length && st.sources[n]) srcList = [st.sources[n]];
+  srcList = srcList.map(s => ({...s, citedBy: s.n === n ? citedBy : '', answerLang: langOf(st.raw)}));
   renderSource(); $('#srcx').classList.remove('hidden'); $('#srcx-close').focus();
 }
 // highlight a quote inside page text. matches across whitespace and punctuation differences, like the server check
@@ -991,6 +1026,23 @@ function markQuote(text, quote) {
   const m = text.match(re);
   return m ? esc(text.slice(0, m.index)) + '<mark>' + esc(m[0]) + '</mark>' + esc(text.slice(m.index + m[0].length)) : esc(text);
 }
+// underline on the page image itself: the words found on the original A4 page (app/pagewords.py)
+async function markPage(s, wrap) {
+  const items = [];
+  if (s.highlight) items.push({text: s.highlight, mode: 'exact', label: 'markQuote'});
+  if (s.citedBy && langOf(s.citedBy) === langOf((s.snippet || '') + ' ' + (s.title || ''))) items.push({text: s.citedBy, mode: 'near', label: 'markNear'});
+  if (s.snippet && !s.highlight) items.push({text: s.snippet.replace(/\*\*/g, ''), mode: 'exact', label: 'markRead'});
+  if (!items.length || !s.page_id) return;
+  let r; try { r = await post('/api/locate', {page_id: s.page_id, items: items.map(({text, mode}) => ({text, mode}))}); } catch { return; }
+  if (!r || !(r.rects || []).length || srcList[srcIdx] !== s) return;
+  const layer = document.createElement('div'); layer.className = 'pg-marks ' + items[r.item].mode;
+  layer.innerHTML = r.rects.map(([x0, y0, x1, y1]) => `<i style="left:${x0 * 100}%;top:${y0 * 100}%;width:${(x1 - x0) * 100}%;height:${(y1 - y0) * 100}%"></i>`).join('');
+  wrap.append(layer);
+  const tag = document.createElement('div'); tag.className = 'pg-tag'; tag.textContent = care.t(items[r.item].label, s.answerLang || care.lang);
+  wrap.prepend(tag);
+  const first = layer.firstElementChild, page = $('#srcx-page');
+  setTimeout(() => page.scrollTo({top: Math.max(0, first.offsetTop + wrap.offsetTop - page.clientHeight / 3), behavior: 'smooth'}), 120);
+}
 function renderSource() {
   const s = srcList[srcIdx]; if (!s) return;
   $('#srcx-n').textContent = s.n;
@@ -999,7 +1051,7 @@ function renderSource() {
   $('#srcx-prev').disabled = srcIdx === 0; $('#srcx-next').disabled = srcIdx === srcList.length - 1;
   const page = $('#srcx-page'); page.innerHTML = '<span class="ph">Loading page…</span>'; page.scrollTop = 0;
   const img = new Image(); img.alt = `Page ${s.page} of ${s.title}`;
-  img.onload = () => { if (srcList[srcIdx] === s) { page.innerHTML = ''; page.append(img); } };
+  img.onload = () => { if (srcList[srcIdx] === s) { page.innerHTML = ''; const wrap = document.createElement('div'); wrap.className = 'pg-wrap'; wrap.append(img); page.append(wrap); markPage(s, wrap); } };
   img.onerror = () => { if (srcList[srcIdx] === s) page.innerHTML = '<span class="ph">Page image unavailable</span>'; };
   page.classList.remove('kx-mode');
   if (s.rec_id) { $('#srcx-n').textContent = s.n; $('#srcx-sub').textContent = (s.search ? 'Guideline knowledge graph' : 'Recommendation in the guideline knowledge graph') + ' · click any node to explore' + (srcList.length > 1 ? ` · source ${srcIdx + 1} of ${srcList.length}` : ''); return kxShow(s); }

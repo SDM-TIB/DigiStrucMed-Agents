@@ -320,6 +320,13 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .srcx-body{display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}
 .srcx-page{overflow:auto;background:var(--side);display:flex;justify-content:center;padding:24px}
 .srcx-page img{width:100%;max-width:820px;height:auto;align-self:flex-start;border-radius:6px;box-shadow:0 8px 30px oklch(0.3 0.03 264 / .18);background:#fff}
+.pg-wrap{position:relative;width:100%;max-width:820px;align-self:flex-start}
+.pg-wrap img{display:block;width:100%;max-width:none}
+.pg-marks{position:absolute;inset:0;pointer-events:none}
+.pg-marks i{position:absolute;border-radius:2px;background:oklch(0.88 0.13 95 / .38);box-shadow:inset 0 -2px 0 oklch(0.62 0.15 70);animation:markin .5s var(--ease) both}
+.pg-marks.near i{background:oklch(0.86 0.08 250 / .3);box-shadow:inset 0 -2px 0 oklch(0.55 0.15 255)}
+@keyframes markin{from{opacity:0;transform:scaleX(.6);transform-origin:left}}
+.pg-tag{position:sticky;top:0;z-index:2;margin:0 0 8px;padding:6px 10px;border-radius:8px;background:var(--win);box-shadow:0 2px 8px oklch(0.3 0.03 264 / .12);font-size:12px;font-weight:600;color:var(--ink-2)}
 .srcx-page .ph{align-self:center;color:var(--muted)}
 .srcx-quote{border-left:1px solid var(--line);overflow:auto;padding:22px 22px 28px}
 .srcx-quote h4{margin:0 0 10px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
@@ -511,6 +518,7 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .acct:nth-child(odd){background:var(--side)}
 .acct-id{display:flex;align-items:center;gap:8px;min-width:0}
 .acct-id b{font-size:13.5px;font-weight:600}
+.acct-id em,.acct-id code{white-space:nowrap}
 .acct-id code{font:12px/16px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
 .acct-id em{font-style:normal;font-size:11px;font-weight:600;padding:1px 7px;border-radius:9px;background:var(--accent-soft);color:var(--accent)}
 .acct-id em.on{background:oklch(0.93 0.06 150);color:oklch(0.42 0.12 150)}
