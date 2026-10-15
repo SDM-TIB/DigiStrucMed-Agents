@@ -2,10 +2,10 @@
   "_how": "One entry per person, shown in this order on the About page. photo: a file in app/static/img/team/ (square jpg, about 400 px), or empty for initials. role, about and link are optional.",
   "members": [
     {"name": "Steffan Wolter", "role": "Leibniz University Hannover",
-     "about": "Studies computer science and works on agentic AI systems that make guideline knowledge usable for language models.",
+     "about": "Finishing a master's in computer science. Works on agentic AI systems that make guideline knowledge usable for language models.",
      "photo": "steffan-wolter.jpg", "link": "https://www.linkedin.com/in/steffan-wolter"},
     {"name": "Mahsa Forghani", "role": "TIB and Leibniz University Hannover",
-     "about": "Works on knowledge graphs and language models, and fine-tuned the model behind Lino.",
+     "about": "Finishing a master's in computer science. Brings extensive experience in building knowledge graphs and connecting them to language models, and fine-tuned the model behind Lino with rules mined from the guideline knowledge graph.",
      "photo": "mahsa-forghani.jpg", "link": "https://github.com/Mahsa-for"}
   ]
 }
