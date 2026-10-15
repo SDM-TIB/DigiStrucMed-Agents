@@ -1,4 +1,5 @@
-// Patient-facing texts and helpers: what evidence grades mean, the safety note under answers, the emergency banner.
+// Patient-facing texts and helpers: what evidence grades mean, the safety note under answers, the triage banners.
+// Which banner shows is decided on the server by a System One model (app/triage.py); the words are fixed here.
 // Every sentence here is fixed and written by hand, in the five languages of the agents. Nothing comes from a model,
 // so these parts of the screen can never invent a fact. Grade meanings follow the ESC and ACC/AHA definitions.
 window.care = (() => {
@@ -74,6 +75,21 @@ window.care = (() => {
             ru: 'Сильная или внезапная боль в груди, одышка или обморок — это неотложное состояние. Позвоните сейчас 112 или по местному номеру экстренной помощи. Не ждите ответа здесь.',
             hi: 'तेज़ या अचानक सीने में दर्द, साँस फूलना या बेहोशी आपात स्थिति है। अभी 112 पर कॉल करें या अपने स्थानीय आपातकालीन नंबर पर। यहाँ जवाब का इंतज़ार न करें।'},
     call: {en: 'Call 112', de: '112 anrufen', es: 'Llamar al 112', ru: 'Позвонить 112', hi: '112 पर कॉल करें'},
+    urgentTitle: {en: 'Contact your care team today', de: 'Melden Sie sich heute bei Ihrem Behandlungsteam', es: 'Contacte hoy con su equipo médico',
+                  ru: 'Свяжитесь с лечащим врачом сегодня', hi: 'आज ही अपनी देखभाल टीम से संपर्क करें'},
+    urgent: {en: 'Gaining about 2 kg within a few days, more swelling or getting more breathless can be signs of fluid build-up in heart failure. Please call your doctor or heart failure nurse today. If it gets suddenly worse, call 112.',
+             de: 'Etwa 2 kg mehr innerhalb weniger Tage, mehr Schwellungen oder mehr Atemnot können bei Herzinsuffizienz Zeichen von Wassereinlagerung sein. Rufen Sie bitte heute Ihre Ärztin, Ihren Arzt oder Ihre Herzinsuffizienz-Pflegekraft an. Wird es plötzlich schlimmer, rufen Sie die 112.',
+             es: 'Ganar unos 2 kg en pocos días, más hinchazón o más falta de aire pueden ser signos de retención de líquidos en la insuficiencia cardíaca. Llame hoy a su médico o enfermera. Si empeora de repente, llame al 112.',
+             ru: 'Прибавка около 2 кг за несколько дней, усиление отёков или одышки могут быть признаками задержки жидкости при сердечной недостаточности. Позвоните сегодня своему врачу. Если станет резко хуже, звоните 112.',
+             hi: 'कुछ दिनों में लगभग 2 किलो वज़न बढ़ना, ज़्यादा सूजन या साँस फूलना हार्ट फ़ेल्योर में शरीर में पानी जमा होने के संकेत हो सकते हैं। कृपया आज ही अपने डॉक्टर से बात करें। अगर अचानक हालत बिगड़े, तो 112 पर कॉल करें।'},
+    supportTitle: {en: 'You don\'t have to carry this alone', de: 'Sie müssen das nicht allein tragen', es: 'No tiene que pasar por esto solo',
+                   ru: 'Вы не обязаны справляться с этим в одиночку', hi: 'आपको यह अकेले नहीं सहना है'},
+    support: {en: 'If you are thinking about harming yourself, please talk to someone now: call 112 in an emergency, or reach out to a person you trust or your doctor.',
+              de: 'Wenn Sie daran denken, sich etwas anzutun, sprechen Sie bitte jetzt mit jemandem: im Notfall 112, oder rund um die Uhr kostenlos die Telefonseelsorge unter 0800 111 0 111, oder ein Mensch, dem Sie vertrauen.',
+              es: 'Si está pensando en hacerse daño, hable ahora con alguien: llame al 112 en una emergencia, o a una persona de confianza o a su médico.',
+              ru: 'Если вы думаете о том, чтобы причинить себе вред, пожалуйста, поговорите с кем-нибудь сейчас: в экстренной ситуации звоните 112, или обратитесь к близкому человеку или врачу.',
+              hi: 'अगर आप ख़ुद को नुकसान पहुँचाने के बारे में सोच रहे हैं, तो कृपया अभी किसी से बात करें: आपात स्थिति में 112 पर कॉल करें, या किसी भरोसेमंद व्यक्ति या अपने डॉक्टर से बात करें।'},
+    talk: {en: 'Call 112', de: '112 anrufen', es: 'Llamar al 112', ru: 'Позвонить 112', hi: '112 पर कॉल करें'},
   };
 
   // symptoms that can mean an emergency right now, in the five languages. a match shows the banner, it never blocks
@@ -92,7 +108,7 @@ window.care = (() => {
     'सीने में (तेज़ )?दर्द', 'छाती में दर्द', 'सांस नहीं (आ|ले)', 'साँस नहीं (आ|ले)', 'बेहोश', 'खून की खांसी',
   ].join('|'), 'i');
 
-  const t = key => (T[key] || {})[lang] || (T[key] || {}).en || '';
+  const t = (key, l = lang) => (T[key] || {})[l] || (T[key] || {}).en || '';
   const pick = row => row[lang] || row.en;
 
   // "Class I · LoE A", "Class 2a/2b · LoE B-NR", "IIa" ... -> {cls: ['I'], loe: ['A']}
@@ -122,6 +138,6 @@ window.care = (() => {
     LANGS, t, grade, parse,
     get lang() { return lang; },
     setLang(l) { if (LANGS.includes(l)) lang = l; },
-    redFlag: text => RED.test(String(text || '')),
+    redFlag: text => RED.test(String(text || '')),  // only when the triage model cannot be reached: a missed emergency is worse
   };
 })();

@@ -804,10 +804,21 @@ function citeify(html) {
 }
 
 // fixed, hand-written safety texts from care.js. the banner shows when a message sounds like an emergency right now
-function careAlert() {
-  const d = document.createElement('div'); d.className = 'care-alert'; d.setAttribute('role', 'alert'); d.lang = care.lang;
-  d.innerHTML = `<b>${esc(care.t('alertTitle'))}</b><p>${esc(care.t('alert'))}</p><a href="tel:112">${esc(care.t('call'))}</a>`;
+function careAlert(level = 'emergency', l = care.lang) {
+  const [title, text, button] = {emergency: ['alertTitle', 'alert', 'call'], urgent: ['urgentTitle', 'urgent', 'call'], support: ['supportTitle', 'support', 'talk']}[level];
+  const d = document.createElement('div'); d.className = 'care-alert ' + level; d.setAttribute('role', level === 'urgent' ? 'status' : 'alert'); d.lang = l;
+  d.innerHTML = `<b>${esc(care.t(title, l))}</b><p>${esc(care.t(text, l))}</p><a href="tel:112">${esc(care.t(button, l))}</a>`;
   return d;
+}
+// does what the patient just said call for action outside the chat? a System One model decides on the server
+// (app/triage.py), the banner words are fixed in care.js. runs next to the answer, never in front of it
+async function triage(message, conversation, place) {
+  let level = 'none'; const l = langOf(message);  // the banner speaks the language of the message that raised it
+  try {
+    const r = await post('/api/triage', {message, conversation: conversation.slice(-6).map(t => ({role: t.role, text: String(t.text).slice(0, 600)}))});
+    level = r.error ? (care.redFlag(message) ? 'emergency' : 'none') : r.level;
+  } catch { level = care.redFlag(message) ? 'emergency' : 'none'; }
+  if (level !== 'none') place(careAlert(level, l));
 }
 // screen readers hear each finished answer once, not every streamed word
 function announce(text) { const r = $('#sr-live'); r.textContent = ''; setTimeout(() => r.textContent = text, 60); }
@@ -1163,7 +1174,7 @@ async function sendChat(text) {
   const story = attached && a === AGENTS.lino;
   care.setLang(langOf(text));
   const u = document.createElement('div'); u.className = 'msg-user'; u.lang = care.lang; u.textContent = text; $(a.thread).append(u);
-  if (care.redFlag(text)) u.after(careAlert());
+  triage(text, chatHistory, el => u.after(el));
   if (story) { u.insertAdjacentHTML('afterbegin', '<span class="u-att">Storyboard prompt</span>'); setAttach(false); }
   chatHistory.push({role: 'user', text: story ? STORYBOARD_PROMPT + '\n\n' + text : text});
   const st = addAssistant();
@@ -1302,6 +1313,7 @@ let callAgent = 'luna';
 function openCall(from) {
   if (convId) return;
   callAgent = agent === AGENTS.lino ? 'lino' : agent === AGENTS.guido ? 'guido' : 'luna';
+  stage.talk = [];  // triage context starts fresh with every call
   cx.style.setProperty('--face', `url(/static/img/${callAgent}.jpg)`);
   $('#cx-wait-orb').classList.toggle('lino', callAgent === 'lino'); $('#cx-wait-orb').classList.toggle('guido', callAgent === 'guido');
   $('#cx-wait-text').textContent = 'Connecting to ' + agent.name + '…';
@@ -1710,9 +1722,10 @@ async function onAppMessage(e) {
   if (m.event_type === 'conversation.replica.stopped_speaking') { face.speaking = false; face.stoppedAt = performance.now(); return; }
   if (m.event_type === 'conversation.utterance') {   // what the face just said -> live board
     const pr = m.properties || {};
-    if (pr.role === 'user' && pr.speech) {  // what the patient said: their language, and the emergency banner if it sounds acute
+    if (pr.speech && (pr.role === 'user' || pr.role === 'replica')) stage.talk = [...(stage.talk || []), {role: pr.role === 'user' ? 'user' : 'assistant', text: pr.speech}].slice(-8);
+    if (pr.role === 'user' && pr.speech) {  // what the patient said: their language, and a triage banner if it calls for action
       care.setLang(langOf(pr.speech));
-      if (care.redFlag(pr.speech)) { $('#stage-cards .care-alert')?.remove(); if (!cx.classList.contains('stage-on')) stageShow(true); $('#stage-cards').prepend(careAlert()); }
+      triage(pr.speech, (stage.talk || []).slice(0, -1), el => { $('#stage-cards .care-alert')?.remove(); if (!cx.classList.contains('stage-on')) stageShow(true); $('#stage-cards').prepend(el); });
     }
     if (pr.role === 'replica' && pr.speech && !stage.greeted) { stage.greeted = true; return; }  // greeting: no board
     if (pr.role === 'replica' && pr.speech) {

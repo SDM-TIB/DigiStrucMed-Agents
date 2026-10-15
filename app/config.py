@@ -66,6 +66,9 @@ MODAL_TOKENS = [(i.strip(), s.strip()) for i, s in [(env('MODAL_TOKEN_ID'), env(
 CF_ACCOUNT_ID = env('CF_ACCOUNT_ID')
 CF_API_TOKEN = env('CF_API_TOKEN')
 
+# triage (triage.py): TypeSafe's Jev when this is set, otherwise clef-flash on the cloudflare account above
+TYPESAFE_API_KEY = env('TYPESAFE_API_KEY')
+
 # private gcs bucket: page renders, usage log. empty = local files only (dev)
 BUCKET = env('PAGE_BUCKET')
 LOCAL_BUCKET = ROOT.parent / 'page_images'

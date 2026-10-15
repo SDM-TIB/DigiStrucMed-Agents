@@ -25,6 +25,7 @@ import gpu
 import guido
 import kg
 import lino
+import triage
 import luna
 import storage
 import tavus
@@ -213,6 +214,11 @@ class Handler(BaseHTTPRequestHandler):
       return self.send(200, evidence.board(body.get('text', '')))
     if self.path == '/api/board':
       return self.stream(board.board(body.get('text', '')))
+    if self.path == '/api/triage':  # does what the patient said call for action now? decides which fixed banner shows
+      res = triage.assess(body.get('message', ''), body.get('conversation') or [])
+      if res.get('level') not in (None, 'none'):
+        audit.record(self, 'triage', level=res['level'])
+      return self.send(200, res)
     if self.path == '/api/director':
       return self.send(200, director.decide(body.get('state') or {}))
     if self.path == '/api/gpu/wake':
