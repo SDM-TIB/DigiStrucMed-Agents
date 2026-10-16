@@ -26,6 +26,36 @@ for a, b, role in _g['edges']:
 del _g
 REC_ROLES = {'population', 'target', 'condition', 'parameter', 'mention'}
 
+# terminology codes per concept from the final MHH graph (pipeline/build_kg_links.py): our selections first
+_links_path = config.DATA / 'kg_links.json.gz'
+LINKS = json.load(gzip.open(_links_path, 'rt', encoding='utf-8')) if _links_path.exists() else {}
+CODE_NAME = {'umls': 'UMLS', 'snomed': 'SNOMED CT', 'mesh': 'MeSH', 'rxnorm': 'RxNorm', 'loinc': 'LOINC', 'wikidata': 'Wikidata'}
+
+
+def codes(cid):
+  """one line for the agent: the selected terminology codes of a concept with how they were chosen and their
+  runners-up, then the unconfirmed retrieval candidates, bare and marked, so they stay reachable but read as unchecked"""
+  e = LINKS.get(cid, {})
+  chosen, unconfirmed = [], []
+  for source, name in CODE_NAME.items():
+    link = (e.get('mhh') or {}).get(source)
+    if not link:
+      continue
+    code = link.get('cui') or link.get('qid') or link.get('id')
+    if link['status'] == 'selected':
+      how = f"selected by {str(link.get('method', '')).split(':')[0].replace('_', ' ')}, {link['support']}/{link['mentions']} mentions"
+      alt = f"; alternatives {', '.join(link['alternatives'])}" if link.get('alternatives') else ''
+      chosen.append(f"{name} {code}" + (f" {link['name']}" if link.get('name') else '') + f" ({how}{alt})")
+    else:
+      unconfirmed.append(f"{name} {code}")
+  graph = e.get('kg') or {}
+  if graph.get('cui') and graph['cui'] != ((e.get('mhh') or {}).get('umls') or {}).get('cui'):
+    chosen.append(f"colleague graph UMLS {graph['cui']}")
+  if unconfirmed:
+    chosen.append('unconfirmed retrieval candidates, unchecked and possibly wrong: ' + ', '.join(unconfirmed))
+  return '; '.join(chosen)
+
+
 TOK = re.compile(r'[a-z0-9]+')
 STOP = set(('the a an and or of in on to for with by is are be as at from that this these it its not no can may should what which '
             'who how does do i my me about patients patient without there any you your tell know give explain please').split())
@@ -124,7 +154,7 @@ def detail(nid):
     v.update(text=r['text'], cls=r['class'], loe=r['loe'], direction=r.get('direction') or [], ref=r['ref'])
   elif nid in CONCEPTS:
     c = CONCEPTS[nid]
-    v.update(desc=c.get('desc') or '', n_recs=n_recs(nid), aliases=c['aliases'][:6])
+    v.update(desc=c.get('desc') or '', n_recs=n_recs(nid), aliases=c['aliases'][:6], codes=codes(nid))
   return v
 
 

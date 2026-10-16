@@ -35,6 +35,10 @@ SYSTEM = (
   "Answer only from the explored graph. Cite recommendations inline as [n], one number per bracket. Report class of "
   "recommendation and level of evidence exactly as given; never invent them. Mention the graph path when it explains the "
   "answer (e.g. Aspirin → recommendation [3] → bleeding).\n"
+  "Concepts list their terminology codes (UMLS, SNOMED CT, MeSH, RxNorm, LOINC, Wikidata) and how each was chosen: "
+  "'selected' is a model's contextual choice over retrieval candidates, 'unconfirmed' only the top retrieval candidate. "
+  "Name a code when the user asks for one or when it pins down which concept is meant; say how it was chosen, never "
+  "present it as clinically verified.\n"
   + config.LANGUAGE_RULE + "\n"
   + config.RESEARCH_RULE.replace('search right away', 'explore the graph right away').replace('search again', 'explore again') + "\n"
   "Give every relevant detail the graph returns, well structured, usually 150 to 300 words. Markdown, symbols as plain Unicode. "
@@ -76,7 +80,7 @@ class Walk:
     """1-hop and 2-hop context of one concept as compact text for the model. ui events go into `events`"""
     name = CONCEPTS[cid]['label']
     desc = CONCEPTS[cid].get('desc')
-    lines = [f"## {name} ({cid})" + (f": {desc}" if desc else '')]
+    lines = [f"## {name} ({cid})" + (f": {desc}" if desc else '') + (f"\nCodes: {kg.codes(cid)}" if kg.codes(cid) else '')]
     rel_out = [(b, r) for b, r in OUT[cid] if r not in REC_ROLES][:8]
     rel_in = [(a, r) for a, r in IN[cid] if r not in REC_ROLES and not a.startswith('r:')][:8]
     recs = sorted({a for a, _ in IN[cid] if a.startswith('r:')}, key=lambda r: -kg.rec_score(r, self.qt))[:6]
@@ -124,7 +128,8 @@ class Walk:
       if rel_out or rel_in:
         events.append(self.event([b for _, b, _ in rel_out] + [a for a, _, _ in rel_in], rel_out + rel_in, cid, 'hop1', 1))
       relations = '; '.join(f"{kg.label(a)} --{r}--> {kg.label(b)}" for a, b, r in rel_out + rel_in)
-      lines.append(f"## {c['label']} ({cid})" + (f": {c['desc']}" if c.get('desc') else '') + (f"\nRelations: {relations}" if relations else ''))
+      lines.append(f"## {c['label']} ({cid})" + (f": {c['desc']}" if c.get('desc') else '') + (f"\nCodes: {kg.codes(cid)}" if kg.codes(cid) else '')
+                   + (f"\nRelations: {relations}" if relations else ''))
     if ranked:
       events.append(self.event(ranked, [(r, c, role) for r in ranked for c, role in OUT[r] if c in self.shown], None, 'rank', 1))
       lines.append('Recommendations closest to the question in the graph, best first:')

@@ -5,9 +5,10 @@
 the app reads only this snapshot, it never queries Wikidata while someone uses it. a dated snapshot with the revision
 of every item makes what the cards show reproducible. Wikidata content is CC0.
 
-1. resolve, as app/wikidata.py describes: the concept's UMLS CUI (from the graph, else the MHH rank-1 candidate) ->
-   the item with that CUI (P2892, one SPARQL query per 200 CUIs). several items for one CUI: the graph's own QID if it
-   is among them, else the lowest Q number. no item for the CUI: the graph's QID
+1. resolve, as app/wikidata.py describes: the concept's UMLS CUI (from the graph, else the CUI of the final MHH graph,
+   selected or candidate) -> the item with that CUI (P2892, one SPARQL query per 200 CUIs). several items for one CUI:
+   the graph's own QID if it is among them, else the lowest Q number. also fetched: the graph's QIDs and the Wikidata
+   items the CLEF selector chose in the final MHH graph
 2. every resolved item through wbgetentities (50 per request): labels and descriptions in the five app languages,
    English Wikipedia, image (P18), identifiers and the relations the cards show. truthy statements only, as wdt: in
    SPARQL: preferred rank where there is one, else normal; deprecated never
@@ -114,6 +115,8 @@ def main():
         own = e.get('kg', {}).get('qid')
         cui_qid[cui] = own if own in by_cui[cui] else by_cui[cui][0]
   qids = set(cui_qid.values()) | {e['kg']['qid'] for e in LINKS.values() if e.get('kg', {}).get('qid')}
+  qids |= {e['mhh']['wikidata']['qid'] for e in LINKS.values()  # items the CLEF selector chose; candidates are never used
+           if (e.get('mhh', {}).get('wikidata') or {}).get('status') == 'selected'}
   # 2. the items
   ents = entities(qids, 'info|labels|descriptions|claims|sitelinks')
   print(f'{len(ents)} of {len(qids)} items fetched', flush=True)
