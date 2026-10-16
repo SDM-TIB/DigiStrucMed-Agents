@@ -587,7 +587,7 @@ const VIA = {umls_kg: 'Wikidata via UMLS CUI (P2892)', umls_mhh_selected: 'Wikid
   kg: 'Wikidata link from the knowledge graph', mhh_wikidata_selected: 'Wikidata item selected by CLEF'};
 // how a link of the final MHH graph was chosen, for the badge tooltips
 const LINK_HOW = l => l.status === 'selected'
-  ? uiText('selected by {method} for {n} of {m} mentions', {method: String(l.method || '').split(':')[0].replace(/_/g, ' '), n: l.support, m: l.mentions})
+  ? uiText('selected by {method} for {n} of {m} mentions', {method: l.selector || String(l.method || ''), n: l.support, m: l.mentions})
   : uiText('retrieval rank 1 for {n} of {m} mentions, unconfirmed', {n: l.support, m: l.mentions});
 const SOURCE_NAME = {snomed: 'SNOMED CT', mesh: 'MeSH', rxnorm: 'RxNorm', loinc: 'LOINC'};
 // Card bodies for the custom catalog components; written against a tiny hyperscript `h` so the same code runs

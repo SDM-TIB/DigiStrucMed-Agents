@@ -43,7 +43,7 @@ def codes(cid):
       continue
     code = link.get('cui') or link.get('qid') or link.get('id')
     if link['status'] == 'selected':
-      how = f"selected by {str(link.get('method', '')).split(':')[0].replace('_', ' ')}, {link['support']}/{link['mentions']} mentions"
+      how = f"selected by {link.get('selector') or link.get('method', '')}, {link['support']}/{link['mentions']} mentions"
       alt = f"; alternatives {', '.join(link['alternatives'])}" if link.get('alternatives') else ''
       chosen.append(f"{name} {code}" + (f" {link['name']}" if link.get('name') else '') + f" ({how}{alt})")
     else:
