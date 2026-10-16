@@ -7,7 +7,7 @@ two sources, kept apart so the ui can say where a link came from:
   mhh  the final MHH graph of 16 October 2026 (mhh_concept_links_16_10.jsonl.gz, its compact export): every detected
        mention on the 2,780 pages, and every UMLS mention inside the Level-4 units, carries per terminology (UMLS,
        SNOMED CT, MeSH, RxNorm, LOINC, Wikidata) either a selector's choice (selected_top1: native CLEF selector for
-       the five catalogues, Luna or Gemini among the UMLS Top10), a checked no_match, or the unconfirmed retrieval Top3.
+       the five catalogues; for UMLS the native CLEF selector among the Top20 first, else Luna or Gemini among the Top10), a checked no_match, or the unconfirmed retrieval Top3.
 the mentions whose surface form equals a concept label or alias vote per terminology. a selected choice beats any
 candidate: the majority among selections gives status "selected", without any selection the majority of the rank-1
 candidates gives status "candidate". support is the votes for the winner, mentions all votes cast, no_match the
@@ -23,6 +23,21 @@ import sys
 DATA = pathlib.Path(__file__).resolve().parents[1] / 'app' / 'data'
 SOURCES = ('umls', 'snomed', 'mesh', 'rxnorm', 'loinc', 'wikidata')
 KEY = {'umls': 'cui', 'wikidata': 'qid'}  # the id field per terminology; 'id' for the others
+
+
+SELECTORS = (('clef', 'CLEF'), ('gemini', 'Gemini 2.5 Flash Lite'), ('luna', 'Luna'))
+
+
+def selector(method):
+  """the model that chose, from a method id of the final graph: 'clef_native_selector:umls2026aa_top20',
+  'umls2026aa_top20:native_clef' -> CLEF; 'gemini_batch_top10_page_selection:gemini-2.5-flash-lite' -> Gemini 2.5 Flash
+  Lite. several agreeing selectors ('a + b') are all named"""
+  names = []
+  for part in method.split(' + '):
+    name = next((n for key, n in SELECTORS if key in part.lower()), part)
+    if name not in names:
+      names.append(name)
+  return ' + '.join(names)
 
 
 def norm(text):
@@ -81,6 +96,7 @@ if __name__ == '__main__':
               'alternatives': [x for x, _ in pool.most_common(4)[1:]]}  # the runners-up, so an agent can see them too
       if status == 'selected':
         link['method'] = v['methods'].most_common(1)[0][0]
+        link['selector'] = selector(link['method'])
       name = names.get(f'{source}:{best}')
       if name:
         link['name'] = name
