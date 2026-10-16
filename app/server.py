@@ -27,6 +27,7 @@ import kg
 import check
 import followups
 import lino
+import llm
 import pagewords
 import triage
 import luna
@@ -321,4 +322,5 @@ GET_ROUTES = {
 
 if __name__ == '__main__':
   mimetypes.add_type('image/svg+xml', '.svg')
+  llm.warm()  # before listening: cloud run only routes to a new revision once it accepts connections
   ThreadingHTTPServer(('0.0.0.0', config.PORT), Handler).serve_forever()

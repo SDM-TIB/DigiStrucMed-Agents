@@ -128,19 +128,35 @@ _squashed = {}
 def locate(text, ref):
   """page index and original <table> html that contain `text`, searched within guideline `ref`"""
   key = _squash(text)[:70]
-  best = None
+  hits = []
   for i, p in enumerate(PAGES):
     if p.get('ref') != ref:
       continue
     if i not in _squashed:
       _squashed[i] = _squash(p['text'])
     if key and key in _squashed[i]:
-      best = i
-      break
+      hits.append(i)
+  # a table title also stands in the table of contents, which comes first. the page where the text sits inside a
+  # table is the source; then any page that is not a table of contents; then the first page that has it
+  for i in hits:
+    table = _table_with(PAGES[i]['text'], key)
+    if table:
+      return i, table
+  best = next((i for i in hits if not _is_contents(i)), hits[0] if hits else None)
   if best is None:  # ocr noise broke the exact match. fall back to retrieval within the same guideline
     best = next((i for i in bm25(text, k=40, per_doc=99) if PAGES[i].get('ref') == ref), None)
   if best is None:
     return None, None
-  table = next((m.group(0) for m in re.finditer(r'<table\b.*?</table>', PAGES[best]['text'], flags=re.S | re.I)
-                if key and key in _squash(m.group(0))), None)
-  return best, table
+  return best, _table_with(PAGES[best]['text'], key)
+
+
+def _is_contents(i):
+  """a table of contents: most lines end in a page number ("... ejection fraction 13")"""
+  lines = [l.strip() for l in PAGES[i]['text'].splitlines() if len(l.strip()) > 12]
+  numbered = sum(1 for l in lines if re.search(r'[A-Za-z)\].]\s*\.*\s+\d{1,3}$', l))
+  return len(lines) >= 6 and numbered >= 0.4 * len(lines)
+
+
+def _table_with(page_text, key):
+  return next((m.group(0) for m in re.finditer(r'<table\b.*?</table>', page_text, flags=re.S | re.I)
+               if key and key in _squash(m.group(0))), None)
