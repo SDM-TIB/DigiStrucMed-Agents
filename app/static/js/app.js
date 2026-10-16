@@ -583,7 +583,13 @@ function renderStoryboard(st) {
 const JR_ICONS = new Set(["heart-pulse", "heart", "pill", "pill-bottle", "activity", "droplet", "droplets", "shield-alert", "shield-check", "stethoscope", "syringe", "thermometer", "brain", "scale", "apple", "dumbbell", "footprints", "moon", "cigarette-off", "wine-off", "salad", "clock", "calendar", "triangle-alert", "info", "circle-check", "circle-x", "ban", "hospital", "microscope", "flask-conical", "dna", "test-tube", "bed-double", "siren", "zap", "gauge", "trending-up", "trending-down", "list-checks", "book-open", "file-text", "network", "search", "sparkles", "user", "users", "baby", "leaf", "utensils", "bike", "timer", "hand-heart", "bandage", "ambulance"]);
 window.jrIcon = n => `https://cdn.jsdelivr.net/npm/lucide-static@1.52.0/icons/${JR_ICONS.has(n) ? n : 'sparkles'}.svg`;
 const wdThumb = u => u ? u.replace(/^http:/, 'https:') + (u.includes('?') ? '&' : '?') + 'width=240' : '';
-const VIA = {umls_kg: 'Wikidata via UMLS CUI (P2892)', umls_mhh_candidate: 'Wikidata via MHH UMLS candidate', kg: 'Wikidata link from the knowledge graph'};
+const VIA = {umls_kg: 'Wikidata via UMLS CUI (P2892)', umls_mhh_selected: 'Wikidata via selected UMLS CUI (P2892)', umls_mhh_candidate: 'Wikidata via MHH UMLS candidate',
+  kg: 'Wikidata link from the knowledge graph', mhh_wikidata_selected: 'Wikidata item selected by CLEF'};
+// how a link of the final MHH graph was chosen, for the badge tooltips
+const LINK_HOW = l => l.status === 'selected'
+  ? uiText('selected by {method} for {n} of {m} mentions', {method: String(l.method || '').split(':')[0].replace(/_/g, ' '), n: l.support, m: l.mentions})
+  : uiText('retrieval rank 1 for {n} of {m} mentions, unconfirmed', {n: l.support, m: l.mentions});
+const SOURCE_NAME = {snomed: 'SNOMED CT', mesh: 'MeSH', rxnorm: 'RxNorm', loinc: 'LOINC'};
 // Card bodies for the custom catalog components; written against a tiny hyperscript `h` so the same code runs
 // inside json-render's React renderer (h = React.createElement) and in the plain-DOM fallback.
 window.jrHTML = {
@@ -682,8 +688,12 @@ function jrCompiler() {
 // concept card spec from /api/kg/facts (live Wikidata + UMLS)
 function conceptSpec(f) {
   const wd = f.wikidata, u = f.umls, badges = [];
-  if (u) badges.push({text: 'UMLS ' + u.cui, kind: u.source === 'kg' ? '' : 'cand', title: (u.name ? u.name + (u.type ? ' · ' + u.type : '') + ' · ' : '') + uiText(u.source === 'kg' ? 'normalization in the knowledge graph' : 'MHH retrieval top-1 candidate (unconfirmed)')});
-  if (u && u.source !== 'kg') badges.push({text: uiText('candidate'), kind: 'cand', title: uiText('MHH export 07.10: rank-1 UMLS retrieval candidate, not manually confirmed')});
+  // umls: the graph's own normalization, a selection in the final MHH graph, or an unconfirmed retrieval candidate
+  if (u) badges.push({text: 'UMLS ' + u.cui, kind: u.source === 'mhh_candidate' ? 'cand' : '',
+    title: (u.name ? u.name + ' · ' : '') + (u.source === 'kg' ? uiText('normalization in the knowledge graph') : LINK_HOW(u))});
+  if (u && u.source === 'mhh_candidate') badges.push({text: uiText('candidate'), kind: 'cand', title: LINK_HOW(u)});
+  if (u && u.graph_cui) badges.push({text: 'UMLS ' + u.graph_cui, kind: 'cand', title: uiText('normalization in the knowledge graph')});  // the colleague's differing CUI
+  (f.identifiers || []).forEach(x => badges.push({text: SOURCE_NAME[x.source] + ' ' + x.id, kind: '', title: (x.name ? x.name + ' · ' : '') + LINK_HOW(x)}));
   if (wd) badges.push({text: 'Wikidata ' + wd.qid, kind: 'wd', href: wd.url});
   if (wd && wd.wikipedia) badges.push({text: 'Wikipedia', kind: 'wd', href: wd.wikipedia});
   const inLang = (texts, en) => (texts && texts[care.lang]) || en;  // wikidata labels in the patient's language where there is one

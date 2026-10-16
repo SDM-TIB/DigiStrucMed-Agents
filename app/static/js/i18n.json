@@ -265,9 +265,7 @@
     "Copied": "Kopiert",
     "Chat is unavailable right now.": "Der Chat ist gerade nicht verfügbar.",
     "normalization in the knowledge graph": "Normalisierung im Wissensgraphen",
-    "MHH retrieval top-1 candidate (unconfirmed)": "Top-1-Kandidat der MHH-Suche (unbestätigt)",
     "candidate": "Kandidat",
-    "MHH export 07.10: rank-1 UMLS retrieval candidate, not manually confirmed": "MHH-Export 07.10: UMLS-Suchkandidat auf Rang 1, nicht manuell bestätigt",
     "Wikidata via UMLS CUI (P2892)": "Wikidata über UMLS-CUI (P2892)",
     "Wikidata via MHH UMLS candidate": "Wikidata über MHH-UMLS-Kandidat",
     "Wikidata link from the knowledge graph": "Wikidata-Verknüpfung aus dem Wissensgraphen",
@@ -350,7 +348,11 @@
     "Instance of": "Ist ein(e)",
     "Subclass of": "Unterklasse von",
     "Medical specialty": "Fachgebiet",
-    "{via} · snapshot {date} · revision {rev}": "{via} · Stand {date} · Revision {rev}"
+    "{via} · snapshot {date} · revision {rev}": "{via} · Stand {date} · Revision {rev}",
+    "selected by {method} for {n} of {m} mentions": "ausgewählt durch {method} für {n} von {m} Erwähnungen",
+    "retrieval rank 1 for {n} of {m} mentions, unconfirmed": "Suchrang 1 bei {n} von {m} Erwähnungen, unbestätigt",
+    "Wikidata via selected UMLS CUI (P2892)": "Wikidata über ausgewählte UMLS-CUI (P2892)",
+    "Wikidata item selected by CLEF": "von CLEF ausgewählter Wikidata-Eintrag"
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -617,9 +619,7 @@
     "Copied": "Copiado",
     "Chat is unavailable right now.": "El chat no está disponible ahora.",
     "normalization in the knowledge graph": "normalización en el grafo de conocimiento",
-    "MHH retrieval top-1 candidate (unconfirmed)": "candidato top-1 de la búsqueda MHH (sin confirmar)",
     "candidate": "candidato",
-    "MHH export 07.10: rank-1 UMLS retrieval candidate, not manually confirmed": "Exportación MHH 07.10: candidato UMLS en el puesto 1, no confirmado manualmente",
     "Wikidata via UMLS CUI (P2892)": "Wikidata mediante CUI de UMLS (P2892)",
     "Wikidata via MHH UMLS candidate": "Wikidata mediante candidato UMLS de MHH",
     "Wikidata link from the knowledge graph": "enlace a Wikidata del grafo de conocimiento",
@@ -702,7 +702,11 @@
     "Instance of": "Es un(a)",
     "Subclass of": "Subclase de",
     "Medical specialty": "Especialidad médica",
-    "{via} · snapshot {date} · revision {rev}": "{via} · versión del {date} · revisión {rev}"
+    "{via} · snapshot {date} · revision {rev}": "{via} · versión del {date} · revisión {rev}",
+    "selected by {method} for {n} of {m} mentions": "seleccionado por {method} en {n} de {m} menciones",
+    "retrieval rank 1 for {n} of {m} mentions, unconfirmed": "primer puesto de la búsqueda en {n} de {m} menciones, sin confirmar",
+    "Wikidata via selected UMLS CUI (P2892)": "Wikidata mediante CUI de UMLS seleccionado (P2892)",
+    "Wikidata item selected by CLEF": "elemento de Wikidata seleccionado por CLEF"
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -969,9 +973,7 @@
     "Copied": "Скопировано",
     "Chat is unavailable right now.": "Чат сейчас недоступен.",
     "normalization in the knowledge graph": "нормализация в графе знаний",
-    "MHH retrieval top-1 candidate (unconfirmed)": "кандидат top-1 поиска MHH (не подтверждён)",
     "candidate": "кандидат",
-    "MHH export 07.10: rank-1 UMLS retrieval candidate, not manually confirmed": "Экспорт MHH 07.10: кандидат UMLS на 1-м месте, вручную не подтверждён",
     "Wikidata via UMLS CUI (P2892)": "Wikidata через UMLS CUI (P2892)",
     "Wikidata via MHH UMLS candidate": "Wikidata через кандидата UMLS от MHH",
     "Wikidata link from the knowledge graph": "ссылка на Wikidata из графа знаний",
@@ -1054,7 +1056,11 @@
     "Instance of": "Является",
     "Subclass of": "Подкласс",
     "Medical specialty": "Медицинская специальность",
-    "{via} · snapshot {date} · revision {rev}": "{via} · снимок от {date} · ревизия {rev}"
+    "{via} · snapshot {date} · revision {rev}": "{via} · снимок от {date} · ревизия {rev}",
+    "selected by {method} for {n} of {m} mentions": "выбрано методом {method}: {n} из {m} упоминаний",
+    "retrieval rank 1 for {n} of {m} mentions, unconfirmed": "первое место в поиске: {n} из {m} упоминаний, не подтверждено",
+    "Wikidata via selected UMLS CUI (P2892)": "Wikidata через выбранный UMLS CUI (P2892)",
+    "Wikidata item selected by CLEF": "элемент Wikidata, выбранный CLEF"
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -1321,9 +1327,7 @@
     "Copied": "कॉपी हो गया",
     "Chat is unavailable right now.": "चैट अभी उपलब्ध नहीं है।",
     "normalization in the knowledge graph": "नॉलेज ग्राफ़ में सामान्यीकरण",
-    "MHH retrieval top-1 candidate (unconfirmed)": "MHH खोज का शीर्ष-1 संभावित मिलान (अपुष्ट)",
     "candidate": "संभावित मिलान",
-    "MHH export 07.10: rank-1 UMLS retrieval candidate, not manually confirmed": "MHH एक्सपोर्ट 07.10: रैंक-1 UMLS खोज संभावित मिलान, मैन्युअल रूप से पुष्ट नहीं",
     "Wikidata via UMLS CUI (P2892)": "UMLS CUI (P2892) के ज़रिए Wikidata",
     "Wikidata via MHH UMLS candidate": "MHH UMLS संभावित मिलान के ज़रिए Wikidata",
     "Wikidata link from the knowledge graph": "नॉलेज ग्राफ़ से Wikidata लिंक",
@@ -1406,6 +1410,10 @@
     "Instance of": "का उदाहरण",
     "Subclass of": "का उपवर्ग",
     "Medical specialty": "चिकित्सा विशेषज्ञता",
-    "{via} · snapshot {date} · revision {rev}": "{via} · {date} का स्नैपशॉट · संशोधन {rev}"
+    "{via} · snapshot {date} · revision {rev}": "{via} · {date} का स्नैपशॉट · संशोधन {rev}",
+    "selected by {method} for {n} of {m} mentions": "{method} द्वारा {m} में से {n} उल्लेखों के लिए चुना गया",
+    "retrieval rank 1 for {n} of {m} mentions, unconfirmed": "{m} में से {n} उल्लेखों में खोज रैंक 1, अपुष्ट",
+    "Wikidata via selected UMLS CUI (P2892)": "चुने गए UMLS CUI (P2892) के ज़रिए Wikidata",
+    "Wikidata item selected by CLEF": "CLEF द्वारा चुना गया Wikidata आइटम"
   }
 }

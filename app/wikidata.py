@@ -4,11 +4,15 @@ the snapshot is built once by pipeline/build_wikidata_snapshot.py with the revis
 the same facts every time and can be traced to the Wikidata version it came from. nothing is queried at runtime.
 
 how a concept finds its Wikidata item, best link first. the ui shows which one was used:
-  umls_kg             UMLS CUI from the graph's own normalization -> item with that CUI (P2892)
-  umls_mhh_candidate  rank-1 UMLS retrieval candidate from the MHH export, unconfirmed -> P2892
-  kg                  Wikidata QID from the graph's normalization. sometimes a brand or a neighbour item
-the MHH Wikidata candidates are never used. spot checks found rivaroxaban -> warfarin. the CUI join is exact.
-links come from pipeline/build_kg_links.py.
+  mhh_wikidata_selected  Wikidata item the native CLEF selector chose for the concept's mentions (Mewsli-X subset)
+  kg                     Wikidata QID from the graph's normalization. sometimes a brand or a neighbour item
+  umls_mhh_selected      UMLS CUI our selectors chose for the concept's mentions in the final MHH graph -> P2892
+  umls_kg                UMLS CUI from the graph's own normalization -> item with that CUI (P2892)
+  umls_mhh_candidate     rank-1 UMLS retrieval candidate, unconfirmed -> P2892
+the UMLS CUI shown on the card is our selected one when there is one (LaSER retrieval plus a contextual choice),
+else the colleague's; direct Wikidata links come before the CUI join, which can land on a neighbour item.
+unconfirmed Wikidata candidates are never used: spot checks found rivaroxaban -> warfarin. the CUI join is exact.
+links come from pipeline/build_kg_links.py (final MHH graph of 16 October 2026).
 """
 import gzip
 import json
@@ -33,19 +37,45 @@ SNAPSHOT = json.load(gzip.open(_path, 'rt', encoding='utf-8')) if _path.exists()
 
 
 def resolve(cid):
+  """best link first. UMLS: our selected CUI (LaSER retrieval, then a CLEF/Gemini/Luna choice) beats the colleague
+  graph's normalization, which beats an unconfirmed candidate; a differing colleague CUI stays visible as graph_cui.
+  Wikidata, direct evidence before the CUI join: the item CLEF selected for the concept's mentions, the graph's QID,
+  the item of the selected or graph CUI (P2892), the item of an unconfirmed CUI. unconfirmed Wikidata candidates are
+  never used"""
   e = LINKS.get(cid, {})
   graph, mhh = e.get('kg', {}), e.get('mhh', {})
-  umls = None
-  if graph.get('cui'):
+  mu, mw = mhh.get('umls') or {}, mhh.get('wikidata') or {}
+  if mu.get('status') == 'selected':
+    umls = {**mu, 'source': 'mhh_selected'}
+  elif graph.get('cui'):
     umls = {'cui': graph['cui'], 'source': 'kg'}
-    if mhh.get('umls', {}).get('cui') == graph['cui']:  # same cui, borrow its name and semantic type
-      umls.update({k: mhh['umls'][k] for k in ('name', 'type') if mhh['umls'].get(k)})
-  elif mhh.get('umls'):
-    umls = {**mhh['umls'], 'source': 'mhh_candidate'}
+    if mu.get('cui') == graph['cui']:  # same cui, borrow its name
+      umls.update({k: mu[k] for k in ('name', 'type') if mu.get(k)})
+  elif mu:
+    umls = {**mu, 'source': 'mhh_candidate'}
+  else:
+    umls = None
+  if umls and graph.get('cui') and graph['cui'] != umls['cui']:
+    umls['graph_cui'] = graph['cui']
+  # a Wikidata item chosen for this concept beats one reached through its CUI: Wikidata attaches CUIs to neighbour
+  # items too (C0018801 heart failure sits on Q19000661 congestive heart failure, not on Q181754 heart failure)
+  if mw.get('status') == 'selected' and mw.get('qid') in SNAPSHOT['items']:
+    return umls, mw['qid'], 'mhh_wikidata_selected'
+  if graph.get('qid'):
+    return umls, graph['qid'], 'kg'
+  qid = umls and umls['source'] != 'mhh_candidate' and SNAPSHOT['cui_qid'].get(umls['cui'])
+  if qid:
+    return umls, qid, 'umls_kg' if umls['source'] == 'kg' else 'umls_mhh_selected'
   qid = umls and SNAPSHOT['cui_qid'].get(umls['cui'])
   if qid:
-    return umls, qid, 'umls_kg' if umls['source'] == 'kg' else 'umls_mhh_candidate'
-  return umls, graph.get('qid'), 'kg' if graph.get('qid') else None
+    return umls, qid, 'umls_mhh_candidate'
+  return umls, None, None
+
+
+def identifiers(cid):
+  """the selected SNOMED CT, MeSH, RxNorm and LOINC ids of the final MHH graph, for the card"""
+  mhh = LINKS.get(cid, {}).get('mhh', {})
+  return [{'source': s, **mhh[s]} for s in ('snomed', 'mesh', 'rxnorm', 'loinc') if mhh.get(s, {}).get('status') == 'selected']
 
 
 def facts(qid):
@@ -56,7 +86,7 @@ def facts(qid):
 def concept_card(cid):
   """umls + wikidata for a concept. items that also exist in our graph get its id and come first"""
   umls, qid, via = resolve(cid)
-  out = {'concept': cid, 'label': kg.CONCEPTS[cid]['label'], 'n_recs': kg.n_recs(cid),
+  out = {'concept': cid, 'label': kg.CONCEPTS[cid]['label'], 'n_recs': kg.n_recs(cid), 'identifiers': identifiers(cid),
          'umls': umls, 'qid_via': via, 'wikidata': None, 'error': None}
   item = qid and facts(qid)
   if not item:
