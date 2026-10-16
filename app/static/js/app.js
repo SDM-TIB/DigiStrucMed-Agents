@@ -1907,10 +1907,15 @@ function narrator(lang = 'en') {
       else if (kind === 'expanded' && !seen.has('exp')) { seen.add('exp'); say(T.expand(short((KG.byId.get(ev.focus) || {}).label || '…'))); }
       else if (kind === 'select' && !seen.has('sel')) { seen.add('sel'); say(T.select); }
     },
-    done: () => new Promise(r => { const t = setInterval(() => { if (!q.length) { clearInterval(t); r(); } }, 200); })
+    done: () => new Promise(r => { const t = setInterval(() => { if (!q.length) { clearInterval(t); r(); } }, 200); }),
+    stop: () => { q.length = 0; }
   };
 }
+// tavus gives up on a tool call after roughly 30 s (seen in calls: 27 s answered, 33 s and 52 s reported as an error).
+// the result goes out by this point, narration still queued is dropped
+const TOOL_DEADLINE_MS = 20000;
 async function guidoCall(m, p) {
+  const t0 = performance.now();
   let args = p.arguments; try { if (typeof args === 'string') args = JSON.parse(args); } catch { args = {}; }
   const question = (args && args.question) || '';
   // the tool argument is the persona llm's rewording, often in english. the patient's own words decide the language
@@ -1957,7 +1962,9 @@ async function guidoCall(m, p) {
   if (seeds[0]) inspect(seeds[0]);
   winLayout('split'); if (WM.wins.has('table')) winFront('table');
   direct('found', answer.slice(0, 600));
-  await nar.done(); await faceIdle(12000);
+  const left = TOOL_DEADLINE_MS - (performance.now() - t0);
+  await Promise.race([nar.done().then(() => faceIdle(12000)), new Promise(r => setTimeout(r, Math.max(0, left)))]);
+  nar.stop();
   toolResult(m, p, ok ? answer : st.raw, ok);
 }
 async function linoCall(m, p) {
