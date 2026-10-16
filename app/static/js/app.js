@@ -628,7 +628,7 @@ window.jrHTML = {
   },
   excerpt(h, p) {
     const body = p.html ? h('div', {className: 'tbl', ref: el => el && jrTable(el, p.html, p.match)}) : h('blockquote', null, p.text);
-    return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && 'page ' + p.page].filter(Boolean).join(' · '))),
+    return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && uiText('page {p}', {p: p.page})].filter(Boolean).join(' · '))),
       p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: p.pageId, quote: p.text || p.match}}))}, care.t('openPage')) : null), p.grade ? care.grade(h, p.grade) : null, body);
   }
 };
@@ -687,7 +687,7 @@ function conceptSpec(f) {
   if (wd) badges.push({text: 'Wikidata ' + wd.qid, kind: 'wd', href: wd.url});
   if (wd && wd.wikipedia) badges.push({text: 'Wikipedia', kind: 'wd', href: wd.wikipedia});
   const el = {c: {type: 'ConceptCard', props: {title: (wd && wd.label) || f.label, subtitle: (wd && wd.description) || (u && u.name) || '', image: wdThumb(wd && wd.image), badges,
-    source: wd ? uiText('Live from Wikidata ({via}) · fetched {time}', {via: uiText(VIA[f.qid_via] || 'link'), time: new Date(wd.fetched_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}) : (f.error || uiText(u ? 'UMLS only · no Wikidata item for this CUI' : 'No UMLS or Wikidata link for this concept'))}, children: []}};
+    source: wd ? uiText('Live from Wikidata ({via}) · fetched {time}', {via: uiText(VIA[f.qid_via] || 'link'), time: new Date(wd.fetched_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}) : (f.error ? uiText('Wikidata is not reachable right now.') : uiText(u ? 'UMLS only · no Wikidata item for this CUI' : 'No UMLS or Wikidata link for this concept'))}, children: []}};
   if (wd && wd.ids.length) { el.ids = {type: 'IdList', props: {items: wd.ids.filter(x => x.label !== 'UMLS CUI').slice(0, 8)}, children: []}; el.c.children.push('ids'); }
   (wd ? wd.relations : []).forEach((r, i) => { el['r' + i] = {type: 'RelationList', props: {title: r.title, tone: r.tone, total: r.total, items: r.items.map(x => ({label: x.label, url: x.url, kgId: x.kg_id, kgRecs: x.kg_recs}))}, children: []}; el.c.children.push('r' + i); });
   return {root: 'c', elements: el};
@@ -1913,14 +1913,17 @@ function narrator(lang = 'en') {
 async function guidoCall(m, p) {
   let args = p.arguments; try { if (typeof args === 'string') args = JSON.parse(args); } catch { args = {}; }
   const question = (args && args.question) || '';
+  // the tool argument is the persona llm's rewording, often in english. the patient's own words decide the language
+  // guido narrates in and what the window shows; the graph search keeps the tool's question
+  const said = [...(stage.talk || [])].reverse().find(t => t.role === 'user'), asked = (said && said.text) || question;
   const firstShare = !WM.on; shareOn();
-  const gw = winOpen('graph', uiText('Knowledge Graph') + ' — ' + question, 'graph');
+  const gw = winOpen('graph', uiText('Knowledge Graph') + ' — ' + asked, 'graph');
   if (!gw.body.querySelector('.kg-canvas')) { gw.body.append($('#kg-canvas')); const ws = document.createElement('div'); ws.className = 'wsteps'; gw.body.append(ws); }
   gw.body.querySelector('.wsteps').innerHTML = '';
   ['table', 'inspector', 'notes', 'pdf'].forEach(winClose); WM.concept = null; winLayout('focus');  // new topic, clean desk
   hudHome(gw.body);
   kgReset(question);
-  const lang = langOf(question), nar = narrator(lang); nar.say(firstShare ? SAY[lang].share : SAY[lang].again, true);
+  const lang = langOf(asked), nar = narrator(lang); nar.say(firstShare ? SAY[lang].share : SAY[lang].again, true);
   const st = {el: document.createElement('div'), steps: gw.body.querySelector('.wsteps'), answer: document.createElement('div'), refs: document.createElement('div'), raw: '', shown: 0, sources: {}, pending: null, frame: 0};
   const tl = makeTimeline(st, {min: 9000, silentText: true, say: (k, ev, c, r) => { nar.on(k, ev, c, r); if (k === 'hop1' && performance.now() - WM.lastDir > 4000) direct('searching', 'Walking the knowledge graph from ' + ((KG.byId.get(ev.focus) || {}).label || '')); }});
   let ok = true;
