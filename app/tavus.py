@@ -20,6 +20,10 @@ import urllib.request
 
 import config
 
+# tavus has no balance endpoint, but it refuses a new conversation with HTTP 402 "out of conversational credits"
+# when an account is empty. that refusal costs nothing and is the real balance: the account counts as empty until
+# its next renewal, whatever the estimate from call durations says. name -> renewal date (iso)
+_empty = {}
 CALL_NAMES = {'luna': 'Luna evidence call', 'lino': 'Lino fine-tuned model call', 'guido': 'Guido knowledge graph call'}
 PALS = tuple(CALL_NAMES)
 _timers, _lock = {}, threading.Lock()
@@ -71,6 +75,13 @@ def _order():
   return [by_name[n] for n in names] + [a for a in ACCOUNTS if a['name'] not in names]
 
 
+def _mark_empty(acct):
+  """remember tavus' own word that this account is out of credits, until its next renewal"""
+  _, renews = _period(dt.date.fromisoformat(acct['period_start']), dt.datetime.now(dt.timezone.utc).date())
+  _empty[acct['name']] = renews.isoformat()
+  _usage['at'] = 0  # the next usage() shows it
+
+
 def start(agent, owner):
   """new conversation for luna, lino or guido. returns the daily room url with its meeting token"""
   if not ACCOUNTS:
@@ -89,6 +100,8 @@ def start(agent, owner):
       break
     except RuntimeError as e:  # out of minutes, too many calls at once: next account
       errors.append(f'{acct["name"]}: {e}')
+      if 'HTTP 402' in str(e):
+        _mark_empty(acct)
   else:
     raise RuntimeError('No Tavus account could start the call. ' + ' | '.join(errors))
   _usage['at'] = 0  # the next estimate counts this call
@@ -143,9 +156,12 @@ def _account_usage(acct, now):
   offset = acct.get('used_offset_min', 0.0) if acct.get('offset_period') == start.isoformat() else 0.0
   used = max(0.0, seconds / 60 + offset)
   plan = float(acct['plan_minutes'])
-  return {'name': acct['name'], 'key': '…' + acct['key'][-4:], 'used_min': round(used, 1), 'plan_min': plan,
-          'remaining_min': round(max(0.0, plan - used), 1),
-          'calls': calls, 'since': start.isoformat(), 'renews': renews.isoformat()}
+  row = {'name': acct['name'], 'key': '…' + acct['key'][-4:], 'used_min': round(used, 1), 'plan_min': plan,
+         'remaining_min': round(max(0.0, plan - used), 1),
+         'calls': calls, 'since': start.isoformat(), 'renews': renews.isoformat()}
+  if _empty.get(acct['name'], '') > now.date().isoformat():  # tavus said empty, and the period has not renewed yet
+    row.update(remaining_min=0.0, empty_per_tavus=True)
+  return row
 
 
 _usage = {'at': 0.0, 'data': None}
