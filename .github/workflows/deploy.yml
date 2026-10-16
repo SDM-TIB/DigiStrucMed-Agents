@@ -65,3 +65,4 @@ jobs:
           LLM_FALLBACK_MODEL: ${{ vars.LLM_FALLBACK_MODEL }}
           LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
           MAX_CALL_SECONDS: ${{ vars.MAX_CALL_SECONDS }}
+          GRAPH_ENDPOINT: ${{ vars.GRAPH_ENDPOINT }}

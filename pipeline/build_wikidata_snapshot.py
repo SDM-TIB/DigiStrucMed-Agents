@@ -25,7 +25,8 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'app'))
-from wikidata import IDENTIFIERS, LINKS, RELATIONS, USER_AGENT  # noqa: E402  the same properties the app shows
+import kg  # noqa: E402  the concepts and their codes, from the graph server (GRAPH_ENDPOINT)
+from wikidata import IDENTIFIERS, RELATIONS, USER_AGENT  # noqa: E402  the same properties the app shows
 
 OUT = ROOT / 'app' / 'data' / 'wikidata_snapshot.json.gz'
 SPARQL = 'https://query.wikidata.org/sparql'
@@ -103,20 +104,23 @@ def text(e, field):
 
 
 def main():
-  # 1. resolve
-  graph_cui = {cid: e['kg']['cui'] for cid, e in LINKS.items() if e.get('kg', {}).get('cui')}
-  mhh_cui = {cid: e['mhh']['umls']['cui'] for cid, e in LINKS.items() if e.get('mhh', {}).get('umls', {}).get('cui')}
-  by_cui = cui_items(set(graph_cui.values()) | set(mhh_cui.values()))
+  # 1. resolve. per concept of the final graph: its UMLS CUI (the graph's value and the first concept of its UMLS link
+  # set, selected or unconfirmed), its own Wikidata QID, and the Wikidata item selected for its mentions
+  def first(c, source, selected_only=False):
+    ls = c['codes'].get(source) or {}
+    if ls.get('concepts') and (ls['status'] == 'selected_top1' or not selected_only):
+      return ls['concepts'][0]['id']
+  concepts = list(kg.CONCEPTS.values())
+  cuis = {c['id']: {x for x in (c.get('cui'), first(c, 'umls')) if x} for c in concepts}
+  by_cui = cui_items(set().union(*cuis.values()))
   print(f'{len(by_cui)} CUIs with a Wikidata item', flush=True)
   cui_qid = {}
-  for cid, e in LINKS.items():
-    for cui in (graph_cui.get(cid), mhh_cui.get(cid)):
-      if cui and cui in by_cui and cui not in cui_qid:
-        own = e.get('kg', {}).get('qid')
-        cui_qid[cui] = own if own in by_cui[cui] else by_cui[cui][0]
-  qids = set(cui_qid.values()) | {e['kg']['qid'] for e in LINKS.values() if e.get('kg', {}).get('qid')}
-  qids |= {e['mhh']['wikidata']['qid'] for e in LINKS.values()  # items the CLEF selector chose; candidates are never used
-           if (e.get('mhh', {}).get('wikidata') or {}).get('status') == 'selected'}
+  for c in concepts:
+    for cui in sorted(cuis[c['id']]):
+      if cui in by_cui and cui not in cui_qid:
+        cui_qid[cui] = c.get('wikidata') if c.get('wikidata') in by_cui[cui] else by_cui[cui][0]
+  qids = set(cui_qid.values()) | {c['wikidata'] for c in concepts if c.get('wikidata')}
+  qids |= {q for q in (first(c, 'wikidata', selected_only=True) for c in concepts) if q}  # unconfirmed items are never used
   # 2. the items
   ents = entities(qids, 'info|labels|descriptions|claims|sitelinks')
   print(f'{len(ents)} of {len(qids)} items fetched', flush=True)
@@ -156,7 +160,7 @@ def main():
                   'wikipedia': 'https://en.wikipedia.org/wiki/' + urllib.parse.quote(wiki.replace(' ', '_')) if wiki else None,
                   'ids': ids, 'relations': relations, 'revision': e.get('lastrevid'), 'modified': e.get('modified')}
   snap = {'meta': {'created': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'source': 'https://www.wikidata.org',
-                   'license': 'CC0 1.0', 'languages': list(LANGS), 'concepts_linked': len(LINKS), 'cuis_with_item': len(by_cui),
+                   'license': 'CC0 1.0', 'languages': list(LANGS), 'concepts_linked': len(concepts), 'cuis_with_item': len(by_cui),
                    'items': len(items), 'related_items': len(names), 'builder': 'pipeline/build_wikidata_snapshot.py'},
           'cui_qid': dict(sorted(cui_qid.items())), 'items': items}
   with gzip.open(OUT, 'wt', encoding='utf-8') as fh:

@@ -225,10 +225,27 @@
 
       <section class="library hidden" id="view-sources" aria-labelledby="sources-title">
         <header class="lib-head">
-          <h2 id="sources-title">Sources</h2>
+          <div class="src-title"><h2 id="sources-title">Sources</h2>
+            <div class="seg" role="tablist" aria-label="Sources view"><button role="tab" id="src-tab-docs" aria-selected="true">Documents</button><button role="tab" id="src-tab-graph" aria-selected="false">Graph</button></div></div>
           <div class="lib-tools"><div class="facts"><div><b id="kb-docs">–</b><span>documents</span></div><div><b id="kb-pages">–</b><span>pages</span></div></div><label class="lib-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="lib-q" type="search" placeholder="Filter by title, author or year" aria-label="Filter documents"></label></div>
         </header>
         <div class="lib-body"><div class="lib-grid" id="sources"></div></div>
+        <div class="gx" id="gx">
+          <div class="gx-main">
+            <div class="gx-canvas" id="gx-canvas"></div>
+            <div class="gx-top">
+              <label class="gx-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="gx-q" type="search" autocomplete="off" placeholder="Search the complete graph: concepts, codes, recommendations, mentions" aria-label="Search the complete graph"></label>
+              <div class="gx-res hidden" id="gx-res"></div>
+            </div>
+            <div class="gx-tools"><button id="gx-in" aria-label="Zoom in" title="Zoom in">+</button><button id="gx-out" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="gx-fit" aria-label="Fit graph" title="Fit graph">&#10530;</button><button id="gx-relayout" aria-label="Arrange again" title="Arrange again">&#8635;</button><button id="gx-clear" aria-label="Clear canvas" title="Clear canvas">&#10005;</button></div>
+            <p class="gx-status" id="gx-status" aria-live="polite"></p>
+            <p class="gx-help">Click: details · Double-click: neighbours · Drag: move</p>
+          </div>
+          <aside class="gx-side">
+            <section><h4>Node types</h4><div id="gx-kinds" class="gx-kinds"></div></section>
+            <section class="gx-detail" id="gx-detail"><p class="gx-hint">Search the graph or click a node.</p></section>
+          </aside>
+        </div>
       </section>
     </main>
   </div>
@@ -341,5 +358,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@daily-co/daily-js@0.93.0/dist/daily.js"></script>
 <script src="/static/js/care.js"></script>
 <script src="/static/js/app.js"></script>
+<script src="/static/js/graph.js"></script>
 </body>
 </html>

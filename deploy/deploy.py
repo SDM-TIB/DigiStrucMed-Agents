@@ -20,7 +20,7 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SECRETS = ('TAVUS_API_KEY', 'TAVUS_EXTRA_KEYS', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
            'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'MODAL_EXTRA_TOKENS', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
-SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'MAX_CALL_SECONDS')
+SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'MAX_CALL_SECONDS', 'GRAPH_ENDPOINT')
 # large files that live in the bucket under assets/, not in git
 ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter', 'tavus/knowledge_base': 'assets/tavus-kb'}
 
@@ -33,7 +33,9 @@ def dotenv():
     if line.strip() and not line.lstrip().startswith('#') and '=' in line:
       k, v = line.split('=', 1)
       env[k.strip()] = v.strip().strip('"')
-  return env
+  # settings set in the environment win over the .env, as in app/config.py. the .env holds the local GRAPH_ENDPOINT
+  # (the IAP tunnel); a deploy gets the VPC address: GRAPH_ENDPOINT=http://10.156.0.3:7001 python deploy/deploy.py app
+  return env | {k: os.environ[k] for k in SETTINGS if os.environ.get(k)}
 
 
 def run(*cmd, stdin=None, check=True, quiet=False):
@@ -92,8 +94,10 @@ def source_deploy(env, project, region, service, bucket, secrets_flag):
   env_file.write_text(''.join(f'{k}: {json.dumps(v)}' + chr(10) for k, v in settings.items()), encoding='utf-8')
   # one instance: gpu wake state, call timers and the usage log live in memory. min 1 = no cold start.
   # --no-invoker-iam-check because org policies often forbid allUsers. the app has its own password
+  # Direct VPC egress: the graph server (graph-server/) has only an internal address in the default subnet
   print(run('gcloud', 'run', 'deploy', service, '--source', str(ROOT / 'app'), f'--region={region}', f'--project={project}',
             '--no-invoker-iam-check', '--min-instances=1', '--max-instances=1', '--memory=1Gi', '--cpu=1',
+            '--network=default', '--subnet=default', '--vpc-egress=private-ranges-only',
             *secrets_flag, f'--env-vars-file={env_file}', '--quiet', quiet=True) or 'deployed')
   env_file.unlink()
   print(run('gcloud', 'run', 'services', 'describe', service, f'--region={region}', f'--project={project}', '--format=value(status.url)', quiet=True))

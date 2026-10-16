@@ -22,6 +22,7 @@ import corpus
 import director
 import evidence
 import gpu
+import graph
 import guido
 import kg
 import check
@@ -190,7 +191,12 @@ class Handler(BaseHTTPRequestHandler):
     route = GET_ROUTES.get(path)
     if route is None:
       return self.send(404, {'error': 'Not found'})
-    res = route(query)
+    try:
+      res = route(query)
+    except ValueError:
+      return self.send(400, {'error': 'Bad request'})
+    except graph.GraphUnavailable:
+      return self.send(503, {'error': 'The knowledge graph server is not reachable right now'})
     return self.send(404, {'error': 'Not found'}) if res is None else self.send(200, res)
 
   # ---- POST
@@ -318,6 +324,12 @@ GET_ROUTES = {
   '/api/kg/facts': facts,
   '/api/kg/evidence': lambda q: guido.evidence(q.get('id', '')),
   '/api/tavus/usage': lambda q: tavus.usage(),
+  # the explorer of the complete final graph (Sources > Graph), straight from the graph server
+  '/api/graph/kinds': lambda q: {'kinds': graph.kinds()},
+  '/api/graph/search': lambda q: {'items': graph.search(q.get('q', '')[:160], [k for k in q.get('kinds', '').split(',') if k] or None)},
+  '/api/graph/node': lambda q: graph.node(q.get('id', '')),
+  '/api/graph/neighbours': lambda q: graph.neighbours(q.get('id', ''), q.get('p') or None, q.get('dir') or None,
+                                                       q.get('limit', 40), q.get('offset', 0)),
 }
 
 if __name__ == '__main__':

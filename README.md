@@ -38,9 +38,17 @@ browser ─── Cloud Run (app/, one python process, stdlib http server)
               ├── gpu.py          picks a Modal workspace, wakes and parks its gpu
               ├── tavus.py    ─── Tavus, several accounts        video calls
               ├── director.py ─── Cloudflare Workers AI          guido's screen layout
+              ├── graph.py    ─── QLever on a VM (graph-server/)  the final MHH guideline graph, over SPARQL
               ├── wikidata.py     app/data/wikidata_snapshot     concept facts, a dated Wikidata snapshot
               └── storage.py  ─── private GCS bucket             page renders, usage log
 ```
+
+The knowledge graph has exactly one source: the final MHH guideline graph (`guidelineKG_final_16_10.nq.gz`, one
+N-Quads file; built and documented in the thesis repository, `final_graph_16_10`). `graph-server/` serves it with
+QLever as a SPARQL endpoint inside the VPC; the app keeps no copy of it. At startup `kg.py` loads Guido's working view
+from it (recommendations, the concepts they name, concept relations, and each concept's link set per terminology), and
+the Graph tab under Sources explores the complete graph live: search, every node with all its properties and edges,
+filters by node type, a minimap.
 
 The server keeps state in memory (gpu timer, call timers, usage log), so it runs as exactly one instance.
 
@@ -49,13 +57,15 @@ The server keeps state in memory (gpu timer, call timers, usage log), so it runs
 ```
 app/            the Cloud Run service. deployed as is
   server.py     routes. start here
-  data/         corpus, knowledge graph, concept links (built by pipeline/). tavus_accounts.json and
+  graph.py      every read of the knowledge graph (SPARQL): Guido's view, codes, the explorer
+  data/         corpus, Wikidata snapshot (built by pipeline/). tavus_accounts.json and
                 modal_accounts.json: the account pools, without keys
   static/       index.html, dashboard.html, css, js, images. videos are in the bucket
 gpu/            Lino on Modal. serve.py serves, bench.py measures tokens per second
 tavus/          the three video agents and their tools as json. sync.py pushes them to every Tavus account.
                 knowledge_base.json lists Luna's 132 knowledge base texts (the texts are in the bucket)
-pipeline/       rebuilds app/data from the MHH export and guidelineKG.nt
+graph-server/   the knowledge graph as a SPARQL endpoint: QLever on Compute Engine, as Terraform. README inside
+pipeline/       rebuilds app/data from the MHH export and the graph server
 deploy/         deploy.py: Cloud Run, Modal, and the large files in the bucket
   deploy_new_tavus.py   adds a Tavus account: agents, Luna's knowledge base, key to Secret Manager
   deploy_new_modal.py   adds a Modal workspace: Lino's weights and vLLM server, token to Secret Manager
@@ -104,18 +114,18 @@ python pipeline/build_corpus.py <clean_ready_07_10>/pages <guidelineKG.nt>
 ```
 
 ```bash
-python pipeline/build_kg_graph.py <guidelineKG.nt>
+python graph-server/publish_graph.py --apply <final_graph_16_10>/guidelineKG_final_16_10.nq.gz
 ```
 
-```bash
-python pipeline/build_kg_links.py <final_graph_16_10>
-```
+A new graph version goes to the graph server; the app needs no rebuild (see `graph-server/README.md`).
 
 ```bash
 python pipeline/build_wikidata_snapshot.py
 ```
 
-The graph builders reproduce the committed files exactly (checked on 2026-10-08; `build_kg_graph.py` again on 2026-10-16, after it started to keep each recommendation's source blocks). The Wikidata snapshot records its date and the revision of every item, so a rebuild on another day can differ where Wikidata changed.
+The snapshot builder reads the concepts and their codes from the graph server (`GRAPH_ENDPOINT`; locally the tunnel of
+`graph-server/ui-tunnel.ps1`). It records its date and the revision of every item, so a rebuild on another day can
+differ where Wikidata changed.
 
 ## How Guido searches
 
@@ -167,8 +177,8 @@ The keys and tokens themselves live only in `.env` and Secret Manager. The json 
 - **Interface languages.** The fixed texts follow the patient's language, first the browser's, then the conversation's: `app/static/js/i18n.json` for `index.html` (AI translated, a native speaker review is still due), `app/static/js/care.js` for what the app writes itself.
 - **About us.** The team on the About page comes from `app/static/team.json`. Put photos in `app/static/img/team/` and their file names into the json.
 - **Usage log.** `/dashboard` shows logins, chats, calls and gpu actions with ip, browser and session. It has its own `ADMIN_PASSWORD`. IPs and questions are personal data, so tell your visitors.
-- **Where a recommendation comes from.** The knowledge graph records for every semantic unit the physical blocks it was extracted from (`physicalBlockId`, `pb_<document sha256>_p<page>_g<group>`), and those page ids are the corpus page ids. `pipeline/build_kg_graph.py` keeps them on each recommendation (`src`, plus `doc`, the document's sha256), and the "look, here" card opens that page and the table on it that holds the text (`corpus.source`). Verbatim text alone does not place a recommendation: guidelines repeat them in summaries and tables of contents, and several documents have no author-year reference. `python tests/provenance_eval.py` measures it over all 3,977 recommendations (2026-10-16): 3,695 have source blocks; their page holds the text verbatim for 3,364 and holds at least 60 % of its words for 3,612 (the graph writes LaTeX like `\leq` where the page has ≤, and joins table cells differently); a table on it holds the text for 3,449. A search for the first page with the text would land on a different page for 987 of the 3,449 it finds. 278 recommendations, all from four supplementary units, have only their document: the page of that document that holds the text, and when several do, the one that holds most of the other texts of the same semantic unit. The card then says "page found by text search". 4 are not found.
-- **Terminology codes.** Concept codes come from the final MHH graph of 16 October 2026 (`final_graph_16_10` in the thesis repository, `mhh_concept_links_16_10.jsonl.gz`): every detected mention on the 2,780 pages and every UMLS mention in the Level-4 units carries, per UMLS, SNOMED CT, MeSH, RxNorm, LOINC and Wikidata, a selector's choice (our LaSER UMLS retrieval with a Luna/Gemini choice among the Top10; the native CLEF selector for the other five), a checked no-match, or the unconfirmed retrieval Top3. `pipeline/build_kg_links.py` lets the mentions whose surface form equals a concept's label or alias vote: a selected code beats any candidate, and the card and Guido say which it is (`selected by …, n/m mentions` or `unconfirmed`). Our selected UMLS CUI is preferred over the colleague graph's normalization, whose differing CUI stays visible. Guido's tool results carry a `Codes:` line per concept with every code and its runners-up. Unconfirmed Wikidata candidates are never used: spot checks found wrong items.
+- **Where a recommendation comes from.** The knowledge graph records for every semantic unit the physical blocks it was extracted from (`physicalBlockId`, `pb_<document sha256>_p<page>_g<group>`), and those page ids are the corpus page ids. `graph.agent_view()` keeps them on each recommendation (`src`, plus `doc`, the document's sha256), and the "look, here" card opens that page and the table on it that holds the text (`corpus.source`). Verbatim text alone does not place a recommendation: guidelines repeat them in summaries and tables of contents, and several documents have no author-year reference. `python tests/provenance_eval.py` measures it over all 3,977 recommendations (2026-10-16): 3,695 have source blocks; their page holds the text verbatim for 3,364 and holds at least 60 % of its words for 3,612 (the graph writes LaTeX like `\leq` where the page has ≤, and joins table cells differently); a table on it holds the text for 3,449. A search for the first page with the text would land on a different page for 987 of the 3,449 it finds. 278 recommendations, all from four supplementary units, have only their document: the page of that document that holds the text, and when several do, the one that holds most of the other texts of the same semantic unit. The card then says "page found by text search". 4 are not found.
+- **Terminology codes.** Every concept of the final graph has, per UMLS, SNOMED CT, MeSH, RxNorm, LOINC and Wikidata, a link set of its own (graph `entity-links`), decided by the same rule as each detected mention: the mentions whose surface form equals the concept's label or alias vote (for UMLS first the Level-4 mentions bridged to the concept's own source mentions); a selection gives the Top1 with its support and runners-up, otherwise the unconfirmed Top3. The mention selections themselves are our LaSER UMLS retrieval with the native CLEF selector first and a Luna/Gemini choice among the Top10 otherwise, and the native CLEF selector for the other five. The card and Guido say which it is (`selected …, n/m mentions` or `unconfirmed`); Guido's tool results carry a `Codes:` line per concept. Where a UMLS CUI or Wikidata QID was selected it replaces the colleague graph's value in the final graph. Unconfirmed Wikidata candidates are never used: spot checks found wrong items.
 - **Lino makes things up.** He invents references and is often wrong. That's the point of the comparison, so don't add guardrails to him.
 
 ## Credits
