@@ -71,6 +71,17 @@ def stream(messages, tools=None, tool_choice=None, max_tokens=1200, ep=AGENTS, t
   yield 'calls', [calls[i] for i in sorted(calls)]
 
 
+def warm():
+  """one tiny request when an instance starts: the vertex token and the model's first response cost about 15 s,
+  which the first patient (often in a video call, where tavus does not wait long) should not pay. failures are ignored"""
+  t0 = time.time()
+  try:
+    complete([{'role': 'user', 'content': 'Reply with OK.'}], 16, timeout=40)
+  except Exception as e:
+    print(f'llm warm-up failed: {type(e).__name__}', flush=True)
+  print(f'llm warm-up {time.time() - t0:.1f} s', flush=True)
+
+
 def complete(messages, max_tokens, ep=AGENTS, timeout=120, **extra):
   """non streaming. returns (text, finish_reason)"""
   body = {'model': ep.model, 'messages': messages, 'stream': False, 'max_tokens': max_tokens, **ep.extra, **extra}

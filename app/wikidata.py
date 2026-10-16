@@ -37,8 +37,14 @@ _cache, _lock = {}, threading.Lock()
 def _sparql(query):
   url = ENDPOINT + '?' + urllib.parse.urlencode({'query': query, 'format': 'json'})
   req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, 'Accept': 'application/sparql-results+json'})
-  with urllib.request.urlopen(req, timeout=15) as r:
-    return json.load(r)['results']['bindings']
+  for attempt in range(2):  # the public endpoint has slow moments. one more try before giving up
+    try:
+      with urllib.request.urlopen(req, timeout=12) as r:
+        return json.load(r)['results']['bindings']
+    except Exception:
+      if attempt:
+        raise
+      time.sleep(0.5)
 
 
 def _cached(key, fn):
@@ -46,7 +52,12 @@ def _cached(key, fn):
     hit = _cache.get(key)
   if hit and time.time() - hit[0] < TTL:
     return hit[1]
-  val = fn()
+  try:
+    val = fn()
+  except Exception:
+    if hit:  # wikidata unreachable: what we fetched earlier beats no card
+      return hit[1]
+    raise
   with _lock:
     _cache[key] = (time.time(), val)
   return val
@@ -141,3 +152,14 @@ def concept_card(cid):
         it['kg_id'], it['kg_recs'] = k, kg.n_recs(k)
     rel['items'].sort(key=lambda it: (not it.get('kg_id'), -it.get('kg_recs', 0), it['label'].lower()))
   return out
+
+
+def prefetch(cids):
+  """fetch the cards of concepts the ui is about to show, in the background, so the inspector finds them cached"""
+  def run():
+    for cid in cids:
+      try:
+        concept_card(cid)
+      except Exception:
+        pass
+  threading.Thread(target=run, daemon=True).start()

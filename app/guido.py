@@ -16,6 +16,7 @@ import corpus
 import llm
 import kg
 import retrieve
+import wikidata
 from kg import CONCEPTS, IN, OUT, REC_ROLES, RECS
 
 MAX_ROUNDS = 3
@@ -114,6 +115,7 @@ class Walk:
     found = retrieve.search(query, question)
     seeds, matched, ranked = found['concepts'], found['matched'], found['recs']
     events.append(self.event(seeds, [], seeds[0] if seeds else None, 'seed', 0))
+    wikidata.prefetch(seeds[:4])  # the call's inspector opens one of these a few seconds from now
     if matched:  # recommendations whose own text matched, no concept label needed
       events.append(self.event(matched, [(r, c, role) for r in matched for c, role in OUT[r] if c in seeds], None, 'match', 1))
     lines = []
