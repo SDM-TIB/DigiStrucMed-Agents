@@ -69,12 +69,9 @@ LINO_API_KEY = env('LINO_API_KEY')
 MODAL_TOKENS = [(i.strip(), s.strip()) for i, s in [(env('MODAL_TOKEN_ID'), env('MODAL_TOKEN_SECRET')),
                 *(p.split(':', 1) for p in env('MODAL_EXTRA_TOKENS').split(',') if ':' in p)] if i.strip() and s.strip()]
 
-# cloudflare workers ai, clef-flash directs guido's shared screen
+# cloudflare workers ai: clef-flash directs guido's shared screen, decides the triage banners and judges lino's check
 CF_ACCOUNT_ID = env('CF_ACCOUNT_ID')
 CF_API_TOKEN = env('CF_API_TOKEN')
-
-# triage (triage.py): TypeSafe's Jev when this is set, otherwise clef-flash on the cloudflare account above
-TYPESAFE_API_KEY = env('TYPESAFE_API_KEY')
 
 # private gcs bucket: page renders, usage log. empty = local files only (dev)
 BUCKET = env('PAGE_BUCKET')

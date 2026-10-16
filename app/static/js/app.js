@@ -24,6 +24,7 @@ function showApp() { $('#login').classList.add('hidden'); $('#boot').classList.a
 /* start screen: choose how long the GPU stays awake, start it, explain the agents while it boots */
 let bootHold = 3600, bootPoll = 0, bootEntered = false;
 const fmtHold = sec => sec < 3600 ? care.fill('minutes', {n: sec / 60}) : sec === 3600 ? care.t('hour1') : care.fill('hours', {n: sec / 3600});
+const fmtLeft = min => [Math.floor(min / 60) ? (Math.floor(min / 60) === 1 ? care.t('hour1') : care.fill('hours', {n: Math.floor(min / 60)})) : '', min % 60 || !Math.floor(min / 60) ? care.fill('minutes', {n: min % 60}) : ''].filter(Boolean).join(' ');
 const fmtClock = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
 async function showBoot(afterLogin) {
   let st = {status: 'offline'};
@@ -101,7 +102,8 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && bootModal) closeBoo
 async function tavusMinutes() {
   try { const x = await (await fetch('/api/tavus/usage')).json(); if (!x.ok) throw 0; return x; } catch { return null; }
 }
-const tvDay = (d, month = 'short') => new Date(d).toLocaleDateString({de: 'de-DE', es: 'es-ES', ru: 'ru-RU', hi: 'hi-IN'}[care.lang] || 'en-GB', {day: 'numeric', month});
+const careLocale = () => ({de: 'de-DE', es: 'es-ES', ru: 'ru-RU', hi: 'hi-IN'}[care.lang] || 'en-GB');
+const tvDay = (d, month = 'short') => new Date(d).toLocaleDateString(careLocale(), {day: 'numeric', month});
 function tavusText(x) { return care.fill('tvLeft', {left: x.remaining_min.toFixed(1), plan: x.plan_min, n: x.accounts.length, d: tvDay(x.next_renewal)}); }  // care.js text, numbers only from the server
 async function bootTavus() {
   const el = $('#boot-tavus'), x = await tavusMinutes();
@@ -123,7 +125,7 @@ async function bootTick() {
     $('#boot-state').textContent = 'Waking up'; $('#boot-wtitle').textContent = t < 25 ? 'Starting the GPU…' : t < 70 ? 'Loading Lino’s fine-tuned model…' : 'Warming up…';
     $('#boot-fill').style.width = Math.min(97, 100 * t / target) + '%';
     $('#boot-elapsed').textContent = fmtClock(t);
-    $('#boot-eta').textContent = t < target ? `about ${fmtClock(target - t)} left · last start took ${fmtClock(target)}` : 'almost there…';
+    $('#boot-eta').textContent = t < target ? uiText('about {a} left · last start took {b}', {a: fmtClock(target - t), b: fmtClock(target)}) : uiText('almost there…');
     $('#bs-1').classList.add('on'); $('#bs-1').classList.toggle('done', t > 25);
     $('#bs-2').classList.toggle('on', t > 25); $('#bs-2').classList.toggle('done', t > 70); $('#bs-3').classList.toggle('on', t > 70);
     bootPoll = setTimeout(bootTick, 1000);
@@ -131,7 +133,7 @@ async function bootTick() {
     $('#boot-wait').classList.add('boot-wait-done');
     $('#boot-fill').style.width = '100%'; ['#bs-1', '#bs-2', '#bs-3'].forEach(k => $(k).classList.add('on', 'done'));
     $('#boot-state').textContent = care.t('ready'); $('#boot-wtitle').textContent = care.fill('linoAwake', {t: fmtHold(st.hold_s || bootHold)});
-    $('#boot-eta').textContent = `started in ${fmtClock(st.cold_start_s || 0)}`;
+    $('#boot-eta').textContent = uiText('started in {t}', {t: fmtClock(st.cold_start_s || 0)});
     $('#boot-enter').classList.remove('hidden'); $('#boot-enter').focus();
     if (!bootEntered) { bootEntered = true; bootPoll = setTimeout(enterApp, 2200); }
   } else {
@@ -168,7 +170,7 @@ function renderLibrary(q) {
   docs.forEach((d, i) => {
     const b = document.createElement('button'); b.className = 'doc';
     if (i < 24) b.style.animation = `rise .4s ${i * 25}ms var(--ease) both`;
-    b.innerHTML = `<span class="top"><span class="lang">${d.lang}</span>${d.ref ? `<span class="ref">${esc(d.ref)}</span>` : ''}<span>${d.pages.length} page${d.pages.length > 1 ? 's' : ''}</span></span>`
+    b.innerHTML = `<span class="top"><span class="lang">${d.lang}</span>${d.ref ? `<span class="ref">${esc(d.ref)}</span>` : ''}<span>${d.pages.length > 1 ? uiText('{n} pages', {n: d.pages.length}) : uiText('1 page')}</span></span>`
       + `<h4>${esc(d.title)}</h4><p>${esc(d.preview)}</p>`;
     b.onclick = () => openDocument(d);
     grid.append(b);
@@ -180,8 +182,8 @@ function loadData() {
   if (loaded) return; loaded = true;
   fetch('/api/library').then(r => r.json()).then(x => {
     LIB = x.documents;
-    $('#kb-docs').textContent = LIB.length.toLocaleString('en');
-    $('#kb-pages').textContent = x.pages.toLocaleString('en');
+    $('#kb-docs').textContent = LIB.length.toLocaleString(careLocale());
+    $('#kb-pages').textContent = x.pages.toLocaleString(careLocale());
     renderLibrary('');
   }).catch(() => {});
 }
@@ -278,7 +280,7 @@ function hud(phase, detail) {
   const el = $('#kg-hud'); if (!el) return;
   el.classList.toggle('hidden', !phase); if (!phase) return;
   el.classList.toggle('done', phase === 'done');
-  $('#hud-phase').textContent = HUD[phase] || phase; $('#hud-detail').innerHTML = detail || '';
+  $('#hud-phase').textContent = uiText(HUD[phase] || phase); $('#hud-detail').innerHTML = detail || '';
   const order = ['link', 'match', 'rank', 'walk', 'select'], at = phase === 'done' ? 5 : order.indexOf(phase);
   el.querySelectorAll('#hud-steps li').forEach((li, i) => { li.classList.toggle('on', i === at); li.classList.toggle('past', i < at); });
 }
@@ -338,8 +340,8 @@ function kgUpdate(ev) {
     KG.links.forEach(l => { const a = l.source.id || l.source, b = l.target.id || l.target;
       if (a === 'q' && KG.pathIds.has(b)) { l.hot = true; KG.pathIds.add('q'); } });
     if (!KG.cited.size) KG.pathIds = new Set();
-    $('#kg-status').textContent = `${KG.nodes.length} nodes explored · ${KG.cited.size} recommendations used`;
-    hud('done', `${KG.cited.size} recommendation${KG.cited.size === 1 ? '' : 's'} cited · ${KG.nodes.length} nodes explored`);
+    $('#kg-status').textContent = uiText('{n} nodes explored · {m} recommendations used', {n: KG.nodes.length, m: KG.cited.size});
+    hud('done', uiText(KG.cited.size === 1 ? '1 recommendation cited · {n} nodes explored' : '{m} recommendations cited · {n} nodes explored', {m: KG.cited.size, n: KG.nodes.length}));
     KG.wave = -1;
     KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]});
     const focusSet = KG.pathIds.size ? KG.pathIds : new Set(KG.nodes.map(n => n.id));
@@ -362,7 +364,7 @@ function kgUpdate(ev) {
   const fresh = new Set(ev.nodes.map(n => n.id)); if (ev.focus) fresh.add(ev.focus);
   KG.nodes.forEach(n => { if (fresh.has(n.id)) n.wave = KG.wave; });
   const STATUS = {seed: 'Start concepts', match: 'Matching texts', rank: 'PageRank', hop1: 'Relations', hop2: 'Two hops out', expanded: 'Expanding'};
-  $('#kg-status').textContent = `${STATUS[ev.action] || 'Walking'} · ${KG.nodes.length} nodes`;
+  $('#kg-status').textContent = uiText('{what} · {n} nodes', {what: uiText(STATUS[ev.action] || 'Walking'), n: KG.nodes.length});
   KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]}); KG.fg.d3ReheatSimulation();
   kgCamera(fresh);
 }
@@ -394,25 +396,25 @@ $('#nav-about').onclick = async () => {
 let gpuOffArm = 0;
 $('#gpu-off').onclick = async () => {
   const b = $('#gpu-off'), t = b.querySelector('span');
-  if (!b.classList.contains('confirm')) { b.classList.add('confirm'); t.textContent = 'Click again to shut down'; clearTimeout(gpuOffArm);
-    gpuOffArm = setTimeout(() => { b.classList.remove('confirm'); t.textContent = 'Shut down GPU'; }, 4000); return; }
-  clearTimeout(gpuOffArm); b.disabled = true; t.textContent = 'Shutting down…';
+  if (!b.classList.contains('confirm')) { b.classList.add('confirm'); t.textContent = uiText('Click again to shut down'); clearTimeout(gpuOffArm);
+    gpuOffArm = setTimeout(() => { b.classList.remove('confirm'); t.textContent = uiText('Shut down GPU'); }, 4000); return; }
+  clearTimeout(gpuOffArm); b.disabled = true; t.textContent = uiText('Shutting down…');
   try { const x = await post('/api/gpu/shutdown'); gpuState = x; renderGpu();
-    $('#set-lino-note').textContent = !x.ok ? 'Marked asleep; Modal will stop the container after its idle window.'
-      : x.shared ? `Your time is released. The GPU stays on because ${x.shared} other session${x.shared > 1 ? 's are' : ' is'} still using Lino.`
-      : `GPU shut down${x.stopped ? ` (${x.stopped} container${x.stopped > 1 ? 's' : ''} stopped)` : ''}. Lino is asleep until the next wake.`; }
-  catch (e) { $('#set-lino-note').textContent = 'Could not shut down: ' + e.message; }
-  b.disabled = false; b.classList.remove('confirm'); t.textContent = 'Shut down GPU';
+    $('#set-lino-note').textContent = !x.ok ? uiText('Marked asleep; Modal will stop the container after its idle window.')
+      : x.shared ? uiText(x.shared > 1 ? 'Your time is released. The GPU stays on because {n} other sessions are still using Lino.' : 'Your time is released. The GPU stays on because another session is still using Lino.', {n: x.shared})
+      : uiText('GPU shut down. Lino is asleep until the next wake.'); }
+  catch (e) { $('#set-lino-note').textContent = uiText('Could not shut down: {error}', {error: e.message}); }
+  b.disabled = false; b.classList.remove('confirm'); t.textContent = uiText('Shut down GPU');
   loadSettings();
 };
 // one row per tavus key or modal workspace: name, key hint, share left, amount, renewal, and where the next call or wake goes
 function accountRows(sel, rows, fmt) {
   $(sel).innerHTML = rows.map(a => {
-    if (a.error) return `<div class="acct off"><div class="acct-id"><b>${esc(a.name)}</b><code>${esc(a.key || '')}</code></div><small>unreachable</small></div>`;
+    if (a.error) return `<div class="acct off"><div class="acct-id"><b>${esc(a.name)}</b><code>${esc(a.key || '')}</code></div><small>${esc(uiText('unreachable'))}</small></div>`;
     const [pct, amount, renews] = fmt(a), p = Math.max(0, Math.min(100, pct));
     const tag = a.active ? `<em class="on">${esc(care.t('inUse'))}</em>` : a.next ? `<em>${esc(care.t('nextUp'))}</em>` : '';
     return `<div class="acct${p <= 0 ? ' empty' : p < 15 ? ' low' : ''}"><div class="acct-id"><b>${esc(a.name)}</b><code>${esc(a.key || '')}</code>${tag}</div>
-      <div class="acct-bar" role="img" aria-label="${Math.round(p)}% left"><i style="width:${p}%"></i></div>
+      <div class="acct-bar" role="img" aria-label="${esc(uiText('{n}% left', {n: Math.round(p)}))}"><i style="width:${p}%"></i></div>
       <div class="acct-num"><b>${Math.round(p)}%</b><small>${amount} · ${renews}</small></div></div>`;
   }).join('');
 }
@@ -436,7 +438,7 @@ async function loadSettings() {
     $('#set-lino-dot').className = 'presence ' + (st === 'online' ? '' : st === 'waking' ? 'wake' : 'off');
     $('#set-lino-state').textContent = st === 'online' ? 'Online' : st === 'waking' ? 'Waking up' : 'Asleep';
     $('#gpu-off').classList.toggle('hidden', st === 'offline');
-    if (st === 'online') { const m = Math.round(x.lino.awake_for_s / 60); $('#set-lino-note').textContent = `NVIDIA L4 GPU on Modal. Stays awake for ${Math.floor(m / 60) ? Math.floor(m / 60) + ' h ' : ''}${m % 60} min more.`; }
+    if (st === 'online') $('#set-lino-note').textContent = uiText('NVIDIA L4 GPU on Modal. Stays awake for {dur} more.', {dur: fmtLeft(Math.round(x.lino.awake_for_s / 60))});
   } catch { $('#credit-note').textContent = 'Credit information is unavailable right now.'; }
 }
 const VIDEOS = [{"file": "MedicalVideo", "title": "Heart failure medicines and their side effects", "duration": "2:03", "lang": "EN", "tag": "Fine-tuned model prompt", "desc": "A doctor avatar walks patients through the main heart failure medicines, ARNI, ACE inhibitors, MRA and SGLT2 inhibitors, and explains which side effects to watch for, such as low blood pressure, cough or high potassium. Generated with Animaker from the prompt produced by our NeSyCoT fine-tuned model."}, {"file": "Heroes-MedicalVideo", "title": "The heart heroes", "duration": "2:16", "lang": "EN", "tag": "Storytelling version", "desc": "The same request told as a story: each medicine class becomes a superhero (ARNI, ACE, beta-blocker, MRA and SGLT2) that protects the heart in its own way. A playful format designed to make the four pillars of heart failure therapy memorable."}, {"file": "HFPlatform-Video", "title": "Medikamente bei Herzinsuffizienz", "duration": "4:30", "lang": "DE", "tag": "Medical platform reference", "desc": "Reference video from a medical patient platform for the same request, in German. Hero characters explain what each medicine does, for example relaxing blood vessels and relieving the heart, and which side effects can occur, from tiredness to high potassium."}];
@@ -514,12 +516,12 @@ async function runSearch(q) {
   const groups = [];
   // local: agents, conversations, documents, videos
   const ag = Object.entries(AGENTS).filter(([, a]) => srchHas(a.name + ' ' + a.tagline, terms));
-  if (ag.length) groups.push(['Agents', ag.map(([id, a]) => ({ic: `<span class="ic round" style="background-image:url(/static/img/${id}.jpg)"></span>`, title: a.name, text: a.tagline, go: () => { view('chat'); switchAgent(id); }}))]);
+  if (ag.length) groups.push(['Agents', ag.map(([id, a]) => ({ic: `<span class="ic round" style="background-image:url(/static/img/${id}.jpg)"></span>`, title: a.name, text: uiText(a.tagline), go: () => { view('chat'); switchAgent(id); }}))]);
   const conv = [];
-  Object.entries(AGENTS).forEach(([id, a]) => a.history.forEach(m => { if (m.text && srchHas(m.text, terms)) conv.push({ic: `<span class="ic">${SRCH_IC.chat}</span>`, title: (m.role === 'user' ? 'You' : a.name) + ' · chat with ' + a.name, text: srchAround(m.text, terms), go: () => { view('chat'); switchAgent(id); }}); }));
+  Object.entries(AGENTS).forEach(([id, a]) => a.history.forEach(m => { if (m.text && srchHas(m.text, terms)) conv.push({ic: `<span class="ic">${SRCH_IC.chat}</span>`, title: (m.role === 'user' ? uiText('You') : a.name) + ' · ' + uiText('chat with {name}', {name: a.name}), text: srchAround(m.text, terms), go: () => { view('chat'); switchAgent(id); }}); }));
   if (conv.length) groups.push(['Conversations', conv.slice(0, 6)]);
   const docs = LIB.filter(d => srchHas(d.title + ' ' + (d.ref || ''), terms));
-  if (docs.length) groups.push(['Documents', docs.slice(0, 6).map(d => ({ic: `<span class="ic">${SRCH_IC.doc}</span>`, title: d.title, text: d.preview, meta: `${d.ref ? d.ref + ' · ' : ''}${d.pages.length} pages · ${d.lang}`, go: () => openDocument(d)}))]);
+  if (docs.length) groups.push(['Documents', docs.slice(0, 6).map(d => ({ic: `<span class="ic">${SRCH_IC.doc}</span>`, title: d.title, text: d.preview, meta: `${d.ref ? d.ref + ' · ' : ''}${uiText(d.pages.length > 1 ? '{n} pages' : '1 page', {n: d.pages.length})} · ${d.lang}`, go: () => openDocument(d)}))]);
   const vids = VIDEOS.filter(v => srchHas(v.title + ' ' + v.desc + ' ' + v.tag, terms));
   const vidGroup = vids.length ? ['Videos', vids.map(v => ({ic: `<span class="ic vid shot" style="background-image:url(/static/videos/${v.file}.jpg)"></span>`, title: v.title, text: v.desc, meta: `${v.tag} · ${v.duration} · ${v.lang}`, go: el => openPlayer(v, el)}))] : null;
   srchRender(groups.concat(vidGroup ? [vidGroup] : []), terms, true);
@@ -527,9 +529,9 @@ async function runSearch(q) {
   let x; try { x = await fetch('/api/search?q=' + encodeURIComponent(q)).then(r => r.json()); } catch { x = {pages: [], kg: []}; }
   if (seq !== srchSeq) return;
   const kg = x.kg.map(n => ({ic: `<span class="ic ${n.kind === 'rec' ? 'r' : 'c'}">${SRCH_IC[n.kind === 'rec' ? 'r' : 'c']}</span>`,
-    title: n.kind === 'rec' ? n.text : n.label, text: n.kind === 'rec' ? '' : n.desc || '', meta: n.kind === 'rec' ? n.label : `Concept · ${n.n_recs || 0} recommendations`,
+    title: n.kind === 'rec' ? n.text : n.label, text: n.kind === 'rec' ? '' : n.desc || '', meta: n.kind === 'rec' ? n.label : uiText('Concept') + ' · ' + uiText('{n} recommendations', {n: n.n_recs || 0}),
     go: () => { srcList = [{n: 'KG', rec_id: n.id, search: true, title: n.kind === 'rec' ? n.label : n.label, ref: 'Knowledge graph'}]; srcIdx = 0; renderSource(); $('#srcx').classList.remove('hidden'); }}));
-  const pages = x.pages.map(p => ({ic: `<span class="ic">${SRCH_IC.page}</span>`, title: p.title, text: p.snippet, meta: `${p.ref ? p.ref + ' · ' : ''}page ${p.page}`,
+  const pages = x.pages.map(p => ({ic: `<span class="ic">${SRCH_IC.page}</span>`, title: p.title, text: p.snippet, meta: `${p.ref ? p.ref + ' · ' : ''}${uiText('page {p}', {p: p.page})}`,
     go: () => { const d = LIB.find(d => d.pages.some(([id]) => id === p.page_id)); if (!d) return; openDocument(d); srcIdx = Math.max(0, d.pages.findIndex(([id]) => id === p.page_id)); renderSource(); }}));
   const all = groups.slice();
   if (kg.length) all.push(['Knowledge graph', kg]);
@@ -554,8 +556,13 @@ let attached = false;
 function setAttach(on) {
   attached = !!on && agent === AGENTS.lino;
   $('#att').classList.toggle('hidden', !attached);
-  $('#msg').placeholder = attached ? 'Describe the video, e.g. 3 scenes on heart failure medicines and their side effects'
-    : `Ask ${agent.name}…`;
+  composerText();
+}
+// the composer's placeholder and label, in the patient's language (translatePage leaves #msg alone)
+function composerText() {
+  $('#msg').placeholder = attached ? uiText('Describe the video, e.g. 3 scenes on heart failure medicines and their side effects')
+    : agent === AGENTS.luna ? care.t('askLuna') : care.fill('askAgent', {name: agent.name});
+  $('#msg').setAttribute('aria-label', uiText('Message {name}', {name: agent.name}));
 }
 $('#att-x').onclick = () => { setAttach(false); $('#msg').focus(); };
 // Lino's storyboard answer is JSON {title, scenes[]}: show it as scene cards when it parses.
@@ -564,12 +571,12 @@ function renderStoryboard(st) {
   if (a < 0 || b <= a) return;
   let j; try { j = JSON.parse(raw.slice(a, b + 1)); } catch { return; }
   if (!j || !Array.isArray(j.scenes) || !j.scenes.length) return;
-  st.answer.innerHTML = `<div class="sb"><div class="sb-head"><span>Storyboard</span><h4>${esc(String(j.title || 'Untitled'))}</h4></div>` + j.scenes.map((sc, i) =>
+  st.answer.innerHTML = `<div class="sb"><div class="sb-head"><span>${esc(uiText('Storyboard'))}</span><h4>${esc(String(j.title || uiText('Untitled')))}</h4></div>` + j.scenes.map((sc, i) =>
     `<div class="sb-scene"><span class="sb-n">${esc(String(sc.scene_number || i + 1))}</span><div>`
     + (sc.on_screen_text ? `<b class="sb-ost">${esc(String(sc.on_screen_text))}</b>` : '')
-    + (sc.narration ? `<p><em>Narration</em>${esc(String(sc.narration))}</p>` : '')
-    + (sc.visual_description ? `<p><em>Visual</em>${esc(String(sc.visual_description))}</p>` : '') + '</div></div>').join('')
-    + `</div><div class="codeblock"><header><span>json</span><button class="cb-copy">${COPY_ICON}Copy</button></header><pre><code class="language-json">${esc(JSON.stringify(j, null, 2))}</code></pre></div>`;
+    + (sc.narration ? `<p><em>${esc(uiText('Narration'))}</em>${esc(String(sc.narration))}</p>` : '')
+    + (sc.visual_description ? `<p><em>${esc(uiText('Visual'))}</em>${esc(String(sc.visual_description))}</p>` : '') + '</div></div>').join('')
+    + `</div><div class="codeblock"><header><span>json</span><button class="cb-copy">${COPY_ICON}${esc(uiText('Copy'))}</button></header><pre><code class="language-json">${esc(JSON.stringify(j, null, 2))}</code></pre></div>`;
   decorateCode(st.answer, true);
 }
 /* ---------- json-render glue: icons, non-React fallback renderer, card builders ---------- */
@@ -595,10 +602,10 @@ window.jrHTML = {
   relations(h, p) {
     return h('div', {className: 'jr-rel ' + (p.tone || '')}, h('h5', null, h('i'), p.title + (p.total > (p.items || []).length ? ` · ${p.total}` : '')),
       h('div', {className: 'chips'}, (p.items || []).map((x, i) => x.kgId
-        ? h('button', {key: i, className: 'kg', title: `In our guideline graph · ${x.kgRecs || 0} recommendations`, style: {animationDelay: i * 25 + 'ms'},
+        ? h('button', {key: i, className: 'kg', title: uiText('In our guideline graph · {n} recommendations', {n: x.kgRecs || 0}), style: {animationDelay: i * 25 + 'ms'},
             onClick: () => window.dispatchEvent(new CustomEvent('jr-open-concept', {detail: x.kgId}))}, x.label)
         : h('a', {key: i, href: x.url, target: '_blank', rel: 'noopener', style: {animationDelay: i * 25 + 'ms'}}, x.label)),
-        p.total > (p.items || []).length ? h('span', {className: 'more'}, `+${p.total - p.items.length} on Wikidata`) : null));
+        p.total > (p.items || []).length ? h('span', {className: 'more'}, uiText('+{n} on Wikidata', {n: p.total - p.items.length})) : null));
   },
   steps(h, p) {
     return h('section', {className: 'jr-steps'}, p.title ? h('b', null, p.title) : null,
@@ -675,12 +682,12 @@ function jrCompiler() {
 // concept card spec from /api/kg/facts (live Wikidata + UMLS)
 function conceptSpec(f) {
   const wd = f.wikidata, u = f.umls, badges = [];
-  if (u) badges.push({text: 'UMLS ' + u.cui, kind: u.source === 'kg' ? '' : 'cand', title: (u.name ? u.name + (u.type ? ' · ' + u.type : '') + ' · ' : '') + (u.source === 'kg' ? 'normalization in the knowledge graph' : 'MHH retrieval top-1 candidate (unconfirmed)')});
-  if (u && u.source !== 'kg') badges.push({text: 'candidate', kind: 'cand', title: 'MHH export 07.10: rank-1 UMLS retrieval candidate, not manually confirmed'});
+  if (u) badges.push({text: 'UMLS ' + u.cui, kind: u.source === 'kg' ? '' : 'cand', title: (u.name ? u.name + (u.type ? ' · ' + u.type : '') + ' · ' : '') + uiText(u.source === 'kg' ? 'normalization in the knowledge graph' : 'MHH retrieval top-1 candidate (unconfirmed)')});
+  if (u && u.source !== 'kg') badges.push({text: uiText('candidate'), kind: 'cand', title: uiText('MHH export 07.10: rank-1 UMLS retrieval candidate, not manually confirmed')});
   if (wd) badges.push({text: 'Wikidata ' + wd.qid, kind: 'wd', href: wd.url});
   if (wd && wd.wikipedia) badges.push({text: 'Wikipedia', kind: 'wd', href: wd.wikipedia});
   const el = {c: {type: 'ConceptCard', props: {title: (wd && wd.label) || f.label, subtitle: (wd && wd.description) || (u && u.name) || '', image: wdThumb(wd && wd.image), badges,
-    source: wd ? `Live from Wikidata (${VIA[f.qid_via] || 'link'}) · fetched ${new Date(wd.fetched_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}` : (f.error || (u ? 'UMLS only · no Wikidata item for this CUI' : 'No UMLS or Wikidata link for this concept'))}, children: []}};
+    source: wd ? uiText('Live from Wikidata ({via}) · fetched {time}', {via: uiText(VIA[f.qid_via] || 'link'), time: new Date(wd.fetched_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}) : (f.error || uiText(u ? 'UMLS only · no Wikidata item for this CUI' : 'No UMLS or Wikidata link for this concept'))}, children: []}};
   if (wd && wd.ids.length) { el.ids = {type: 'IdList', props: {items: wd.ids.filter(x => x.label !== 'UMLS CUI').slice(0, 8)}, children: []}; el.c.children.push('ids'); }
   (wd ? wd.relations : []).forEach((r, i) => { el['r' + i] = {type: 'RelationList', props: {title: r.title, tone: r.tone, total: r.total, items: r.items.map(x => ({label: x.label, url: x.url, kgId: x.kg_id, kgRecs: x.kg_recs}))}, children: []}; el.c.children.push('r' + i); });
   return {root: 'c', elements: el};
@@ -710,7 +717,7 @@ function switchAgent(id) {
   $('#suggests').classList.toggle('hidden', !SUG.length);
   $('#suggests').querySelectorAll('.sug').forEach(b => b.onclick = () => { const [, q, kind] = SUG[b.dataset.i]; if (kind === 'attach') setAttach(true); else $('#msg').value = q; $('#msg').focus(); });
   setAttach(false);
-  $('#msg').placeholder = agent === AGENTS.luna ? care.t('askLuna') : care.fill('askAgent', {name: agent.name});
+  composerText();
   renderGpu(); $('#msg').focus(); scrollFeed();
 }
 $('#item-lino').onclick = () => switchAgent('lino');
@@ -728,13 +735,13 @@ function renderGpu() {
   $('#start').classList.toggle('hidden', !agent.video); $('#start').classList.toggle('asleep', asleep);
   $('#start span').textContent = label; $('#start').setAttribute('aria-label', label);
   $('#start').title = asleep ? 'Lino runs on a GPU that sleeps when unused. Wake it to call him.' : '';
-  $('#wake-btn-t').textContent = `Ping ${who} to wake up`;
+  $('#wake-btn-t').textContent = uiText('Ping {name} to wake up', {name: who});
   $('#wake-orb').className = 'orb lino sleepy-lino';
   if (sel) {
     $('#head-orb .presence').className = 'presence ' + (st === 'online' ? '' : st === 'waking' ? 'wake' : 'off');
-    const left = Math.round((gpuState.awake_for_s || 0) / 60), h = Math.floor(left / 60), m = left % 60;
+    const left = Math.round((gpuState.awake_for_s || 0) / 60);
     const pill = $('#head-pill'); pill.className = 'rt-pill ' + st;
-    pill.textContent = st === 'online' ? `Online · ${h ? h + ' h ' : ''}${m} min left` : st === 'waking' ? `Waking up · ${Math.floor(gpuState.waking_for_s || 0)} s` : 'Asleep';
+    pill.textContent = st === 'online' ? uiText('Online · {dur} left', {dur: fmtLeft(left)}) : st === 'waking' ? uiText('Waking up · {n} s', {n: Math.floor(gpuState.waking_for_s || 0)}) : uiText('Asleep');
   } else { $('#head-orb .presence').className = 'presence'; $('#head-pill').className = 'rt-pill hidden'; }
   const showPanel = sel && st !== 'online';
   $('#wake-panel').classList.toggle('hidden', !showPanel);
@@ -742,7 +749,7 @@ function renderGpu() {
   if (!showPanel) return;
   const card = $('#wake-card'); card.className = 'wake-card ' + (st === 'waking' ? 'waking' : 'off');
   $('#wake-state').textContent = st === 'waking' ? 'Waking up' : 'Offline';
-  $('#wake-title').textContent = st === 'waking' ? `Waking ${who}…` : `${who} is asleep`;
+  $('#wake-title').textContent = uiText(st === 'waking' ? 'Waking {name}…' : '{name} is asleep', {name: who});
   $('#wake-text').textContent = st === 'waking'
     ? 'His GPU is starting on Modal and the fine-tuned model is being loaded. This usually takes one to three minutes. After that it stays active as long as you use the page, no matter which agent you talk to.'
     : 'Lino runs on his own GPU, which sleeps when nobody is talking to him. Once awake, it stays active as long as you use the page, no matter which agent you talk to.';
@@ -753,7 +760,7 @@ function renderGpu() {
     const target = Math.max(30, Math.round((gpuState.last_cold_start_s || 220) / 10) * 10), fmt = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
     $('#wt-fill').style.width = Math.min(97, 100 * t / target) + '%';
     $('#wt-elapsed').textContent = fmt(t);
-    $('#wt-eta').textContent = t < target ? `about ${fmt(target - t)} left · last start took ${fmt(target)}` : 'almost there…';
+    $('#wt-eta').textContent = t < target ? uiText('about {a} left · last start took {b}', {a: fmt(target - t), b: fmt(target)}) : uiText('almost there…');
     $('#ws-1').classList.add('on'); $('#ws-2').classList.toggle('on', t > 20); $('#ws-3').classList.toggle('on', t > 60);
   }
 }
@@ -814,8 +821,32 @@ function citeify(html) {
 
 // the fixed texts of index.html in the patient's language: static/js/i18n.json, keyed by the english text. conversation
 // content (answers, cards, banners) is not touched, it carries its own language
-const I18N = {dict: null, text: new WeakMap(), attr: new WeakMap()};
+const I18N = {dict: null, text: new WeakMap(), attr: new WeakMap(), pat: {}};
 const I18N_SKIP = 'script,style,.thread,#stage-cards,.gcheck,.next,.care-alert,#srcx-quote,#feed,.jr-host,#dq-list,.langs';
+// a key may carry placeholders: "{n} pages" also translates "12 pages". a one-letter placeholder stands for a number
+// or a time like 2:05, a longer one for any text, which is itself looked up again ("{what} · {n} nodes")
+function i18nPatterns(l) {
+  if (!I18N.pat[l]) I18N.pat[l] = Object.keys(I18N.dict[l] || {}).filter(k => /\{\w+\}/.test(k)).map(k => {
+    const names = [], re = k.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\w+)\}/g, (_, n) => { names.push(n); return n.length === 1 ? '([\\d.,:]+)' : '(.+?)'; });
+    return [new RegExp('^' + re + '$', 'u'), names, I18N.dict[l][k]];
+  });
+  return I18N.pat[l];
+}
+function i18nLookup(key, l = care.lang) {
+  const dict = I18N.dict && I18N.dict[l]; if (!dict) return null;
+  if (dict[key]) return dict[key];
+  for (const [re, names, tr] of i18nPatterns(l)) {
+    const m = key.match(re);
+    if (m) return tr.replace(/\{(\w+)\}/g, (_, n) => { const v = m[names.indexOf(n) + 1]; return dict[v] || v; });
+  }
+  return null;
+}
+// for texts the code writes where translatePage does not reach (chat thread, call stage, cards) or into html:
+// the english template is the key, vars are filled in after the lookup
+function uiText(en, vars = {}) {
+  const t = (care.lang !== 'en' && I18N.dict && I18N.dict[care.lang] && I18N.dict[care.lang][en]) || en;
+  return t.replace(/\{(\w+)\}/g, (all, n) => n in vars ? vars[n] : all);
+}
 function translatePage() {
   const all = I18N.dict, l = care.lang, dict = all && all[l];
   if (!all) return;
@@ -825,7 +856,7 @@ function translatePage() {
     // [english original, what we last wrote]. if the node shows something else now, the app rewrote it: that is the new original
     const mem = I18N.text.get(n), raw = mem && n.nodeValue === mem[1] ? mem[0] : n.nodeValue, key = raw.trim();
     if (!key || !/\p{L}/u.test(key)) continue;
-    const tr = l === 'en' ? key : dict && dict[key], next = tr ? raw.replace(key, tr) : raw;
+    const tr = l === 'en' ? key : dict && i18nLookup(key, l), next = tr ? raw.replace(key, tr) : raw;
     I18N.text.set(n, [raw, next]);
     if (next !== n.nodeValue) n.nodeValue = next;  // only real changes, so the observer below settles
   }
@@ -833,7 +864,7 @@ function translatePage() {
     if (el.closest(I18N_SKIP) || el.id === 'msg') return;
     const mem = (I18N.attr.get(el) || {})[a], cur = el.getAttribute(a);
     const key = mem && cur === mem[1] ? mem[0] : cur;  // as with text: a value the app set since is the new original
-    const tr = l === 'en' ? key : dict && dict[key], next = tr || key;
+    const tr = l === 'en' ? key : dict && i18nLookup(key, l), next = tr || key;
     I18N.attr.set(el, {...I18N.attr.get(el), [a]: [key, next]});
     if (next !== cur) el.setAttribute(a, next);
   });
@@ -842,10 +873,10 @@ function translatePage() {
 let i18nTimer = 0;
 new MutationObserver(() => { if (care.lang !== 'en' && !i18nTimer) i18nTimer = setTimeout(() => { i18nTimer = 0; translatePage(); }, 150); })
   .observe(document.body, {subtree: true, childList: true, characterData: true});
-fetch('/static/js/i18n.json').then(r => r.ok ? r.json() : null).then(d => { I18N.dict = d; translatePage(); }).catch(() => {});
+fetch('/static/js/i18n.json').then(r => r.ok ? r.json() : null).then(d => { I18N.dict = d; I18N.pat = {}; translatePage(); composerText(); }).catch(() => {});
 addEventListener('care-lang', translatePage);
+addEventListener('care-lang', () => { setDial(dialIdx, true); composerText(); $('#dq-label').textContent = care.t('myQuestions'); });
 care.setLang((navigator.language || 'en').slice(0, 2).toLowerCase());  // until the patient writes, the browser's language
-addEventListener('care-lang', () => { setDial(dialIdx, true); if (!attached) $('#msg').placeholder = agent === AGENTS.luna ? care.t('askLuna') : care.fill('askAgent', {name: agent.name}); $('#dq-label').textContent = care.t('myQuestions'); });
 // fixed, hand-written safety texts from care.js. the banner shows when a message sounds like an emergency right now
 function careAlert(level = 'emergency', l = care.lang) {
   const [title, text, button] = {emergency: ['alertTitle', 'alert', 'call'], urgent: ['urgentTitle', 'urgent', 'call'], support: ['supportTitle', 'support', 'talk']}[level];
@@ -978,7 +1009,7 @@ function decorateCode(root, final) {
     const pre = code.parentElement; if (pre.parentElement.classList.contains('codeblock')) return;
     const lang = ((code.className.match(/language-(\w+)/) || [])[1] || 'code');
     const box = document.createElement('div'); box.className = 'codeblock';
-    box.innerHTML = `<header><span>${esc(lang)}</span><button class="cb-copy">${COPY_ICON}Copy</button></header>`;
+    box.innerHTML = `<header><span>${esc(lang)}</span><button class="cb-copy">${COPY_ICON}${esc(uiText('Copy'))}</button></header>`;
     pre.replaceWith(box); box.append(pre);
   });
   if (final) root.querySelectorAll('.codeblock code.language-json').forEach(code => {
@@ -990,7 +1021,7 @@ function decorateCode(root, final) {
 document.addEventListener('click', e => {
   const b = e.target.closest('.cb-copy'); if (!b) return;
   const code = b.closest('.codeblock').querySelector('code');
-  navigator.clipboard.writeText(code.textContent).then(() => { b.innerHTML = COPY_ICON + 'Copied'; setTimeout(() => b.innerHTML = COPY_ICON + 'Copy', 1600); }).catch(() => {});
+  navigator.clipboard.writeText(code.textContent).then(() => { b.innerHTML = COPY_ICON + esc(uiText('Copied')); setTimeout(() => b.innerHTML = COPY_ICON + esc(uiText('Copy')), 1600); }).catch(() => {});
 });
 function render(st, final) {
   st.frame = 0;
@@ -1098,14 +1129,14 @@ function renderSource() {
   $('#srcx-sub').textContent = (s.page ? care.fill('srcPage', {p: s.page}) : care.t('srcRec')) + (srcList.length > 1 ? ' · ' + care.fill('srcOf', {i: srcIdx + 1, n: srcList.length}) : '');
   $('#srcx-prev').disabled = srcIdx === 0; $('#srcx-next').disabled = srcIdx === srcList.length - 1;
   const page = $('#srcx-page'); page.innerHTML = `<span class="ph">${esc(care.t('loadingPage'))}</span>`; page.scrollTop = 0;
-  const img = new Image(); img.alt = `Page ${s.page} of ${s.title}`;
+  const img = new Image(); img.alt = uiText('Page {p} of {title}', {p: s.page, title: s.title});
   img.onload = () => { if (srcList[srcIdx] === s) { page.innerHTML = ''; const wrap = document.createElement('div'); wrap.className = 'pg-wrap'; const sheet = document.createElement('div'); sheet.className = 'pg-sheet'; sheet.append(img); wrap.append(sheet); page.append(wrap); markPage(s, wrap, sheet); } };
   img.onerror = () => { if (srcList[srcIdx] === s) page.innerHTML = `<span class="ph">${esc(care.t('noImage'))}</span>`; };
   page.classList.remove('kx-mode');
-  if (s.rec_id) { $('#srcx-n').textContent = s.n; $('#srcx-sub').textContent = (s.search ? 'Guideline knowledge graph' : 'Recommendation in the guideline knowledge graph') + ' · click any node to explore' + (srcList.length > 1 ? ` · source ${srcIdx + 1} of ${srcList.length}` : ''); return kxShow(s); }
+  if (s.rec_id) { $('#srcx-n').textContent = s.n; $('#srcx-sub').textContent = uiText(s.search ? 'Guideline knowledge graph' : 'Recommendation in the guideline knowledge graph') + ' · ' + uiText('click any node to explore') + (srcList.length > 1 ? ' · ' + uiText('source {i} of {n}', {i: srcIdx + 1, n: srcList.length}) : ''); return kxShow(s); }
   if (s.page_id) img.src = '/api/page-image/' + encodeURIComponent(s.page_id);
-  else page.innerHTML = `<div class="kg-src"><span>Guideline knowledge graph · ${esc(s.ref || 'recommendation')}</span><p>${esc(s.snippet || '')}</p></div>`;
-  $('#srcx-n').textContent = s.doc ? 'p. ' + s.page : s.n;
+  else page.innerHTML = `<div class="kg-src"><span>${esc(uiText('Guideline knowledge graph'))} · ${esc(s.ref || uiText('recommendation'))}</span><p>${esc(s.snippet || '')}</p></div>`;
+  $('#srcx-n').textContent = s.doc ? uiText('p. {p}', {p: s.page}) : s.n;
   $('#srcx-sub').textContent = s.doc ? care.fill('pageOf', {i: srcIdx + 1, n: srcList.length}) : $('#srcx-sub').textContent;
   $('.srcx-quote h4').textContent = care.t(s.doc ? 'pageText' : s.page_id ? 'searchExcerpt' : 'recommendation');
   if (s.doc) {
@@ -1215,31 +1246,31 @@ async function kxOpen(id, fresh) {
 }
 function kxDetail(x) {
   const n = x.node, q = $('#srcx-quote'); q.className = 'kx-det';
-  $('.srcx-quote h4').textContent = n.id === KX.origin && KX.used.size ? 'Cited recommendation' : 'Selected node';
-  const kindLbl = {rec: 'Recommendation', concept: 'Concept', guide: 'Guideline'}[n.kind];
+  $('.srcx-quote h4').textContent = uiText(n.id === KX.origin && KX.used.size ? 'Cited recommendation' : 'Selected node');
+  const kindLbl = uiText({rec: 'Recommendation', concept: 'Concept', guide: 'Guideline'}[n.kind]);
   let h = `<span class="kind"><i class="${n.kind === 'rec' ? 'r' : ''}" style="background:${kxCol(n)}"></i>${kindLbl}</span>`;
   if (n.kind === 'rec') {
-    h += `<p class="txt">${esc(n.text)}</p><div class="chips">${n.cls.length ? `<span class="chip">Class ${esc(n.cls.join('/'))}</span>` : ''}${n.loe.length ? `<span class="chip">Level of evidence ${esc(n.loe.join('/'))}</span>` : ''}${n.ref ? `<span class="chip g">${esc(n.ref)}</span>` : ''}${KX.used.has(n.id) ? '<span class="chip used">Used in the answer</span>' : ''}</div>`;
+    h += `<p class="txt">${esc(n.text)}</p><div class="chips">${n.cls.length ? `<span class="chip">${esc(uiText('Class {c}', {c: n.cls.join('/')}))}</span>` : ''}${n.loe.length ? `<span class="chip">${esc(uiText('Level of evidence {l}', {l: n.loe.join('/')}))}</span>` : ''}${n.ref ? `<span class="chip g">${esc(n.ref)}</span>` : ''}${KX.used.has(n.id) ? `<span class="chip used">${esc(uiText('Used in the answer'))}</span>` : ''}</div>`;
   } else {
     h += `<h3>${esc(n.label)}</h3>` + (n.desc ? `<p class="meta">${esc(n.desc)}</p>` : '')
-      + (n.n_recs ? `<div class="chips"><span class="chip">${n.n_recs} recommendation${n.n_recs > 1 ? 's' : ''}</span></div>` : '')
-      + (n.aliases && n.aliases.length ? `<p class="meta">Also known as: ${esc(n.aliases.join(', '))}</p>` : '');
+      + (n.n_recs ? `<div class="chips"><span class="chip">${esc(uiText(n.n_recs > 1 ? '{n} recommendations' : '1 recommendation', {n: n.n_recs}))}</span></div>` : '')
+      + (n.aliases && n.aliases.length ? `<p class="meta">${esc(uiText('Also known as: {names}', {names: n.aliases.join(', ')}))}</p>` : '');
   }
-  if (n.kind === 'concept') h += '<div class="kx-facts" id="kx-facts"><div class="ph">Loading live context from UMLS and Wikidata…</div></div>';
+  if (n.kind === 'concept') h += `<div class="kx-facts" id="kx-facts"><div class="ph">${esc(uiText('Loading live context from UMLS and Wikidata…'))}</div></div>`;
   const rel = new Map(x.links.map(l => [l.source === n.id ? l.target : l.source, l.role]));
-  h += `<h5>Connected · ${x.total}${x.total > x.nodes.length ? ` (showing ${x.nodes.length})` : ''}</h5><div class="kx-nb">` + x.nodes.map(m =>
+  h += `<h5>${esc(uiText('Connected'))} · ${x.total}${x.total > x.nodes.length ? ` (${esc(uiText('showing {n}', {n: x.nodes.length}))})` : ''}</h5><div class="kx-nb">` + x.nodes.map(m =>
     `<button data-id="${esc(m.id)}"><span class="k ${m.kind}" style="background:${kxCol(m)}"></span><span>${esc(kxShort(m))}<em>${esc(rel.get(m.id) || '')}</em></span></button>`).join('') + '</div>';
   q.innerHTML = h; q.parentElement.scrollTop = 0;
   q.querySelectorAll('.kx-nb button').forEach(b => b.onclick = () => kxOpen(b.dataset.id));
   if (n.kind === 'concept') getFacts(n.id).then(f => { const box = $('#kx-facts'); if (!box || KX.sel !== n.id) return;
-    if (!f) { box.innerHTML = '<div class="ph" style="animation:none">Live context unavailable.</div>'; return; }
+    if (!f) { box.innerHTML = `<div class="ph" style="animation:none">${esc(uiText('Live context unavailable.'))}</div>`; return; }
     box.innerHTML = ''; const host = document.createElement('div'); host.className = 'jr-host'; box.append(host); jrMount(host).set(conceptSpec(f)); });
 }
 async function kxSearch(v) {
   const box = $('#kx-res'); if (!v.trim()) { box.classList.add('hidden'); return; }
   let x; try { x = await fetch('/api/kg/search?q=' + encodeURIComponent(v)).then(r => r.json()); } catch { return; }
   if ($('#kx-q').value !== v) return;
-  box.innerHTML = x.items.length ? x.items.map(m => `<button data-id="${esc(m.id)}"><span class="k ${m.kind}" style="background:${kxCol(m)}"></span><span>${esc(m.kind === 'rec' ? (m.text.length > 90 ? m.text.slice(0, 89) + '…' : m.text) : m.label)}<small>${m.kind === 'rec' ? esc(m.label) : m.n_recs ? m.n_recs + ' recommendations' : 'Concept'}</small></span></button>`).join('')
+  box.innerHTML = x.items.length ? x.items.map(m => `<button data-id="${esc(m.id)}"><span class="k ${m.kind}" style="background:${kxCol(m)}"></span><span>${esc(m.kind === 'rec' ? (m.text.length > 90 ? m.text.slice(0, 89) + '…' : m.text) : m.label)}<small>${m.kind === 'rec' ? esc(m.label) : esc(m.n_recs ? uiText('{n} recommendations', {n: m.n_recs}) : uiText('Concept'))}</small></span></button>`).join('')
     : '<p class="lib-empty" style="padding:10px;margin:0">Nothing found.</p>';
   box.classList.remove('hidden');
   box.querySelectorAll('button').forEach(b => b.onclick = () => { box.classList.add('hidden'); $('#kx-q').value = ''; kxOpen(b.dataset.id); });
@@ -1272,7 +1303,7 @@ function finishRefs(st) {
     const s = st.sources[n];
     const b = document.createElement('button'); b.className = 'ref'; b.dataset.n = n; b.style.animationDelay = (i * 60) + 'ms';
     b.title = s.title;
-    b.innerHTML = `<span class="n">${n}</span><span class="t">${esc(s.ref || s.title)}</span><span class="pg">${s.page ? "p. " + s.page : "KG"}</span>`;
+    b.innerHTML = `<span class="n">${n}</span><span class="t">${esc(s.ref || s.title)}</span><span class="pg">${s.page ? esc(uiText('p. {p}', {p: s.page})) : 'KG'}</span>`;
     st.refs.append(b);
   });
 }
@@ -1288,18 +1319,19 @@ function makeTimeline(st, opts = {}) {
   function narrate(ev) {
     const concepts = ev.nodes.filter(n => n.kind === 'concept'), recs = ev.nodes.filter(n => n.kind === 'rec');
     opts.say?.(ev.action, ev, concepts, recs);
-    if (ev.action === 'seed') { hud('link', ev.nodes.length ? 'start concepts: ' + names(ev.nodes, 3) : 'no concept label matched, reading texts');
-      return step(st, 'search', ev.nodes.length ? `Linking the question to graph concepts: ${names(ev.nodes, 4)}` : 'No concept name matches, searching the recommendation texts', true); }
-    if (ev.action === 'match') { hud('match', `${recs.length} recommendation texts match directly`);
-      return step(st, 'read', `${recs.length} recommendation texts match the question directly`, true); }
-    if (ev.action === 'rank') { hud('rank', `personalized pagerank from the start concepts: ${recs.length} closest recommendations`);
-      return step(st, 'search', `Personalized PageRank ranks the ${recs.length} recommendations closest to the question`, true); }
+    if (ev.action === 'seed') { hud('link', ev.nodes.length ? uiText('start concepts: {names}', {names: names(ev.nodes, 3)}) : uiText('no concept label matched, reading texts'));
+      return step(st, 'search', ev.nodes.length ? uiText('Linking the question to graph concepts: {names}', {names: names(ev.nodes, 4)}) : uiText('No concept name matches, searching the recommendation texts'), true); }
+    if (ev.action === 'match') { hud('match', uiText('{n} recommendation texts match directly', {n: recs.length}));
+      return step(st, 'read', uiText('{n} recommendation texts match the question directly', {n: recs.length}), true); }
+    if (ev.action === 'rank') { hud('rank', uiText('personalized pagerank from the start concepts: {n} closest recommendations', {n: recs.length}));
+      return step(st, 'search', uiText('Personalized PageRank ranks the {n} recommendations closest to the question', {n: recs.length}), true); }
     if (ev.action === 'hop1') {
       const rels = [...new Set(ev.links.map(l => l.role).filter(r => !['target', 'population', 'condition', 'parameter', 'mention'].includes(r)))];
-      return step(st, 'search', `Hop 1 from <span class="q">${esc(lab(ev.focus))}</span>: ${recs.length} recommendations${rels.length ? ` · relations ${rels.slice(0, 3).map(r => `<span class="q">${esc(r)}</span>`).join(', ')}` : ''}`, true);
+      return step(st, 'search', uiText('Hop 1 from {c}: {n} recommendations', {c: `<span class="q">${esc(lab(ev.focus))}</span>`, n: recs.length})
+        + (rels.length ? ' · ' + uiText('relations {r}', {r: rels.slice(0, 3).map(r => `<span class="q">${esc(r)}</span>`).join(', ')}) : ''), true);
     }
-    if (ev.action === 'hop2') { hud('walk', 'to ' + names(concepts, 3)); return step(st, 'search', `Following the top recommendations to ${names(concepts)}`, true); }
-    if (ev.action === 'expanded') return step(st, 'search', `Expanding <span class="q">${esc(lab(ev.focus))}</span> one hop further`, true);
+    if (ev.action === 'hop2') { hud('walk', uiText('to {names}', {names: names(concepts, 3)})); return step(st, 'search', uiText('Following the top recommendations to {names}', {names: names(concepts)}), true); }
+    if (ev.action === 'expanded') return step(st, 'search', uiText('Expanding {c} one hop further', {c: `<span class="q">${esc(lab(ev.focus))}</span>`}), true);
   }
   function chunks(ev) {   // reveal large hops in small waves so nodes visibly grow out of their parent
     if (ev.action === 'done' || ev.nodes.length <= 4) return [ev];
@@ -1321,7 +1353,7 @@ function makeTimeline(st, opts = {}) {
         await sleep(it.ev.action === 'seed' ? 1500 : it.ev.sub ? 650 : 1100);
       } else if (it.kind === 'text') {
         const wait = (opts.min || MIN_TRAVERSAL_MS) - (performance.now() - t0);
-        if (wait > 0) { opts.say?.('select'); hud('select', 'reading the ranked recommendations'); step(st, 'check', 'Selecting the recommendations that answer the question', true); await sleep(wait); }
+        if (wait > 0) { opts.say?.('select'); hud('select', uiText('reading the ranked recommendations')); step(st, 'check', uiText('Selecting the recommendations that answer the question'), true); await sleep(wait); }
         if (opts.silentText) { st.raw += it.delta; continue; }
         settle(st);
         for (let i = 0; i < it.delta.length; i += 18) {   // stream the held-back answer with the blur effect
@@ -1377,7 +1409,7 @@ async function sendChat(text) {
   try {
     const r = await fetch(a.endpoint, {method: 'POST', headers: HEADERS, body: JSON.stringify({messages: chatHistory})});
     if (r.status === 401) { showLogin(); throw Error('Please sign in again.'); }
-    if (!r.ok || !r.body) throw Error('Chat is unavailable right now.');
+    if (!r.ok || !r.body) throw Error(uiText('Chat is unavailable right now.'));
     const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
     for (;;) {
       const {value, done} = await reader.read(); if (done) break;
@@ -1497,7 +1529,7 @@ function startMeter() {
 function syncToggles() {
   $('#pj-mic').setAttribute('aria-pressed', !micOn); $('#pj-cam').setAttribute('aria-pressed', !camOn);
   $('#d-mic').setAttribute('aria-pressed', !micOn); $('#d-cam').setAttribute('aria-pressed', !camOn);
-  $('#d-mic .lbl').textContent = micOn ? 'Mute' : 'Unmute'; $('#d-cam .lbl').textContent = camOn ? 'Stop Video' : 'Start Video';
+  $('#d-mic .lbl').textContent = uiText(micOn ? 'Mute' : 'Unmute'); $('#d-cam .lbl').textContent = uiText(camOn ? 'Stop Video' : 'Start Video');
   $('#preview-off').classList.toggle('hidden', camOn); $('#local-off').classList.toggle('hidden', camOn); $('#pip-muted').classList.toggle('hidden', micOn);
   preview?.getVideoTracks().forEach(t => t.enabled = camOn); preview?.getAudioTracks().forEach(t => t.enabled = micOn);
   if (call) { call.setLocalAudio(micOn); call.setLocalVideo(camOn); }
@@ -1514,7 +1546,7 @@ function openCall(from) {
   stage.talk = [];  // triage context starts fresh with every call
   cx.style.setProperty('--face', `url(/static/img/${callAgent}.jpg)`);
   $('#cx-wait-orb').classList.toggle('lino', callAgent === 'lino'); $('#cx-wait-orb').classList.toggle('guido', callAgent === 'guido');
-  $('#cx-wait-text').textContent = 'Connecting to ' + agent.name + '…';
+  $('#cx-wait-text').textContent = uiText('Connecting to {name}…', {name: agent.name});
   openOverlay(from || $('#start')); syncToggles(); startPreview();
 }
 $('#start').onclick = () => $('#start').classList.contains('asleep') ? openBootModal() : openCall($('#start'));
@@ -1565,7 +1597,7 @@ $('#pj-join').onclick = async () => {
     cancelAnimationFrame(meterRaf);
     call = window.Daily.createCallObject({videoSource: vt || false, audioSource: at || false, subscribeToTracksAutomatically: true});
     ['participant-joined', 'participant-updated', 'track-started', 'joined-meeting'].forEach(e => call.on(e, attachTracks));
-    call.on('participant-left', e => { if (!e.participant.local) leaveCall(AGENTS[callAgent].name + ' left the call.'); });
+    call.on('participant-left', e => { if (!e.participant.local) leaveCall(uiText('{name} left the call.', {name: AGENTS[callAgent].name})); });
     call.on('error', e => leaveCall(e?.errorMsg || 'The call ended unexpectedly.'));
     call.on('app-message', onAppMessage);
     $('#prejoin').classList.add('hidden'); ['#dock', '#pip', '#cx-wait'].forEach(s => $(s).classList.remove('hidden')); stageReset();
@@ -1675,21 +1707,21 @@ function inspect(id) {
   WM.concept = id;
   getFacts(id).then(f => {
     if (!f || !(f.wikidata || f.umls) || !WM.on) return;
-    const w = winOpen('inspector', 'Inspector — ' + ((f.wikidata && f.wikidata.label) || f.label) + ' · UMLS · Wikidata', 'inspector', true);
+    const w = winOpen('inspector', uiText('Inspector') + ' — ' + ((f.wikidata && f.wikidata.label) || f.label) + ' · UMLS · Wikidata', 'inspector', true);
     w.body.innerHTML = ''; const host = document.createElement('div'); host.className = 'jr-host'; w.body.append(host); jrMount(host).set(conceptSpec(f));
   });
 }
 // the original guideline page as a pdf viewer window. the quote is marked in the page text underneath
 function showPdf(x) {
-  const w = winOpen('pdf', `${x.ref || x.title} — page ${x.page} (original PDF)`, 'pdf', true);
-  w.body.innerHTML = `<div class="pdf-page"><img alt="Guideline page ${x.page}" src="/api/page-image/${encodeURIComponent(x.page_id)}"></div><div class="pdf-text">Loading page text…</div>`;
+  const w = winOpen('pdf', `${x.ref || x.title} — ${uiText('page {p}', {p: x.page})} (${uiText('original PDF')})`, 'pdf', true);
+  w.body.innerHTML = `<div class="pdf-page"><img alt="${esc(uiText('Guideline page {p}', {p: x.page}))}" src="/api/page-image/${encodeURIComponent(x.page_id)}"></div><div class="pdf-text">Loading page text…</div>`;
   fetch('/api/page/' + encodeURIComponent(x.page_id)).then(r => r.json()).then(p => {
     const t = w.body.querySelector('.pdf-text'); if (!t) return;
     t.innerHTML = markQuote(p.plain.trim(), x.text); t.querySelector('mark')?.scrollIntoView({block: 'center'});
   }).catch(() => {});
 }
 function showTable(x) {
-  const w = winOpen('table', 'Guideline — ' + [x.ref || x.title, x.page && 'page ' + x.page].filter(Boolean).join(' · '));
+  const w = winOpen('table', uiText('Guideline') + ' — ' + [x.ref || x.title, x.page && uiText('page {p}', {p: x.page})].filter(Boolean).join(' · '));
   const grade = [x.class && x.class.length ? 'Class ' + x.class.join('/') : '', x.loe && x.loe.length ? 'LoE ' + x.loe.join('/') : ''].filter(Boolean).join(' · ');
   w.body.innerHTML = `<div class="tabs"><button class="on" data-t="t">Table</button>${x.page_id ? '<button data-t="p">Page</button>' : ''}</div><div class="tview"></div>`;
   const view = w.body.querySelector('.tview');
@@ -1712,7 +1744,7 @@ function stageShow(on) { cx.classList.toggle('stage-on', on); }
 function stageBusy(on, sub) { $('#stage-dot').classList.toggle('busy', on); if (sub != null) $('#stage-sub').textContent = sub; }
 function stageReset() {
   stage.said = []; stage.lastBoard = ''; stage.greeted = false; stage.quotes = new Set(); face.speaking = false;
-  $('#stage-cards').innerHTML = `<p class="stage-empty">${callAgent === 'guido' ? 'Ask Guido a question: the graph walk, the guideline table and live context from UMLS and Wikidata appear here.' : (callAgent === 'luna' ? 'When Luna cites the guidelines, the original quotes, tables and pages appear here.' : 'What Lino says is turned into live cards here.')}</p>`;
+  $('#stage-cards').innerHTML = `<p class="stage-empty">${esc(uiText(callAgent === 'guido' ? 'Ask Guido a question: the graph walk, the guideline table and live context from UMLS and Wikidata appear here.' : callAgent === 'luna' ? 'When Luna cites the guidelines, the original quotes, tables and pages appear here.' : 'What Lino says is turned into live cards here.'))}</p>`;
   $('#stage-title').textContent = callAgent === 'guido' ? 'Guideline knowledge graph' : callAgent === 'luna' ? 'From the guidelines' : 'Live board'; $('#stage-sub').textContent = '';
   stageBusy(false);
   stageShow(false);
@@ -1772,7 +1804,7 @@ async function liveBoard(text, who) {
   const key = normSpeech(text).slice(0, 80);
   if (!key || key === stage.lastBoard || text.length < 70) return; stage.lastBoard = key;
   let r;
-  if (WM.on) { const w = winOpen('notes', 'Notes — summary of what Guido said', 'notes', true); const host = document.createElement('div'); host.className = 'jr-host'; w.body.prepend(host); r = jrMount(host); }  // notes open behind; the director decides the front
+  if (WM.on) { const w = winOpen('notes', uiText('Notes — summary of what Guido said'), 'notes', true); const host = document.createElement('div'); host.className = 'jr-host'; w.body.prepend(host); r = jrMount(host); }  // notes open behind; the director decides the front
   else { if (!cx.classList.contains('stage-on')) stageShow(true); r = stageCard(null, true); }
   if (who === 'lino') { const host = $('#stage-cards').firstElementChild; host?.classList.add('unverified'); host?.insertAdjacentHTML('afterbegin', `<span class="unv">${esc(care.t('unverified'))}</span>`); }
   const comp = jrCompiler();
@@ -1837,7 +1869,7 @@ async function evidenceBoard(text) {
   const points = (x.points || []).filter(p => !stage.quotes.has(p.quote));
   if (!x.relevant || !points.length) return;
   points.forEach(p => stage.quotes.add(p.quote));
-  const el = {b: {type: 'Board', props: {title: x.title || 'From the guidelines'}, children: []}};
+  const el = {b: {type: 'Board', props: {title: x.title || uiText('From the guidelines')}, children: []}};
   points.forEach((p, i) => {
     el['q' + i] = {type: 'Quote', props: {claim: p.claim, quote: p.quote, ref: p.ref, title: p.title, page: p.page, grade: p.grade, pageId: p.page_id}, children: []};
     el.b.children.push('q' + i);
@@ -1882,7 +1914,7 @@ async function guidoCall(m, p) {
   let args = p.arguments; try { if (typeof args === 'string') args = JSON.parse(args); } catch { args = {}; }
   const question = (args && args.question) || '';
   const firstShare = !WM.on; shareOn();
-  const gw = winOpen('graph', 'Knowledge Graph — ' + question, 'graph');
+  const gw = winOpen('graph', uiText('Knowledge Graph') + ' — ' + question, 'graph');
   if (!gw.body.querySelector('.kg-canvas')) { gw.body.append($('#kg-canvas')); const ws = document.createElement('div'); ws.className = 'wsteps'; gw.body.append(ws); }
   gw.body.querySelector('.wsteps').innerHTML = '';
   ['table', 'inspector', 'notes', 'pdf'].forEach(winClose); WM.concept = null; winLayout('focus');  // new topic, clean desk
@@ -1928,10 +1960,10 @@ async function guidoCall(m, p) {
 async function linoCall(m, p) {
   let args = p.arguments; try { if (typeof args === 'string') args = JSON.parse(args); } catch { args = {}; }
   const question = (args && args.question) || '';
-  stageShow(true); stageBusy(true, 'Asking the fine-tuned model: ' + question); $('#stage-title').textContent = 'Lino · Llama 3.2 1B (NeSyCoT)';
+  stageShow(true); stageBusy(true, uiText('Asking the fine-tuned model: {q}', {q: question})); $('#stage-title').textContent = 'Lino · Llama 3.2 1B (NeSyCoT)';
   let output, ok = true;
   try { output = (await post('/api/call/lino', {question})).output || ''; }
-  catch (err) { output = 'My model is not reachable right now.'; ok = false; }
+  catch (err) { output = uiText('My model is not reachable right now.'); ok = false; }
   stageBusy(false, question);
   const spoken = speakable(output);
   echo(spoken);                          // Lino's own words, verbatim

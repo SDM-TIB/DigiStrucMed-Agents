@@ -4,7 +4,7 @@ lino answers from memory, without sources. this checks him afterwards and change
   1. the llm splits his answer into statements, each copied word for word from the answer (verified, else dropped),
      with english search terms for each
   2. bm25 finds the three best guideline pages per statement; the passages are verbatim windows of those pages
-  3. a System One model (clef-flash, cloudflare's Jev) answers one choice per statement: does the closest guideline
+  3. a System One model (cloudflare's clef-flash) answers one choice per statement: does the closest guideline
      text support it, contradict it, or not address it? and which passage it rests on
 the pattern is TypeSafe's citation check (docs.typesafe.ai/cookbooks/citation_check). a verdict below MIN_SURE shows
 as unclear. what the patient sees is lino's own sentence, the verdict, and the guideline text verbatim with its page.

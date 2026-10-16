@@ -5,8 +5,7 @@ a System One model reads the latest message with the recent conversation and ans
 the model only decides which one, if any. one noul per condition, phrased so that a high value means yes, as the
 TypeSafe docs recommend (docs.typesafe.ai/primitives/noul, cookbooks/llm_guardrails).
 
-the model: TypeSafe's Jev when TYPESAFE_API_KEY is set, otherwise Cloudflare's clef-flash, which takes the same
-request. a missed emergency costs more than a needless banner, so the emergency threshold sits below 0.5.
+the model: Cloudflare's clef-flash on Workers AI. a missed emergency costs more than a needless banner, so the emergency threshold sits below 0.5.
 the thresholds are starting points measured on tests/triage_cases.json (python tests/triage_eval.py), not on
 real patient traffic.
 """
@@ -63,17 +62,13 @@ def _level(s):
   return 'none'
 
 CF_URL = 'https://api.cloudflare.com/client/v4/accounts/{}/ai/run/@cf/cloudflare/clef-flash'
-TS_URL = 'https://api.typesafe.ai/v1/systemone'
 
 
 def _ask(state):
   """one request, three questions in parallel on the model side. returns (model, {question: noul})"""
-  if config.TYPESAFE_API_KEY:
-    url, token, body = TS_URL, config.TYPESAFE_API_KEY, {'model': 'jev-latest', 'state': state, 'questions': QUESTIONS}
-  elif config.CF_ACCOUNT_ID and config.CF_API_TOKEN:
-    url, token, body = CF_URL.format(config.CF_ACCOUNT_ID), config.CF_API_TOKEN, {'model': 'clef-flash', 'state': state, 'questions': QUESTIONS}
-  else:
+  if not (config.CF_ACCOUNT_ID and config.CF_API_TOKEN):
     raise RuntimeError('no triage model configured')
+  url, token, body = CF_URL.format(config.CF_ACCOUNT_ID), config.CF_API_TOKEN, {'model': 'clef-flash', 'state': state, 'questions': QUESTIONS}
   req = urllib.request.Request(url, data=json.dumps(body, ensure_ascii=False).encode(), method='POST',
                                headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
   with urllib.request.urlopen(req, timeout=20) as r:  # usually under a second, cloudflare sometimes takes 7
