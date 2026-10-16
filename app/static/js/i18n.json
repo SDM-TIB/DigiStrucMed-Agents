@@ -339,7 +339,8 @@
     "Finishing a master's in computer science. Brings extensive experience in building knowledge graphs and connecting them to language models, and fine-tuned the model behind Lino with rules mined from the guideline knowledge graph.": "Schließt gerade den Master in Informatik ab. Bringt umfangreiche Erfahrung im Aufbau von Wissensgraphen und deren Anbindung an Sprachmodelle mit und hat das Modell hinter Lino mit Regeln aus dem Leitlinien-Wissensgraphen feinabgestimmt.",
     "{n} min": "{n} min",
     "{n} h": "{n} h",
-    "TIB – Leibniz Information Centre for Science and Technology": "TIB – Leibniz-Informationszentrum Technik und Naturwissenschaften"
+    "TIB – Leibniz Information Centre for Science and Technology": "TIB – Leibniz-Informationszentrum Technik und Naturwissenschaften",
+    "Wikidata is not reachable right now.": "Wikidata ist gerade nicht erreichbar."
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -680,7 +681,8 @@
     "Finishing a master's in computer science. Brings extensive experience in building knowledge graphs and connecting them to language models, and fine-tuned the model behind Lino with rules mined from the guideline knowledge graph.": "Está terminando un máster en informática. Aporta amplia experiencia en la construcción de grafos de conocimiento y su conexión con modelos de lenguaje, y ajustó el modelo de Lino con reglas extraídas del grafo de conocimiento de las guías.",
     "{n} min": "{n} min",
     "{n} h": "{n} h",
-    "TIB – Leibniz Information Centre for Science and Technology": "TIB – Centro de Información Leibniz para la Ciencia y la Tecnología"
+    "TIB – Leibniz Information Centre for Science and Technology": "TIB – Centro de Información Leibniz para la Ciencia y la Tecnología",
+    "Wikidata is not reachable right now.": "Wikidata no está disponible en este momento."
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1021,7 +1023,8 @@
     "Finishing a master's in computer science. Brings extensive experience in building knowledge graphs and connecting them to language models, and fine-tuned the model behind Lino with rules mined from the guideline knowledge graph.": "Завершает магистратуру по информатике. Обладает большим опытом построения графов знаний и их связи с языковыми моделями; дообучила модель Lino на правилах, извлечённых из графа знаний рекомендаций.",
     "{n} min": "{n} мин",
     "{n} h": "{n} ч",
-    "TIB – Leibniz Information Centre for Science and Technology": "TIB — Информационный центр науки и техники имени Лейбница"
+    "TIB – Leibniz Information Centre for Science and Technology": "TIB — Информационный центр науки и техники имени Лейбница",
+    "Wikidata is not reachable right now.": "Wikidata сейчас недоступна."
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -1362,6 +1365,7 @@
     "Finishing a master's in computer science. Brings extensive experience in building knowledge graphs and connecting them to language models, and fine-tuned the model behind Lino with rules mined from the guideline knowledge graph.": "कंप्यूटर साइंस में मास्टर्स पूरा कर रही हैं। नॉलेज ग्राफ़ बनाने और उन्हें भाषा मॉडलों से जोड़ने का व्यापक अनुभव रखती हैं, और गाइडलाइन नॉलेज ग्राफ़ से निकाले गए नियमों से Lino के पीछे के मॉडल को फ़ाइन-ट्यून किया।",
     "{n} min": "{n} मिनट",
     "{n} h": "{n} घं.",
-    "TIB – Leibniz Information Centre for Science and Technology": "TIB – लाइबनिज़ विज्ञान और प्रौद्योगिकी सूचना केंद्र"
+    "TIB – Leibniz Information Centre for Science and Technology": "TIB – लाइबनिज़ विज्ञान और प्रौद्योगिकी सूचना केंद्र",
+    "Wikidata is not reachable right now.": "Wikidata अभी उपलब्ध नहीं है।"
   }
 }
