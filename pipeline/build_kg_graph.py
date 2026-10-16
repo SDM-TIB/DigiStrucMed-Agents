@@ -4,7 +4,10 @@
 
 nodes
   concept  dsm:entity/*     label, aliases, umls cui, wikidata qid, description
-  rec      dsm:text-unit/*  verbatim recommendation + class of recommendation, level of evidence, direction
+  rec      dsm:text-unit/*  verbatim recommendation + class of recommendation, level of evidence, direction, and
+                            src: where it was extracted, the physical blocks of its semantic unit
+                            ("pb_<document sha256>_p<page>_g<group>"), as the knowledge graph records them,
+                            and doc: the sha256 of the document its semantic unit belongs to
   guide    guideline slug   author-year reference
 edges
   rec -> concept   population | target | condition | parameter | mention   (through the normative assertions)
@@ -25,7 +28,8 @@ TRIPLE = re.compile(r'^<([^>]+)> <([^>]+)> (.+) \.$')
 KEEP = {'verbatimText', 'hasNormativeAssertion', 'hasClassOfRecommendation', 'hasLevelOfEvidence', 'hasExtractedEntity',
         'rdfs:label', 'surfaceForm', 'alias', 'direction', 'hasPopulationEntity', 'hasTargetEntity', 'hasConditionEntity',
         'hasParameterEntity', 'subclass_of', 'umls_cui', 'wikidataId', 'hasdescription',
-        'instance_of', 'drug_or_therapy_used_for_treatment', 'symptoms', 'health_specialty', 'main_subject'}
+        'instance_of', 'drug_or_therapy_used_for_treatment', 'symptoms', 'health_specialty', 'main_subject',
+        'hasTextUnit', 'physicalBlockId', 'documentSha256'}
 ROLES = {'hasPopulationEntity': 'population', 'hasTargetEntity': 'target', 'hasConditionEntity': 'condition', 'hasParameterEntity': 'parameter'}
 RELATIONS = {'subclass_of': 'subclass of', 'instance_of': 'instance of', 'drug_or_therapy_used_for_treatment': 'treated with',
              'symptoms': 'has symptom', 'health_specialty': 'medical specialty', 'main_subject': 'main subject'}
@@ -69,6 +73,9 @@ def build(props):
                        'desc': (e.get('hasdescription') or [None])[0]}
     return concepts[ent]['id']
 
+  unit_of = {tu: su for su, p in props.items() for tu in p.get('hasTextUnit', [])}  # text unit -> semantic unit
+  block = re.compile(r'^pb_[0-9a-f]{64}_p\d{4}_g\d{3}$')
+
   def concept_of(mention):
     ents = props.get(mention, {}).get('surfaceForm', [])
     return concept(ents[0]) if ents else None
@@ -95,7 +102,9 @@ def build(props):
         roles.setdefault(c, 'mention')
     recs[rid] = {'id': rid, 'text': text, 'class': grades(p.get('hasClassOfRecommendation', []), 'ClassOfRecommendation_', VALID_CLASS),
                  'loe': grades(p.get('hasLevelOfEvidence', []), 'LevelOfEvidence_', VALID_LOE), 'direction': sorted(directions),
-                 'ref': reference(slug), 'guide': 'g:' + slug}
+                 'ref': reference(slug), 'guide': 'g:' + slug,
+                 'src': sorted({b for b in props.get(unit_of.get(s), {}).get('physicalBlockId', []) if block.match(b)}),
+                 'doc': (props.get(unit_of.get(s), {}).get('documentSha256') or [None])[0]}
     guides.setdefault('g:' + slug, {'id': 'g:' + slug, 'label': reference(slug) or slug[:40]})
     edges.update((rid, c, role) for c, role in roles.items())
     edges.add((rid, 'g:' + slug, 'source'))

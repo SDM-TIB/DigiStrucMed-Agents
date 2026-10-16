@@ -628,7 +628,7 @@ window.jrHTML = {
   },
   excerpt(h, p) {
     const body = p.html ? h('div', {className: 'tbl', ref: el => el && jrTable(el, p.html, p.match)}) : h('blockquote', null, p.text);
-    return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && uiText('page {p}', {p: p.page})].filter(Boolean).join(' · '))),
+    return h('article', {className: 'jr-ex'}, h('header', null, h('div', null, h('h4', null, p.title), h('small', null, [p.ref, p.page && uiText('page {p}', {p: p.page}), p.found === 'text match' && uiText('page found by text search')].filter(Boolean).join(' · '))),
       p.pageId ? h('button', {onClick: () => window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: p.pageId, quote: p.text || p.match}}))}, care.t('openPage')) : null), p.grade ? care.grade(h, p.grade) : null, body);
   }
 };
@@ -686,10 +686,12 @@ function conceptSpec(f) {
   if (u && u.source !== 'kg') badges.push({text: uiText('candidate'), kind: 'cand', title: uiText('MHH export 07.10: rank-1 UMLS retrieval candidate, not manually confirmed')});
   if (wd) badges.push({text: 'Wikidata ' + wd.qid, kind: 'wd', href: wd.url});
   if (wd && wd.wikipedia) badges.push({text: 'Wikipedia', kind: 'wd', href: wd.wikipedia});
-  const el = {c: {type: 'ConceptCard', props: {title: (wd && wd.label) || f.label, subtitle: (wd && wd.description) || (u && u.name) || '', image: wdThumb(wd && wd.image), badges,
-    source: wd ? uiText('Live from Wikidata ({via}) · fetched {time}', {via: uiText(VIA[f.qid_via] || 'link'), time: new Date(wd.fetched_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}) : (f.error ? uiText('Wikidata is not reachable right now.') : uiText(u ? 'UMLS only · no Wikidata item for this CUI' : 'No UMLS or Wikidata link for this concept'))}, children: []}};
+  const inLang = (texts, en) => (texts && texts[care.lang]) || en;  // wikidata labels in the patient's language where there is one
+  const el = {c: {type: 'ConceptCard', props: {title: (wd && inLang(wd.labels, wd.label)) || f.label, subtitle: (wd && inLang(wd.descriptions, wd.description)) || (u && u.name) || '', image: wdThumb(wd && wd.image), badges,
+    source: wd ? uiText('{via} · snapshot {date} · revision {rev}', {via: uiText(VIA[f.qid_via] || 'link'), date: new Date(wd.snapshot).toLocaleDateString(careLocale()), rev: wd.revision})
+      : uiText(u ? 'UMLS only · no Wikidata item for this CUI' : 'No UMLS or Wikidata link for this concept')}, children: []}};
   if (wd && wd.ids.length) { el.ids = {type: 'IdList', props: {items: wd.ids.filter(x => x.label !== 'UMLS CUI').slice(0, 8)}, children: []}; el.c.children.push('ids'); }
-  (wd ? wd.relations : []).forEach((r, i) => { el['r' + i] = {type: 'RelationList', props: {title: r.title, tone: r.tone, total: r.total, items: r.items.map(x => ({label: x.label, url: x.url, kgId: x.kg_id, kgRecs: x.kg_recs}))}, children: []}; el.c.children.push('r' + i); });
+  (wd ? wd.relations : []).forEach((r, i) => { el['r' + i] = {type: 'RelationList', props: {title: uiText(r.title), tone: r.tone, total: r.total, items: r.items.map(x => ({label: inLang(x.labels, x.label), url: x.url, kgId: x.kg_id, kgRecs: x.kg_recs}))}, children: []}; el.c.children.push('r' + i); });
   return {root: 'c', elements: el};
 }
 const factsCache = new Map();
@@ -1389,7 +1391,7 @@ function chatEvidence(st) {
     if (!x || !x.text) return;
     const grade = [x.class && x.class.length ? 'Class ' + x.class.join('/') : '', x.loe && x.loe.length ? 'LoE ' + x.loe.join('/') : ''].filter(Boolean).join(' · ');
     const host = document.createElement('div'); host.className = 'jr-host'; box.prepend(host);
-    jrMount(host).set({root: 'e', elements: {e: {type: 'Excerpt', props: {title: x.title || x.ref, ref: x.ref, page: x.page, grade, html: x.table_html, match: x.match, text: x.text, pageId: x.page_id}, children: []}}});
+    jrMount(host).set({root: 'e', elements: {e: {type: 'Excerpt', props: {title: x.title || x.ref, ref: x.ref, page: x.page, grade, html: x.table_html, match: x.match, text: x.text, pageId: x.page_id, found: x.found}, children: []}}});
   }).catch(() => {});
   if (seed) getFacts(seed.id).then(f => { if (!f || !(f.wikidata || f.umls)) return; const host = document.createElement('div'); host.className = 'jr-host'; box.append(host); jrMount(host).set(conceptSpec(f)); });
 }
@@ -1726,7 +1728,7 @@ function showTable(x) {
   w.body.innerHTML = `<div class="tabs"><button class="on" data-t="t">Table</button>${x.page_id ? '<button data-t="p">Page</button>' : ''}</div><div class="tview"></div>`;
   const view = w.body.querySelector('.tview');
   const showT = () => { view.innerHTML = ''; const host = document.createElement('div'); host.className = 'jr-host'; view.append(host);
-    jrMount(host).set({root: 'e', elements: {e: {type: 'Excerpt', props: {title: x.title || x.ref, ref: x.ref, page: x.page, grade, html: x.table_html, match: x.match, text: x.text, pageId: x.page_id}, children: []}}}); };
+    jrMount(host).set({root: 'e', elements: {e: {type: 'Excerpt', props: {title: x.title || x.ref, ref: x.ref, page: x.page, grade, html: x.table_html, match: x.match, text: x.text, pageId: x.page_id, found: x.found}, children: []}}}); };
   const showP = () => { view.innerHTML = `<img class="pageimg" alt="Guideline page" src="/api/page-image/${encodeURIComponent(x.page_id)}">`; };
   if (x.page_id) showPdf(x);
   w.body.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { w.body.querySelectorAll('.tabs button').forEach(z => z.classList.toggle('on', z === b)); b.dataset.t === 'p' ? showP() : showT(); });
