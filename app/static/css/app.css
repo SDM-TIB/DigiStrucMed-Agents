@@ -224,7 +224,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .jr-kick{display:block;font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:2px 0 4px}
 .jr-kick.verbatim{margin-top:10px}
 /* lino's guideline check */
-.gcheck{margin:14px 0 4px;border:1px solid var(--line);border-radius:14px;background:var(--win);overflow:hidden;animation:rise .35s var(--ease) both}
+.gcheck{margin:14px 0 4px;border:1px solid var(--line);border-radius:14px;background:var(--win);color:var(--ink);overflow:hidden;animation:rise .35s var(--ease) both}
 .gcheck header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--side)}
 .gcheck header b{font:600 14px/20px var(--display)}
 .gc-busy{font-size:12.5px;color:var(--muted)}

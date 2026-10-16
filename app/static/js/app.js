@@ -1994,6 +1994,10 @@ async function onAppMessage(e) {
   }
   if (m.event_type !== 'conversation.tool_call') return;
   const p = m.properties || {};
+  // the holding line the persona speaks while the tool runs ("good question, let me think") is no content: no board for it
+  let a = p.arguments; try { if (typeof a === 'string') a = JSON.parse(a); } catch { a = {}; }
+  const hold = String((a && a.response_to_user) || '').replace(/<\|[^>]*>.*?<[^>]*\|>/g, '').replace(/<[^>]*>/g, '');
+  if (hold.trim()) stage.said.push(normSpeech(hold).slice(0, 60));
   if (p.name === 'ask_guideline_graph') return guidoCall(m, p);
   if (p.name === 'ask_lino') return linoCall(m, p);
 }
