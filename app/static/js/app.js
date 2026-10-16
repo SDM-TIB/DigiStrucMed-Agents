@@ -27,6 +27,7 @@ const fmtHold = sec => sec < 3600 ? care.fill('minutes', {n: sec / 60}) : sec ==
 const fmtLeft = min => [Math.floor(min / 60) ? (Math.floor(min / 60) === 1 ? care.t('hour1') : care.fill('hours', {n: Math.floor(min / 60)})) : '', min % 60 || !Math.floor(min / 60) ? care.fill('minutes', {n: min % 60}) : ''].filter(Boolean).join(' ');
 const fmtClock = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
 async function showBoot(afterLogin) {
+  loadBoardSchema();
   let st = {status: 'offline'};
   try { st = await (await fetch('/api/gpu')).json(); } catch {}
   gpuState = st;
@@ -1791,7 +1792,8 @@ function speakable(t, max = 2600) {
 // the board catalogue from the server (board.py COMPONENTS): types, word limits, icons. an element that breaks it
 // is dropped on its own, an over-long text is cut at its word limit, an unknown icon becomes sparkles
 let BOARD_SCHEMA = null;
-fetch('/api/board-schema').then(r => r.ok ? r.json() : null).then(s => BOARD_SCHEMA = s).catch(() => {});
+// the schema needs a session: fetched once the user is signed in (showBoot), not by the login page
+function loadBoardSchema() { if (!BOARD_SCHEMA) fetch('/api/board-schema').then(r => r.ok ? r.json() : null).then(s => BOARD_SCHEMA = s).catch(() => {}); }
 function jrValidate(spec) {
   const S = BOARD_SCHEMA; if (!S || !spec || !spec.elements) return spec;
   const words = (t, n) => { const w = String(t).trim().split(/\s+/); return w.length > n ? w.slice(0, n).join(' ') + '…' : w.join(' '); };
