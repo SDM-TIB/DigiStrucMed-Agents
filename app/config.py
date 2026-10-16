@@ -73,6 +73,10 @@ MODAL_TOKENS = [(i.strip(), s.strip()) for i, s in [(env('MODAL_TOKEN_ID'), env(
 CF_ACCOUNT_ID = env('CF_ACCOUNT_ID')
 CF_API_TOKEN = env('CF_API_TOKEN')
 
+# the final MHH guideline graph: SPARQL endpoint of the graph server (QLever, graph-server/). on cloud run the VM's
+# internal address through Direct VPC egress; locally the IAP tunnel of graph-server/ui-tunnel.ps1
+GRAPH_ENDPOINT = env('GRAPH_ENDPOINT', 'http://localhost:7001')
+
 # private gcs bucket: page renders, usage log. empty = local files only (dev)
 BUCKET = env('PAGE_BUCKET')
 LOCAL_BUCKET = ROOT.parent / 'page_images'

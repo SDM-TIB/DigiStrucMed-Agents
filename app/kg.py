@@ -1,21 +1,19 @@
-"""The guideline knowledge graph, in memory. 9k concepts, 4k recommendations, 23k edges. fits in a dict.
+"""Guido's working view of the final MHH guideline graph, in memory. 9k concepts, 4k recommendations, 23k edges.
 
 node ids:  c:<entity>  concept     r:<text unit>  recommendation     g:<guideline>  source guideline
 edges:     rec -> concept  (population | target | condition | parameter | mention)
            rec -> guide    (source)
            concept -> concept  (subclass of, treated with, has symptom, ...)
-built by pipeline/build_kg_graph.py from guidelineKG.nt
+loaded once at startup from the graph server (graph.agent_view), the same graph the explorer shows. every concept
+carries its link set per terminology (UMLS, SNOMED CT, MeSH, RxNorm, LOINC, Wikidata) from the graph's entity-links.
 """
-import gzip
-import json
 import math
 import re
 from collections import Counter, defaultdict
 
-import config
+import graph
 
-with gzip.open(config.DATA / 'kg_graph.json.gz', 'rt', encoding='utf-8') as fh:
-  _g = json.load(fh)
+_g = graph.load_agent_view()
 CONCEPTS = {c['id']: c for c in _g['concepts']}
 RECS = {r['id']: r for r in _g['recs']}
 GUIDES = {g['id']: g for g in _g['guides']}
@@ -25,32 +23,34 @@ for a, b, role in _g['edges']:
   IN[b].append((a, role))
 del _g
 REC_ROLES = {'population', 'target', 'condition', 'parameter', 'mention'}
-
-# terminology codes per concept from the final MHH graph (pipeline/build_kg_links.py): our selections first
-_links_path = config.DATA / 'kg_links.json.gz'
-LINKS = json.load(gzip.open(_links_path, 'rt', encoding='utf-8')) if _links_path.exists() else {}
 CODE_NAME = {'umls': 'UMLS', 'snomed': 'SNOMED CT', 'mesh': 'MeSH', 'rxnorm': 'RxNorm', 'loinc': 'LOINC', 'wikidata': 'Wikidata'}
+SELECTORS = (('clef', 'CLEF'), ('gemini', 'Gemini 2.5 Flash Lite'), ('luna', 'Luna'))
+
+
+def selector(method):
+  """who chose, from a method id of the graph: 'entity_vote:page_surface' records how the concept's mentions voted;
+  the mention-level methods name the model (clef_native_selector..., gemini_batch..., luna_top10...)"""
+  return next((n for key, n in SELECTORS if key in method.lower()), method.replace('_', ' '))
 
 
 def codes(cid):
-  """one line for the agent: the selected terminology codes of a concept with how they were chosen and their
-  runners-up, then the unconfirmed retrieval candidates, bare and marked, so they stay reachable but read as unchecked"""
-  e = LINKS.get(cid, {})
+  """one line for the agent: the concept's selected terminology codes with their support and runners-up, then the
+  unconfirmed Top3 candidates, marked, so they stay reachable but read as unchecked"""
+  links = (CONCEPTS.get(cid) or {}).get('codes') or {}
   chosen, unconfirmed = [], []
   for source, name in CODE_NAME.items():
-    link = (e.get('mhh') or {}).get(source)
-    if not link:
+    ls = links.get(source)
+    if not ls or not ls['concepts']:
       continue
-    code = link.get('cui') or link.get('qid') or link.get('id')
-    if link['status'] == 'selected':
-      how = f"selected by {link.get('selector') or link.get('method', '')}, {link['support']}/{link['mentions']} mentions"
-      alt = f"; alternatives {', '.join(link['alternatives'])}" if link.get('alternatives') else ''
-      chosen.append(f"{name} {code}" + (f" {link['name']}" if link.get('name') else '') + f" ({how}{alt})")
-    else:
-      unconfirmed.append(f"{name} {code}")
-  graph = e.get('kg') or {}
-  if graph.get('cui') and graph['cui'] != ((e.get('mhh') or {}).get('umls') or {}).get('cui'):
-    chosen.append(f"colleague graph UMLS {graph['cui']}")
+    rec = ls['record']
+    if ls['status'] == 'selected_top1':
+      top = ls['concepts'][0]
+      runners = [c for c in rec.get('selected_votes', {}) if c != top['id']][:3]
+      chosen.append(f"{name} {top['id']}" + (f" {top['name']}" if top.get('name') else '')
+                    + f" (selected for {rec.get('support')} of {rec.get('votes')} matching mentions"
+                    + (f"; alternatives {', '.join(runners)}" if runners else '') + ')')
+    elif ls['status'] == 'unconfirmed_top3':
+      unconfirmed.append(f"{name} " + '/'.join(c['id'] for c in ls['concepts']))
   if unconfirmed:
     chosen.append('unconfirmed retrieval candidates, unchecked and possibly wrong: ' + ', '.join(unconfirmed))
   return '; '.join(chosen)
@@ -151,10 +151,10 @@ def detail(nid):
   v = node_view(nid, 0)
   if nid in RECS:
     r = RECS[nid]
-    v.update(text=r['text'], cls=r['class'], loe=r['loe'], direction=r.get('direction') or [], ref=r['ref'])
+    v.update(text=r['text'], cls=r['class'], loe=r['loe'], direction=r.get('direction') or [], ref=r['ref'], iri=r.get('iri'))
   elif nid in CONCEPTS:
     c = CONCEPTS[nid]
-    v.update(desc=c.get('desc') or '', n_recs=n_recs(nid), aliases=c['aliases'][:6], codes=codes(nid))
+    v.update(desc=c.get('desc') or '', n_recs=n_recs(nid), aliases=c['aliases'][:6], codes=codes(nid), iri=c.get('iri'))
   return v
 
 

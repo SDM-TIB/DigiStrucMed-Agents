@@ -587,7 +587,7 @@ const VIA = {umls_kg: 'Wikidata via UMLS CUI (P2892)', umls_mhh_selected: 'Wikid
   kg: 'Wikidata link from the knowledge graph', mhh_wikidata_selected: 'Wikidata item selected by CLEF'};
 // how a link of the final MHH graph was chosen, for the badge tooltips
 const LINK_HOW = l => l.status === 'selected'
-  ? uiText('selected by {method} for {n} of {m} mentions', {method: l.selector || String(l.method || ''), n: l.support, m: l.mentions})
+  ? uiText('selected by {method} for {n} of {m} mentions', {method: uiText(l.selector || String(l.method || '')), n: l.support, m: l.mentions})
   : uiText('retrieval rank 1 for {n} of {m} mentions, unconfirmed', {n: l.support, m: l.mentions});
 const SOURCE_NAME = {snomed: 'SNOMED CT', mesh: 'MeSH', rxnorm: 'RxNorm', loinc: 'LOINC'};
 // Card bodies for the custom catalog components; written against a tiny hyperscript `h` so the same code runs
@@ -692,7 +692,6 @@ function conceptSpec(f) {
   if (u) badges.push({text: 'UMLS ' + u.cui, kind: u.source === 'mhh_candidate' ? 'cand' : '',
     title: (u.name ? u.name + ' · ' : '') + (u.source === 'kg' ? uiText('normalization in the knowledge graph') : LINK_HOW(u))});
   if (u && u.source === 'mhh_candidate') badges.push({text: uiText('candidate'), kind: 'cand', title: LINK_HOW(u)});
-  if (u && u.graph_cui) badges.push({text: 'UMLS ' + u.graph_cui, kind: 'cand', title: uiText('normalization in the knowledge graph')});  // the colleague's differing CUI
   (f.identifiers || []).forEach(x => badges.push({text: SOURCE_NAME[x.source] + ' ' + x.id, kind: '', title: (x.name ? x.name + ' · ' : '') + LINK_HOW(x)}));
   if (wd) badges.push({text: 'Wikidata ' + wd.qid, kind: 'wd', href: wd.url});
   if (wd && wd.wikipedia) badges.push({text: 'Wikipedia', kind: 'wd', href: wd.wikipedia});
@@ -1269,11 +1268,13 @@ function kxDetail(x) {
       + (n.aliases && n.aliases.length ? `<p class="meta">${esc(uiText('Also known as: {names}', {names: n.aliases.join(', ')}))}</p>` : '');
   }
   if (n.kind === 'concept') h += `<div class="kx-facts" id="kx-facts"><div class="ph">${esc(uiText('Loading live context from UMLS and Wikidata…'))}</div></div>`;
+  if (n.iri && window.graphExplorer) h += `<button class="kx-full" id="kx-full">${esc(uiText('Open in the complete graph'))} →</button>`;
   const rel = new Map(x.links.map(l => [l.source === n.id ? l.target : l.source, l.role]));
   h += `<h5>${esc(uiText('Connected'))} · ${x.total}${x.total > x.nodes.length ? ` (${esc(uiText('showing {n}', {n: x.nodes.length}))})` : ''}</h5><div class="kx-nb">` + x.nodes.map(m =>
     `<button data-id="${esc(m.id)}"><span class="k ${m.kind}" style="background:${kxCol(m)}"></span><span>${esc(kxShort(m))}<em>${esc(rel.get(m.id) || '')}</em></span></button>`).join('') + '</div>';
   q.innerHTML = h; q.parentElement.scrollTop = 0;
   q.querySelectorAll('.kx-nb button').forEach(b => b.onclick = () => kxOpen(b.dataset.id));
+  if ($('#kx-full')) $('#kx-full').onclick = () => { closeSource(); window.graphExplorer.open(n.iri); };
   if (n.kind === 'concept') getFacts(n.id).then(f => { const box = $('#kx-facts'); if (!box || KX.sel !== n.id) return;
     if (!f) { box.innerHTML = `<div class="ph" style="animation:none">${esc(uiText('Live context unavailable.'))}</div>`; return; }
     box.innerHTML = ''; const host = document.createElement('div'); host.className = 'jr-host'; box.append(host); jrMount(host).set(conceptSpec(f)); });

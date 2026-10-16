@@ -12,7 +12,6 @@ need a paid key (or a few days). it paces itself and can be stopped and restarte
 pipeline/.vectors_cache.json. recommendations go first, then concepts by how much evidence hangs on them.
 every query then costs one embedding call too, so only ship the file with a key that can take the traffic.
 """
-import gzip
 import json
 import os
 import pathlib
@@ -59,7 +58,8 @@ def save(done):
 
 
 if __name__ == '__main__':
-  graph = json.load(gzip.open(ROOT / 'app' / 'data' / 'kg_graph.json.gz', 'rt', encoding='utf-8'))
+  import graph as kg_graph  # noqa: E402  Guido's working view, from the graph server (GRAPH_ENDPOINT)
+  graph = kg_graph.agent_view()
   evidence = Counter(b for a, b, _ in graph['edges'] if a.startswith('r:'))
   jobs = [(r['id'], r['text'][:1500]) for r in graph['recs']]
   jobs += [(c['id'], '; '.join([c['label']] + c['aliases'][:6] + ([c['desc']] if c.get('desc') else [])))

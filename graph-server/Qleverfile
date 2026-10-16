@@ -1,0 +1,32 @@
+# Qleverfile for the final MHH guideline knowledge graph (QLever CLI, https://github.com/qlever-dev/qlever-control)
+#
+# startup.sh runs it on the graph server, in the directory of the graph version (named by its sha256):
+#   qlever index --stxxl-memory <45% of RAM>     # once per graph version
+#   qlever start --memory-for-queries ... --cache-max-size ... --access-token ...
+#   qlever ui
+# image digests and the memory figures come from the VM (instance metadata, RAM), not from this file
+
+[data]
+NAME        = mhh-kg
+FORMAT      = nq
+DESCRIPTION = Final MHH guideline knowledge graph, 16 October 2026 (guidelineKG_final_16_10.nq.gz): the colleague graph, 2,780 pages, Level-4, and every concept link set (UMLS, SNOMED CT, MeSH, RxNorm, LOINC, Wikidata)
+
+[index]
+INPUT_FILES     = graph.nq.gz
+CAT_INPUT_FILES = zcat ${INPUT_FILES}
+SETTINGS_JSON   = { "ascii-prefixes-only": false, "num-triples-per-batch": 1000000 }
+# full-text index over every literal: the app's search (ql:contains-word "heart* failure*" . ql:contains-entity ?label)
+TEXT_INDEX      = from_literals
+
+[server]
+HOST_NAME = localhost
+PORT      = 7001
+TIMEOUT   = 120s
+USE_TEXT_INDEX = yes
+
+[runtime]
+SYSTEM = docker
+
+[ui]
+UI_PORT   = 8176
+UI_CONFIG = default
