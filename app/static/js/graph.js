@@ -116,7 +116,8 @@
     if (!fresh.length && !edges.length) return 0;
     g.addData({nodes: fresh, edges});
     applyFilter();
-    await g.render();
+    await g.draw();  // the new elements now; the force layout settles in the background (it never "ends" while
+    g.layout();      // drag-element-force keeps the simulation alive, so nothing may wait for it)
     return fresh.length;
   }
 
