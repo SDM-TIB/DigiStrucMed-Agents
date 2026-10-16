@@ -16,7 +16,6 @@ import corpus
 import llm
 import kg
 import retrieve
-import wikidata
 from kg import CONCEPTS, IN, OUT, REC_ROLES, RECS
 
 MAX_ROUNDS = 3
@@ -115,7 +114,6 @@ class Walk:
     found = retrieve.search(query, question)
     seeds, matched, ranked = found['concepts'], found['matched'], found['recs']
     events.append(self.event(seeds, [], seeds[0] if seeds else None, 'seed', 0))
-    wikidata.prefetch(seeds[:4])  # the call's inspector opens one of these a few seconds from now
     if matched:  # recommendations whose own text matched, no concept label needed
       events.append(self.event(matched, [(r, c, role) for r in matched for c, role in OUT[r] if c in seeds], None, 'match', 1))
     lines = []
@@ -223,14 +221,19 @@ def _tool(call, walk, question):
   return result
 
 
+UNITS = {}  # semantic unit -> its recommendations, the siblings that place a text unit the graph gives no page for
+for _r in RECS.values():
+  UNITS.setdefault(_r['id'].rsplit('/tu_', 1)[0], []).append(_r)
+
+
 def evidence(rid):
   """a recommendation with the guideline page and the original table it came from"""
   r = RECS.get(rid)
   if not r:
     return None
-  page, table = corpus.locate(r['text'], r['ref'])
+  page, table, found = corpus.source(r, [x['text'] for x in UNITS.get(rid.rsplit('/tu_', 1)[0], []) if x is not r])
   if page is None:
     return {'rec': rid, 'text': r['text'], 'ref': r['ref'], 'page_id': None}
   p = corpus.PAGES[page]
   return {'rec': rid, 'text': r['text'], 'class': r['class'], 'loe': r['loe'], 'ref': r['ref'], 'title': p['title'],
-          'page': p['page'], 'page_id': p['id'], 'table_html': table, 'match': r['text'][:60]}
+          'page': p['page'], 'page_id': p['id'], 'table_html': table, 'match': r['text'][:60], 'found': found}

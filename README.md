@@ -38,7 +38,7 @@ browser ─── Cloud Run (app/, one python process, stdlib http server)
               ├── gpu.py          picks a Modal workspace, wakes and parks its gpu
               ├── tavus.py    ─── Tavus, several accounts        video calls
               ├── director.py ─── Cloudflare Workers AI          guido's screen layout
-              ├── wikidata.py ─── query.wikidata.org             live concept facts
+              ├── wikidata.py     app/data/wikidata_snapshot     concept facts, a dated Wikidata snapshot
               └── storage.py  ─── private GCS bucket             page renders, usage log
 ```
 
@@ -111,7 +111,11 @@ python pipeline/build_kg_graph.py <guidelineKG.nt>
 python pipeline/build_kg_links.py <clean_ready_07_10>
 ```
 
-Both graph builders reproduce the committed files exactly (checked on 2026-10-08).
+```bash
+python pipeline/build_wikidata_snapshot.py
+```
+
+The graph builders reproduce the committed files exactly (checked on 2026-10-08; `build_kg_graph.py` again on 2026-10-16, after it started to keep each recommendation's source blocks). The Wikidata snapshot records its date and the revision of every item, so a rebuild on another day can differ where Wikidata changed.
 
 ## How Guido searches
 
@@ -163,7 +167,8 @@ The keys and tokens themselves live only in `.env` and Secret Manager. The json 
 - **Interface languages.** The fixed texts follow the patient's language, first the browser's, then the conversation's: `app/static/js/i18n.json` for `index.html` (AI translated, a native speaker review is still due), `app/static/js/care.js` for what the app writes itself.
 - **About us.** The team on the About page comes from `app/static/team.json`. Put photos in `app/static/img/team/` and their file names into the json.
 - **Usage log.** `/dashboard` shows logins, chats, calls and gpu actions with ip, browser and session. It has its own `ADMIN_PASSWORD`. IPs and questions are personal data, so tell your visitors.
-- **Link quality.** UMLS links from the MHH export are rank-1 retrieval candidates, not confirmed links, and the UI marks them as candidates. The MHH Wikidata candidates are never used: spot checks found wrong items.
+- **Where a recommendation comes from.** The knowledge graph records for every semantic unit the physical blocks it was extracted from (`physicalBlockId`, `pb_<document sha256>_p<page>_g<group>`), and those page ids are the corpus page ids. `pipeline/build_kg_graph.py` keeps them on each recommendation (`src`, plus `doc`, the document's sha256), and the "look, here" card opens that page and the table on it that holds the text (`corpus.source`). Verbatim text alone does not place a recommendation: guidelines repeat them in summaries and tables of contents, and several documents have no author-year reference. `python tests/provenance_eval.py` measures it over all 3,977 recommendations (2026-10-16): 3,695 have source blocks; their page holds the text verbatim for 3,364 and holds at least 60 % of its words for 3,612 (the graph writes LaTeX like `\leq` where the page has ≤, and joins table cells differently); a table on it holds the text for 3,449. A search for the first page with the text would land on a different page for 987 of the 3,449 it finds. 278 recommendations, all from four supplementary units, have only their document: the page of that document that holds the text, and when several do, the one that holds most of the other texts of the same semantic unit. The card then says "page found by text search". 4 are not found.
+- **Link quality.** UMLS links from the MHH export are rank-1 retrieval candidates, not confirmed links, and the UI marks them as candidates. The MHH Wikidata candidates are never used: spot checks found wrong items. Concept cards read a dated Wikidata snapshot (`pipeline/build_wikidata_snapshot.py`, CC0), never the live service: labels and descriptions in the five interface languages, identifiers, image, Wikipedia and the relations the cards show, truthy statements only as `wdt:` gives them, with the revision of every item. The card names the snapshot date and revision.
 - **Lino makes things up.** He invents references and is often wrong. That's the point of the comparison, so don't add guardrails to him.
 
 ## Credits

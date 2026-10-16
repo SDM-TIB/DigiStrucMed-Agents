@@ -39,6 +39,7 @@ with gzip.open(config.DATA / 'corpus.json.gz', 'rt', encoding='utf-8') as fh:
 for p in PAGES:
   p['plain'] = plain(p['text'])
 PAGE_BY_ID = {p['id']: p for p in PAGES}
+PAGE_INDEX = {p['id']: i for i, p in enumerate(PAGES)}
 
 # ---- bm25 index
 _postings, _lengths = defaultdict(list), []
@@ -120,43 +121,72 @@ def library():
   return _library
 
 
-# ---- "look, here": find the page and the table a sentence was extracted from
+
+# ---- "look, here": the page and the table a recommendation was extracted from
 _squash = lambda t: re.sub(r'[^a-z0-9]+', '', html.unescape(re.sub(r'<[^>]+>', ' ', t)).lower())
-_squashed = {}
+_squashed, _toks = {}, {}
+PAGES_OF_DOC = {}
+for _i, _p in enumerate(PAGES):
+  PAGES_OF_DOC.setdefault(_p['doc'], []).append(_i)
+MIN_RECALL = 0.6  # share of a text's words a page or table must hold to count as its place when no exact match exists
 
 
-def locate(text, ref):
-  """page index and original <table> html that contain `text`, searched within guideline `ref`"""
+def _words(text):
+  """words of a text, with latex commands dropped: the graph writes \\leq, \\mu where the page has ≤, μ"""
+  return set(re.findall(r'[a-z0-9]{2,}', html.unescape(re.sub(r'<[^>]+>|\\[a-zA-Z]+', ' ', text)).lower()))
+
+
+def _page_squash(i):
+  if i not in _squashed:
+    _squashed[i] = _squash(PAGES[i]['text'])
+  return _squashed[i]
+
+
+def _page_words(i):
+  if i not in _toks:
+    _toks[i] = _words(PAGES[i]['text'])
+  return _toks[i]
+
+
+def _recall(words, other):
+  return len(words & other) / len(words) if words else 0.0
+
+
+def holds(i, text):
+  """does page i hold the text: verbatim (letters and digits), else most of its words"""
   key = _squash(text)[:70]
-  hits = []
-  for i, p in enumerate(PAGES):
-    if p.get('ref') != ref:
-      continue
-    if i not in _squashed:
-      _squashed[i] = _squash(p['text'])
-    if key and key in _squashed[i]:
-      hits.append(i)
-  # a table title also stands in the table of contents, which comes first. the page where the text sits inside a
-  # table is the source; then any page that is not a table of contents; then the first page that has it
-  for i in hits:
-    table = _table_with(PAGES[i]['text'], key)
-    if table:
-      return i, table
-  best = next((i for i in hits if not _is_contents(i)), hits[0] if hits else None)
-  if best is None:  # ocr noise broke the exact match. fall back to retrieval within the same guideline
-    best = next((i for i in bm25(text, k=40, per_doc=99) if PAGES[i].get('ref') == ref), None)
-  if best is None:
-    return None, None
-  return best, _table_with(PAGES[best]['text'], key)
+  return bool(key and key in _page_squash(i)) or _recall(_words(text), _page_words(i)) >= MIN_RECALL
 
 
-def _is_contents(i):
-  """a table of contents: most lines end in a page number ("... ejection fraction 13")"""
-  lines = [l.strip() for l in PAGES[i]['text'].splitlines() if len(l.strip()) > 12]
-  numbered = sum(1 for l in lines if re.search(r'[A-Za-z)\].]\s*\.*\s+\d{1,3}$', l))
-  return len(lines) >= 6 and numbered >= 0.4 * len(lines)
+def table_for(page_text, text):
+  """the original <table> on a page that holds the text: verbatim first, else the one with most of its words"""
+  key, words = _squash(text)[:70], _words(text)
+  tables = [m.group(0) for m in re.finditer(r'<table\b.*?</table>', page_text, flags=re.S | re.I)]
+  exact = next((t for t in tables if key and key in _squash(t)), None)
+  if exact or not tables:
+    return exact
+  score, best = max((_recall(words, _words(t)), t) for t in tables)
+  return best if score >= MIN_RECALL else None
 
 
-def _table_with(page_text, key):
-  return next((m.group(0) for m in re.finditer(r'<table\b.*?</table>', page_text, flags=re.S | re.I)
-               if key and key in _squash(m.group(0))), None)
+def source(rec, siblings=()):
+  """where a recommendation comes from: (page index, original <table> html or None, how it was found).
+  graph       the knowledge graph records the physical blocks of its semantic unit ("pb_<doc sha256>_p<page>_g<group>");
+              their page ids are the corpus page ids. of those pages the one that holds the text
+  text match  the graph records no block, only the document (doc). the page of that document that holds the text;
+              when several do (a table title also stands in the table of contents), the one that holds most of the
+              other texts of the same semantic unit (siblings), since a semantic unit is one physical structure
+  verbatim text alone is not enough to place a recommendation: guidelines repeat them in summaries and contents"""
+  text = rec['text']
+  pages = [PAGE_INDEX[b[3:].rsplit('_g', 1)[0]] for b in rec.get('src', []) if b[3:].rsplit('_g', 1)[0] in PAGE_INDEX]
+  if pages:
+    key = _squash(text)[:70]
+    best = next((i for i in pages if key and key in _page_squash(i)), None)
+    best = best if best is not None else next((i for i in pages if holds(i, text)), pages[0])
+    return best, table_for(PAGES[best]['text'], text), 'graph'
+  key, doc = _squash(text)[:70], PAGES_OF_DOC.get(rec.get('doc'), [])
+  candidates = [i for i in doc if key and key in _page_squash(i)] or [i for i in doc if holds(i, text)]  # verbatim first
+  if not candidates:
+    return None, None, None
+  best = max(candidates, key=lambda i: (sum(holds(i, s) for s in siblings), -i))  # ties: the earlier page
+  return best, table_for(PAGES[best]['text'], text), 'text match'
