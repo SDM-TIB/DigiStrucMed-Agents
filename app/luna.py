@@ -42,9 +42,9 @@ def run(messages):
   answer = ''
   try:
     for rnd in range(MAX_TOOL_ROUNDS + 1):
-      final = rnd == MAX_TOOL_ROUNDS  # last round: tools off, the model has to answer (as in guido.py)
+      final = rnd == MAX_TOOL_ROUNDS  # last round: no tools sent at all (Gemini on Vertex AI ignores tool_choice none), the model has to answer
       text, calls = '', []
-      for kind, val in llm.stream(chat, TOOLS, 'none' if final else None):
+      for kind, val in llm.stream(chat, None if final else TOOLS):
         if kind == 'text':
           text += val
           yield {'type': 'text', 'delta': val}
