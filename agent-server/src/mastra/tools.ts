@@ -8,7 +8,7 @@ import { z } from 'zod'
 const APP_URL = (process.env.APP_URL ?? '').replace(/\/$/, '')
 const AGENT_TOKEN = process.env.AGENT_TOKEN ?? ''
 
-type ToolReply = { model: unknown; ui: Array<Record<string, unknown>> }
+type ToolReply = { model: unknown; ui: Array<Record<string, unknown>>; images?: Array<{ mediaType: string; data: string }> }
 
 // On Cloud Run: an identity token of this service's account for the app's url (the app accepts its own account).
 // Locally: the shared AGENT_TOKEN.
@@ -80,4 +80,26 @@ export const listGuidelines = createTool({
   }),
   execute: async (input, ctx) => callApp('catalogue', { ...input, ...runOf(ctx) }),
   toModelOutput: toModel,
+})
+
+// The rendered PDF page as an image (WebP), for what the OCR text may have lost: figures, footnotes, shifted table
+// cells. The model gets the page list as text and the images as image parts.
+export const viewPage = createTool({
+  id: 'view_page',
+  description: 'Look at up to two pages returned as numbered sources as images: the rendered pages of the original PDF ' +
+    '(figures, footnotes and table layout as printed).',
+  inputSchema: z.object({
+    sources: z.array(z.number().int()).min(1).max(2).describe('Source numbers from earlier search results'),
+  }),
+  execute: async (input, ctx) => callApp('view', { ...input, ...runOf(ctx) }),
+  toModelOutput: (out: unknown) => {
+    const reply = out as ToolReply
+    return {
+      type: 'content' as const,
+      value: [
+        { type: 'text' as const, text: JSON.stringify(reply.model) },
+        ...(reply.images ?? []).map(im => ({ type: 'image-data' as const, data: im.data, mediaType: im.mediaType })),
+      ],
+    }
+  },
 })

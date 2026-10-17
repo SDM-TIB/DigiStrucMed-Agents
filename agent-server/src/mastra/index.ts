@@ -19,6 +19,7 @@ type ChatBody = {
   run: string
   max_steps?: number
   thinking?: 'minimal' | 'low' | 'medium' | 'high'
+  image_tool?: boolean
 }
 
 const chatRoute = registerApiRoute('/luna/chat', {
@@ -37,6 +38,7 @@ const chatRoute = registerApiRoute('/luna/chat', {
     requestContext.set('system', body.system)
     requestContext.set('runId', body.run)
     requestContext.set('question', question.slice(0, 1000))
+    requestContext.set('imageTool', body.image_tool === true)
 
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
