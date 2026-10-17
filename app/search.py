@@ -88,6 +88,16 @@ def _load():
     _state['loading'] = False
 
 
+def load():
+  """load the index now (at startup, before the server listens: Cloud Run throttles the CPU of background threads
+  between requests, so a background load would take minutes)"""
+  with _lock:
+    if _state['index'] is not None or _state['loading']:
+      return
+    _state['loading'] = True
+  _load()
+
+
 def warm():
   """load the index in the background and wake the embedding service; safe to call often"""
   with _lock:
