@@ -120,3 +120,12 @@ def error_event(e, name='LLM'):
   """any exception as a ui error event. never leaks a key"""
   msg = f'{name} HTTP {e.code}' if isinstance(e, urllib.error.HTTPError) else f'{name} unavailable ({type(e).__name__})'
   return {'type': 'error', 'message': msg}
+
+
+def answer_now(chat, instruction):
+  """when every round ended in tool calls: one more turn without tools that only collects text. Gemini on Vertex AI's
+  OpenAI endpoint keeps emitting tool calls even with tool_choice none or without tools when the history holds some;
+  those calls are dropped here, the text is the answer"""
+  for kind, val in stream(chat + [{'role': 'user', 'content': instruction}]):
+    if kind == 'text':
+      yield val

@@ -194,6 +194,10 @@ def run(messages):
       for call in calls:
         results.append((yield from _tool(call, walk, question)))
       chat += llm.tool_turn(text, calls, results)
+    if not answer.strip():  # every round ended in tool calls: answer from the explored graph
+      for val in llm.answer_now(chat, 'Answer the question now from the explored graph. Do not call tools again.'):
+        answer += val
+        yield {'type': 'text', 'delta': val}
     cited = sorted({int(n) for grp in CITE.findall(answer) for n in re.findall(r'\d+', grp) if 0 < int(n) <= len(walk.numbered)})
     yield {'type': 'graph', 'nodes': [], 'links': [], 'cited': [walk.numbered[n - 1] for n in cited], 'action': 'done'}
     yield {'type': 'done'}
