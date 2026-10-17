@@ -852,6 +852,9 @@ function revealNew(root, st) {
   }
   return st.shown;
 }
+// the models sometimes write math ($\rightarrow$, $\geq$): KaTeX renders it instead of showing the source. the
+// standard delimiter rule ($ after a space, closing $ before a space or punctuation) leaves prices like <$50,000 alone
+if (window.markedKatex && window.katex) marked.use(markedKatex({throwOnError: false, nonStandard: false}));
 function citeify(html) {
   return html.replace(/\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\](?![^<]*>)/g, (_, g) => g.match(/\d+/g).map(n => `<button class="cite" data-n="${n}" aria-label="Source ${n}">${n}</button>`).join(''));
 }
@@ -1880,8 +1883,11 @@ function langOf(text) {
   const t = (text || '').toLowerCase();
   if (/[а-яё]/.test(t)) return 'ru';
   if (/[ऀ-ॿ]/.test(t)) return 'hi';
-  if (/[ñ¿¡áéíóú]|\b(el|los|las|qué|que|cuál|cómo|para|con|por|una|del|puedo|tengo|efectos|dosis)\b/.test(t)) return 'es';
-  return /[äöüß]|\b(der|die|das|und|ist|nicht|was|wie|welche|bei|mit|für|sind|wird|kann|gibt)\b/.test(t) ? 'de' : 'en';
+  // count the markers of both latin-script languages: a single shared word ("Dosis" is german and spanish) must not
+  // decide, the text's other words do
+  const es = (t.match(/[ñ¿¡áéíóú]|\b(el|los|las|qué|que|cuál|cómo|para|con|por|una|del|puedo|tengo|efectos|dosis)\b/g) || []).length;
+  const de = (t.match(/[äöüß]|\b(der|die|das|und|ist|nicht|was|wie|welche|bei|mit|für|sind|wird|kann|gibt)\b/g) || []).length;
+  return !es && !de ? 'en' : es > de ? 'es' : 'de';
 }
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
 const SAY = {
