@@ -110,6 +110,17 @@ def size_of(method, default=1200):
   return int(m.group(1)) if m else default
 
 
+_TABLE_TEXT = {}
+
+
+def _page_text(p):
+  """table_text of a page, computed once per page text"""
+  key = p.get('id') or id(p)
+  if key not in _TABLE_TEXT:
+    _TABLE_TEXT[key] = table_text(p['text'])
+  return _TABLE_TEXT[key]
+
+
 def page_units(pages, method):
   """[(page index, text to embed)]"""
   out = []
@@ -119,7 +130,7 @@ def page_units(pages, method):
     if method == 'page_plain':
       out.append((i, doc(title, p['plain'])))
       continue
-    t = table_text(p['text'])
+    t = _page_text(p)
     if method == 'page_table':
       out.append((i, doc(title, t)))
       continue
