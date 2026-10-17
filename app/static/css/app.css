@@ -19,9 +19,9 @@ body{margin:0;font:14px/20px var(--ui);color:var(--ink);-webkit-font-smoothing:a
     radial-gradient(45% 55% at 78% 88%,oklch(0.74 0.14 250) 0,transparent 70%),
     radial-gradient(40% 50% at 40% 102%,oklch(0.70 0.16 262) 0,transparent 70%),
     linear-gradient(180deg,oklch(0.82 0.05 240),oklch(0.78 0.07 245))}
-button,input{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none}
+button,input{font:inherit;color:inherit}button:not(:where(.lui *,[data-slot=hover-card-content] *)){cursor:pointer;border:0;background:none}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
-svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg:not(:where(.lui *,[data-slot=hover-card-content] *)){width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .hidden{display:none!important}
 
 /* agent portraits */

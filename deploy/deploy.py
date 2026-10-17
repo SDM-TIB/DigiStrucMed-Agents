@@ -1,6 +1,7 @@
 """Deploy TIB Chat. reads everything from the .env at the repo root, or from the environment when there is none (CI).
 
-  python deploy/deploy.py app      # Cloud Run service (secrets to Secret Manager, then a source deploy of app/)
+  python deploy/deploy.py app      # Cloud Run service (secrets to Secret Manager, then a source deploy of app/ with the
+                                   # chat's AI Elements built from ui/ first; needs node 22+)
   python deploy/deploy.py app --code-only   # only the source deploy. what GitHub Actions runs: no .env, no secret
                                             # values, the service keeps the Secret Manager references it already has
   python deploy/deploy.py embed    # EmbeddingGemma 2 service for Luna's search (embed-server/), private; prints EMBED_URL
@@ -89,7 +90,14 @@ def deploy_app(env, code_only=False):
   source_deploy(env, project, region, service, bucket, secrets_flag=[f'--set-secrets={secrets}'])
 
 
+def build_ui():
+  """the chat's AI Elements island (ui/, React + shadcn) into app/static/ui/, which the source deploy uploads"""
+  run('npm', '--prefix', 'ui', 'ci', '--no-audit', '--no-fund', quiet=True)
+  run('npm', '--prefix', 'ui', 'run', 'build', quiet=True)
+
+
 def source_deploy(env, project, region, service, bucket, secrets_flag):
+  build_ui()
   # settings go through a yaml file: values can hold commas (LANGUAGES=en,de,ru). no secrets in it
   settings = {k: env[k] for k in SETTINGS if env.get(k)} | {'PAGE_BUCKET': bucket}
   fd, name = tempfile.mkstemp(suffix='.yaml')

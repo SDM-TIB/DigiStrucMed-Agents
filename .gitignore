@@ -14,3 +14,5 @@ pipeline/.vectors_cache.json
 app/data/page_words.partial.jsonl
 pipeline/out/
 app/data/search_index.npz
+# the AI Elements island, built from ui/ (npm run build) by deploy/deploy.py
+app/static/ui/

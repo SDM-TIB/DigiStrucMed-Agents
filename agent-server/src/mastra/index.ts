@@ -49,11 +49,13 @@ const chatRoute = registerApiRoute('/luna/chat', {
             requestContext,
             stopWhen: maxSteps ? stepCountIs(maxSteps) : isLoopFinished(),
             toolCallConcurrency: 4,
-            providerOptions: { vertex: { thinkingConfig: { thinkingLevel: body.thinking ?? 'low' } } },
+            // includeThoughts: Gemini's thought summaries, shown to the patient as Luna's reasoning (the thinking itself is the same)
+            providerOptions: { vertex: { thinkingConfig: { thinkingLevel: body.thinking ?? 'low', includeThoughts: true } } },
           })
           for await (const chunk of out.fullStream as unknown as AsyncIterable<{ type: string; payload: any }>) {
             if (DEBUG) console.error(`[${body.run}] ${chunk.type}`, JSON.stringify(chunk.payload ?? {}).slice(0, 300))
             if (chunk.type === 'text-delta') send({ type: 'text', delta: chunk.payload.text })
+            else if (chunk.type === 'reasoning-delta' && chunk.payload.text) send({ type: 'reasoning', delta: chunk.payload.text })
             else if (chunk.type === 'tool-call') send({ type: 'tool_call', name: chunk.payload.toolName, args: chunk.payload.args })
             else if (chunk.type === 'tool-result') for (const ev of chunk.payload.result?.ui ?? []) send(ev)
             else if (chunk.type === 'tool-error') send({ type: 'tool_error', name: chunk.payload.toolName })

@@ -1,0 +1,81 @@
+/* The AI Elements island inside TIB Chat. Tailwind without its preflight, so the app's own page styles stay as they
+   are; shadcn's tokens are set only inside the island (.lui) and on its popovers, from the app's palette. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@source "./";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--ui);
+  --font-heading: var(--display);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* literal values: the app itself uses --accent and --muted for other things */
+.lui, [data-slot=hover-card-content] {
+  --background: oklch(0.993 0.003 264);
+  --foreground: oklch(0.24 0.015 264);
+  --card: oklch(0.993 0.003 264);
+  --card-foreground: oklch(0.24 0.015 264);
+  --popover: oklch(0.995 0.003 264);
+  --popover-foreground: oklch(0.24 0.015 264);
+  --primary: oklch(0.57 0.19 264);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.035 264);
+  --secondary-foreground: oklch(0.47 0.18 264);
+  --muted: oklch(0.958 0.006 264);
+  --muted-foreground: oklch(0.55 0.015 264);
+  --accent: oklch(0.97 0.018 264);
+  --accent-foreground: oklch(0.47 0.18 264);
+  --destructive: oklch(0.56 0.19 25);
+  --border: oklch(0.91 0.008 264);
+  --input: oklch(0.91 0.008 264);
+  --ring: oklch(0.57 0.19 264);
+  --radius: 0.625rem;
+  font-family: var(--ui);
+}
+
+/* the part of Tailwind's preflight the components rely on, only inside the island */
+@layer base {
+  .lui *, .lui ::before, .lui ::after,
+  [data-slot=hover-card-content], [data-slot=hover-card-content] *, [data-slot=hover-card-content] ::before, [data-slot=hover-card-content] ::after {
+    box-sizing: border-box; border: 0 solid; border-color: var(--border);
+  }
+  .lui button, [data-slot=hover-card-content] button { background: none; font: inherit; color: inherit; padding: 0; text-align: inherit; }
+  .lui pre, .lui p, [data-slot=hover-card-content] p, [data-slot=hover-card-content] blockquote { margin: 0; }
+  .lui img, [data-slot=hover-card-content] img { display: block; max-width: 100%; }
+}
+
+/* app-specific touches */
+.lui-cot { margin-bottom: 2px; }
+.lui-sources { margin-top: 14px; }
+.lui-rel { flex: none; width: 34px; height: 4px; border-radius: 2px; background: var(--muted); overflow: hidden; }
+.lui-rel i { display: block; height: 100%; border-radius: 2px; background: var(--primary); opacity: .7; }
+.cite-host { display: inline; }
+@media (prefers-reduced-motion: reduce) { .lui * { transition: none !important; } }

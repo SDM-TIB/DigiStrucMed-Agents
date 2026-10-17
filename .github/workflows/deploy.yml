@@ -23,10 +23,11 @@ jobs:
           python-version: '3.12'
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
       - run: pip install pyflakes
       - run: python -m pyflakes app deploy pipeline tavus
       - run: for f in app/static/js/*.js; do node --check "$f"; done
+      - run: npm --prefix ui ci --no-audit --no-fund && npm --prefix ui run build  # types and the island build
 
   deploy:
     needs: check
@@ -45,6 +46,7 @@ jobs:
             app:
               - 'app/**'
               - 'deploy/**'
+              - 'ui/**'
       - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
         uses: google-github-actions/auth@v3
         with:
@@ -52,6 +54,10 @@ jobs:
           service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
       - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
         uses: google-github-actions/setup-gcloud@v3
+      - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
       - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
         run: python deploy/deploy.py app --code-only
         env:

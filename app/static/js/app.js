@@ -1018,10 +1018,13 @@ function addAssistant() {
   $(agent.thread).append(el); scrollFeed();
   const st = {el, steps: el.querySelector('.steps'), answer: el.querySelector('.answer'), refs: el.querySelector('.refs'), raw: '', shown: 0, sources: {}, pending: null, frame: 0, lino: agent === AGENTS.lino};
   if (st.lino) st.steps.insertAdjacentHTML('beforebegin', `<span class="unv">${esc(care.t('unverified'))}</span>`);
+  // the agent's work as shadcn AI Elements (chain of thought, tools, sources, citations): ui/src/luna-ui.tsx. without it
+  // (not loaded yet, or failed) the plain step lines below still show it
+  if (window.LunaUI && agent !== AGENTS.guido) st.ui = window.LunaUI.message(st.steps, {t: uiText, openSource: (n, quote) => showSource(st, n, quote || '')});
   el.addEventListener('click', e => {
     const c = e.target.closest('.cite, .ref'); if (!c) return;
     const block = c.classList.contains('cite') ? c.closest('p, li') : null;  // the sentence that cites it, without its [n] buttons
-    showSource(st, +c.dataset.n, block ? [...block.childNodes].filter(n => !(n.classList && n.classList.contains('cite'))).map(n => n.textContent).join('').trim() : '');
+    showSource(st, +c.dataset.n, block ? [...block.childNodes].filter(n => !(n.classList && (n.classList.contains('cite') || n.classList.contains('cite-host')))).map(n => n.textContent).join('').trim() : '');
   });
   return st;
 }
@@ -1074,7 +1077,7 @@ function openDocument(d) {
   srcIdx = 0; renderSource(); $('#srcx').classList.remove('hidden'); $('#srcx-close').focus();
 }
 function showSource(st, n, citedBy = '') {
-  const cited = [...st.el.querySelectorAll('.ref')].map(r => +r.dataset.n);
+  const cited = st.cited || [...st.el.querySelectorAll('.ref')].map(r => +r.dataset.n);
   srcList = (cited.length ? cited : Object.keys(st.sources).map(Number)).map(k => st.sources[k]).filter(Boolean);
   srcIdx = Math.max(0, srcList.findIndex(x => x.n === n));
   if (!srcList.length && st.sources[n]) srcList = [st.sources[n]];
@@ -1338,7 +1341,9 @@ addEventListener('keydown', e => {
 function finishRefs(st) {
   settle(st);
   const cited = [...new Set([...st.raw.matchAll(/\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\]/g)].flatMap(m => m[1].match(/\d+/g).map(Number)))].filter(n => st.sources[n]);
-  cited.sort((a, b) => a - b).forEach((n, i) => {
+  cited.sort((a, b) => a - b); st.cited = cited;
+  if (st.ui) { st.ui.done(); st.ui.sources(st.refs, cited.map(n => st.sources[n])); st.ui.citations(st.answer, st.sources); return; }
+  cited.forEach((n, i) => {
     const s = st.sources[n];
     const b = document.createElement('button'); b.className = 'ref'; b.dataset.n = n; b.style.animationDelay = (i * 60) + 'ms';
     b.title = s.title;
@@ -1458,8 +1463,11 @@ async function sendChat(text) {
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
         if (!line.startsWith('data:')) continue;
         const ev = JSON.parse(line.slice(5));
+        if (ev.type === 'sources') ev.items.forEach(s => st.sources[s.n] = s);
+        if (st.ui && !tl && ev.type !== 'text' && st.ui.event(ev)) continue;
+        if (ev.type === 'text' && st.ui) st.ui.event(ev);
         if (ev.type === 'tool_call' && ev.name === 'search_guidelines') step(st, 'search', `${esc(care.t('searching'))} <span class="q">“${esc(ev.args.query || '')}”</span>`, true);
-        else if (ev.type === 'sources') { ev.items.forEach(s => st.sources[s.n] = s); if (st.pending && !tl) st.pending.querySelector('.label').insertAdjacentHTML('beforeend', ` · ${ev.items.length} ${esc(care.t('pages'))}`); }
+        else if (ev.type === 'sources') { if (st.pending && !tl) st.pending.querySelector('.label').insertAdjacentHTML('beforeend', ` · ${ev.items.length} ${esc(care.t('pages'))}`); }
         else if (ev.type === 'tool_call' && ev.name === 'read_page') step(st, 'read', esc(care.t('readingFull')), true);
         else if (ev.type === 'tool_call' && ev.name === 'list_guidelines') step(st, 'search', esc(care.t('catalogue')), true);
         else if (ev.type === 'tool_call' && ev.name === 'view_page') step(st, 'read', esc(care.t('viewingPage')), true);
@@ -1488,6 +1496,7 @@ async function sendChat(text) {
     chatHistory.push({role: 'assistant', text: st.raw});
     $(a.preview).textContent = st.raw.replace(/\[\d+\]|[*#_]/g, '').slice(0, 80);
   } catch (e) {
+    st.ui?.done();
     st.answer.innerHTML = `<span class="err">${esc(e.message)}</span>`;
     chatHistory.pop();
   } finally {
