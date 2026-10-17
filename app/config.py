@@ -81,6 +81,12 @@ GRAPH_ENDPOINT = env('GRAPH_ENDPOINT', 'http://localhost:7001')
 # EmbeddingGemma 2 embedding service for luna's search (embed-server/, a private Cloud Run service). empty = bm25 only
 EMBED_URL = env('EMBED_URL')
 
+# luna's agent loop runs in the agent server (agent-server/, Mastra on Cloud Run, private). AGENT_URL empty = the
+# in-process loop of luna.py. The agent server calls the tool endpoints back (/api/agent/tools/*) with an identity
+# token of this app's service account; AGENT_TOKEN is a shared token for local development only
+AGENT_URL = env('AGENT_URL')
+AGENT_TOKEN = env('AGENT_TOKEN')
+
 # private gcs bucket: page renders, usage log. empty = local files only (dev)
 BUCKET = env('PAGE_BUCKET')
 LOCAL_BUCKET = ROOT.parent / 'page_images'

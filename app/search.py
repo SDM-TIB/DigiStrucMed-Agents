@@ -50,7 +50,6 @@ PAGE_CHARS = 6000  # page text a clef-flash judgement reads, as in the study
 
 _state = {'index': None, 'error': None, 'loading': False}
 _lock = threading.Lock()
-_id_token = {'value': '', 'exp': 0.0}
 
 
 # ---- the index
@@ -115,19 +114,7 @@ def status():
 
 # ---- the embedding service (Cloud Run, invoked with this service account's identity token)
 def _identity_token():
-  if time.time() < _id_token['exp']:
-    return _id_token['value']
-  url = ('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience='
-         + config.EMBED_URL.rstrip('/'))
-  try:
-    with urllib.request.urlopen(urllib.request.Request(url, headers={'Metadata-Flavor': 'Google'}), timeout=5) as r:
-      _id_token.update(value=r.read().decode(), exp=time.time() + 45 * 60)
-  except OSError:  # local development: the developer's gcloud identity
-    import shutil
-    import subprocess
-    out = subprocess.run([shutil.which('gcloud') or 'gcloud', 'auth', 'print-identity-token', '--audiences=' + config.EMBED_URL.rstrip('/')], capture_output=True, text=True, timeout=30)
-    _id_token.update(value=out.stdout.strip(), exp=time.time() + 30 * 60)
-  return _id_token['value']
+  return storage.identity_token(config.EMBED_URL)
 
 
 def _get(url, timeout):
@@ -186,9 +173,12 @@ def _rank(scores):
   return r
 
 
-def search(query, question=None, k=5):
-  """[{'page': page index, 'relevance': clef-flash probability or None, 'passages': [chunk texts]}], mode.
-  query: what to look for now; question: the user's question it serves (defaults to the query)"""
+def search(query, question=None, k=5, docs=None):
+  """{'hits': [{'page', 'relevance', 'passages'}], 'mode', 'facets'}
+  query: what to look for now; question: the user's question it serves (defaults to the query); docs: document ids to
+  search in (a guideline filter), None for all. facets: for each document, how many of the reranked candidates it
+  holds and how many of them are likely relevant (relevance >= 0.5), so the caller sees where evidence clusters
+  beyond the top k"""
   question = (question or query).strip()
   query = query.strip()
   idx = _state['index']
@@ -202,11 +192,12 @@ def search(query, question=None, k=5):
         break
       except Exception:
         vecs = None
-  lex_order = corpus.bm25(query, k=len(corpus.PAGES), per_doc=len(corpus.PAGES))
+  allowed = None if not docs else np.array([p['doc'] in docs for p in corpus.PAGES])
+  lex_order = [i for i in corpus.bm25(query, k=len(corpus.PAGES), per_doc=len(corpus.PAGES)) if allowed is None or allowed[i]]
   lex_rank = np.full(len(corpus.PAGES), len(corpus.PAGES) + 1, dtype=np.int64)
   lex_rank[lex_order] = np.arange(1, len(lex_order) + 1)
   if vecs is None:
-    return [{'page': i, 'relevance': None, 'passages': []} for i in lex_order[:k]], 'bm25'
+    return {'hits': [{'page': i, 'relevance': None, 'passages': []} for i in lex_order[:k]], 'mode': 'bm25', 'facets': []}
 
   fused = 1 / (RRF_K + lex_rank)
   best_chunk = None
@@ -218,7 +209,9 @@ def search(query, question=None, k=5):
       fused += 1 / (RRF_K + _rank(page_score))
       if name == 'chunk_title_s400' and prompt == 'qa':
         best_chunk = (sims, view)
-  cand = [int(i) for i in np.argsort(-fused, kind='stable')[:CANDIDATES]]
+  if allowed is not None:
+    fused[~allowed] = -1.0
+  cand = [int(i) for i in np.argsort(-fused, kind='stable')[:min(CANDIDATES, len(corpus.PAGES) if allowed is None else int(allowed.sum()))]]
 
   mode = 'embeddinggemma2'
   rel = {}
@@ -235,7 +228,13 @@ def search(query, question=None, k=5):
   for i in cand[:k]:
     out.append({'page': i, 'relevance': None if rel.get(i) is None else round(rel[i], 2),
                 'passages': _windows(i, sims, view)})
-  return out, mode
+  facets = {}
+  for i in cand:
+    f = facets.setdefault(corpus.PAGES[i]['doc'], {'doc': corpus.PAGES[i]['doc'], 'candidates': 0, 'likely_relevant': 0})
+    f['candidates'] += 1
+    f['likely_relevant'] += int((rel.get(i) or 0) >= 0.5)
+  facets = sorted(facets.values(), key=lambda f: (-f['likely_relevant'], -f['candidates']))
+  return {'hits': out, 'mode': mode, 'facets': facets}
 
 
 def _windows(i, sims, view, n=2, width=1):
