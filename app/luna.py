@@ -75,13 +75,18 @@ TOOLS = [
 ]
 
 
-def run(messages, rounds=None):
-  """the agent server runs the loop when AGENT_URL is set (agent-server/, Mastra); otherwise, or when it cannot be
-  reached before it answers, the loop below runs here with the same prompt and tools"""
-  if config.AGENT_URL:
+HARNESSES = {'mastra': lambda: config.AGENT_URL, 'aisdk': lambda: config.AGENT_AISDK_URL}
+
+
+def run(messages, rounds=None, harness=None):
+  """the agent server runs the loop when AGENT_URL is set (agent-server/, Mastra; harness 'aisdk' picks the AI SDK 7
+  server, agent-server-aisdk/); otherwise, or when it cannot be reached before it answers, the loop below runs here
+  with the same prompt and tools"""
+  url = HARNESSES.get(harness or 'mastra', HARNESSES['mastra'])()
+  if url:
     started = False
     try:
-      for ev in _via_agent(messages, rounds):
+      for ev in _via_agent(messages, rounds, url):
         started = True
         yield ev
       return
@@ -93,17 +98,17 @@ def run(messages, rounds=None):
   yield from _local(messages, rounds)
 
 
-def _via_agent(messages, rounds=None):
+def _via_agent(messages, rounds, url):
   """the Mastra agent's event stream, already in the chat's event format"""
   body = {'messages': [{'role': m.get('role'), 'text': m.get('text')} for m in messages if m.get('text')][-12:],
           'system': SYSTEM_AGENT, 'run': uuid.uuid4().hex}
   if rounds:  # an evaluation's explicit step bound
     body['max_steps'] = int(rounds)
-  req = urllib.request.Request(config.AGENT_URL.rstrip('/') + '/luna/chat', data=json.dumps(body).encode(), method='POST',
+  req = urllib.request.Request(url.rstrip('/') + '/luna/chat', data=json.dumps(body).encode(), method='POST',
                                headers={'Content-Type': 'application/json', 'X-Agent-Token': config.AGENT_TOKEN,
-                                        'Authorization': 'Bearer ' + storage.identity_token(config.AGENT_URL)}
+                                        'Authorization': 'Bearer ' + storage.identity_token(url)}
                                if config.AGENT_TOKEN else
-                               {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + storage.identity_token(config.AGENT_URL)})
+                               {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + storage.identity_token(url)})
   with urllib.request.urlopen(req, timeout=600) as r:
     for raw in r:
       line = raw.decode('utf-8', 'replace').strip()

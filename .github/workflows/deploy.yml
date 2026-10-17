@@ -68,3 +68,4 @@ jobs:
           GRAPH_ENDPOINT: ${{ vars.GRAPH_ENDPOINT }}
           EMBED_URL: ${{ vars.EMBED_URL }}
           AGENT_URL: ${{ vars.AGENT_URL }}
+          AGENT_AISDK_URL: ${{ vars.AGENT_AISDK_URL }}
