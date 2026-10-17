@@ -19,6 +19,9 @@ import retrieve
 from kg import CONCEPTS, IN, OUT, REC_ROLES, RECS
 
 MAX_ROUNDS = 3
+LAST_ROUND = ('That was your last exploration round: no further graph calls are possible. '
+              'Write your answer now from the explored graph, with the citation numbers of the recommendations. '
+              'If the graph does not answer the question, say so.')
 CITE = re.compile(r'\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\]')
 
 SYSTEM = (
@@ -194,6 +197,8 @@ def run(messages):
       for call in calls:
         results.append((yield from _tool(call, walk, question)))
       chat += llm.tool_turn(text, calls, results)
+      if rnd == MAX_ROUNDS - 1:  # the exploration budget is used up: say so, so the model plans its answer instead of exploring on
+        chat.append({'role': 'user', 'content': LAST_ROUND})
     if not answer.strip():  # every round ended in tool calls: answer from the explored graph
       for val in llm.answer_now(chat, 'Answer the question now from the explored graph. Do not call tools again.'):
         answer += val
