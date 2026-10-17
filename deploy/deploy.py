@@ -4,6 +4,7 @@
   python deploy/deploy.py app --code-only   # only the source deploy. what GitHub Actions runs: no .env, no secret
                                             # values, the service keeps the Secret Manager references it already has
   python deploy/deploy.py embed    # EmbeddingGemma 2 service for Luna's search (embed-server/), private; prints EMBED_URL
+  python deploy/deploy.py agent    # Luna's agent server (agent-server/, Mastra), private; prints AGENT_URL
   python deploy/deploy.py gpu      # Lino's vLLM server in every Modal workspace of the pool (deploy_new_modal.py --all)
   python deploy/deploy.py assets push|pull   # videos and the LoRA adapter, kept in the bucket, not in git
 
@@ -22,7 +23,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SECRETS = ('TAVUS_API_KEY', 'TAVUS_EXTRA_KEYS', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
            'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'MODAL_EXTRA_TOKENS', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
 SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'MAX_CALL_SECONDS', 'GRAPH_ENDPOINT',
-            'EMBED_URL')
+            'EMBED_URL', 'AGENT_URL')
 # large files that live in the bucket under assets/, not in git
 ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter', 'tavus/knowledge_base': 'assets/tavus-kb'}
 
@@ -120,6 +121,28 @@ def deploy_embed(env):
   print(f'EMBED_URL={url}  (put it in .env and in the repository variable EMBED_URL, then deploy the app)')
 
 
+def deploy_agent(env):
+  """Luna's agent loop (Mastra on the Vercel AI SDK, Gemini on Vertex AI): private, scales to zero, the app's runtime
+  account may invoke it. It runs as that same account and calls the app's tool endpoints back with an identity token
+  of it, which the app accepts; no shared secret"""
+  project, region, service = env['GCP_PROJECT'], env.get('GCP_REGION', 'europe-west3'), env['CLOUD_RUN_SERVICE']
+  number = run('gcloud', 'projects', 'describe', project, '--format=value(projectNumber)', quiet=True).strip()
+  runtime = f'serviceAccount:{number}-compute@developer.gserviceaccount.com'
+  app_url = run('gcloud', 'run', 'services', 'describe', service, f'--region={region}', f'--project={project}',
+                '--format=value(status.url)', quiet=True).strip()
+  settings = {'APP_URL': app_url, 'GOOGLE_VERTEX_PROJECT': project, 'GOOGLE_VERTEX_LOCATION': 'global',
+              'LUNA_MODEL': env.get('LUNA_MODEL', 'gemini-3.8-flash')}
+  run('gcloud', 'run', 'deploy', 'luna-agent', '--source', str(ROOT / 'agent-server'), f'--region={region}', f'--project={project}',
+      '--no-allow-unauthenticated', '--memory=1Gi', '--cpu=1', '--min-instances=0', '--max-instances=3', '--cpu-boost',
+      '--timeout=300', '--concurrency=20', f'--service-account={runtime.split(":", 1)[1]}',
+      '--set-env-vars=' + ','.join(f'{k}={v}' for k, v in settings.items()), '--quiet', quiet=True)
+  run('gcloud', 'run', 'services', 'add-iam-policy-binding', 'luna-agent', f'--region={region}', f'--project={project}',
+      f'--member={runtime}', '--role=roles/run.invoker', quiet=True)
+  url = run('gcloud', 'run', 'services', 'describe', 'luna-agent', f'--region={region}', f'--project={project}',
+            '--format=value(status.url)', quiet=True).strip()
+  print(f'AGENT_URL={url}  (put it in .env and in the repository variable AGENT_URL, then deploy the app)')
+
+
 def deploy_gpu(env):
   run(sys.executable, str(ROOT / 'deploy' / 'deploy_new_modal.py'), '--all')
 
@@ -137,6 +160,8 @@ if __name__ == '__main__':
   env = dotenv()
   if what == 'app':
     deploy_app(env, code_only='--code-only' in sys.argv)
+  elif what == 'agent':
+    deploy_agent(env)
   elif what == 'embed':
     deploy_embed(env)
   elif what == 'gpu':

@@ -30,6 +30,28 @@ def _auth():
   return {'Authorization': 'Bearer ' + _token['value']}
 
 
+_id_tokens = {}
+
+
+def identity_token(audience):
+  """an identity token of this service account for a private Cloud Run service (audience: its url); locally the
+  developer's gcloud identity"""
+  audience = audience.rstrip('/')
+  tok = _id_tokens.get(audience)
+  if tok and time.time() < tok[1]:
+    return tok[0]
+  url = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=' + audience
+  try:
+    with urllib.request.urlopen(urllib.request.Request(url, headers={'Metadata-Flavor': 'Google'}), timeout=5) as r:
+      value = r.read().decode()
+  except OSError:
+    out = subprocess.run([shutil.which('gcloud') or 'gcloud', 'auth', 'print-identity-token', '--audiences=' + audience],
+                         capture_output=True, text=True, timeout=30)
+    value = out.stdout.strip()
+  _id_tokens[audience] = (value, time.time() + 45 * 60)
+  return value
+
+
 def get(name):
   """bytes of one object, or None"""
   if not config.BUCKET:

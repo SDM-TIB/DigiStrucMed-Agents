@@ -1,0 +1,4 @@
+node_modules/
+.mastra/
+install.log
+build.log

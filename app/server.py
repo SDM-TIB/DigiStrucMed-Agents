@@ -15,6 +15,7 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import agent_tools
 import audit
 import board
 import config
@@ -207,6 +208,11 @@ class Handler(BaseHTTPRequestHandler):
       return self.send(403, {'error': 'Same-origin request required'})
     length = int(self.headers.get('Content-Length') or 0)
     body = json.loads(self.rfile.read(length) or b'{}') if length else {}
+    if self.path.startswith('/api/agent/tools/'):  # luna's tools for the agent server, server to server, by token
+      if not agent_tools.authorised(self.headers, self.headers.get('Host', '')):
+        return self.send(401, {'error': 'Agent identity required'})
+      res = agent_tools.call(self.path.rsplit('/', 1)[-1], body)
+      return self.send(200, res) if res is not None else self.send(404, {'error': 'Unknown tool'})
     if self.path == '/api/call/end-beacon':  # navigator.sendBeacon on tab close cannot set headers
       return self.send(200, {'ended': self.end_call(body, via='page closed')}) if self.signed_in() else self.send(401, {})
     if self.headers.get(ACTION_HEADER) != '1':

@@ -1,0 +1,20 @@
+{
+  "name": "luna-agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "mastra dev",
+    "build": "mastra build",
+    "start": "node .mastra/output/index.mjs"
+  },
+  "dependencies": {
+    "@ai-sdk/google-vertex": "5.0.115",
+    "@mastra/core": "1.78.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "mastra": "1.34.2",
+    "typescript": "6.0.3"
+  }
+}

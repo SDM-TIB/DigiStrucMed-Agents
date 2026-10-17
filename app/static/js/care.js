@@ -124,6 +124,7 @@ window.care = (() => {
               ru: 'Спросите Луну о кардиологических рекомендациях…', hi: 'लूना से हृदय दिशानिर्देशों के बारे में पूछें…'},
     searching: {en: 'Searching guidelines for', de: 'Durchsucht die Leitlinien nach', es: 'Buscando en las guías', ru: 'Поиск в рекомендациях:', hi: 'दिशानिर्देशों में खोज:'},
     readingFull: {en: 'Reading the full page', de: 'Liest die ganze Seite', es: 'Leyendo la página completa', ru: 'Читает страницу целиком', hi: 'पूरा पृष्ठ पढ़ रहे हैं'},
+    catalogue: {en: 'Looking up the guideline catalogue', de: 'Schaut im Leitlinienkatalog nach', es: 'Consultando el catálogo de guías', ru: 'Смотрит каталог рекомендаций', hi: 'दिशानिर्देश सूची देख रहे हैं'},
     reading: {en: 'Reading {ref}, page {page}', de: 'Liest {ref}, Seite {page}', es: 'Leyendo {ref}, página {page}', ru: 'Читает {ref}, стр. {page}', hi: '{ref} पढ़ रहे हैं, पृष्ठ {page}'},
     pages: {en: 'pages', de: 'Seiten', es: 'páginas', ru: 'стр.', hi: 'पृष्ठ'},
     markQuote: {en: 'Marked on the original page: the quote', de: 'Auf der Originalseite markiert: das Zitat', es: 'Marcado en la página original: la cita',

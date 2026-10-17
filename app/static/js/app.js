@@ -1436,6 +1436,7 @@ async function sendChat(text) {
         if (ev.type === 'tool_call' && ev.name === 'search_guidelines') step(st, 'search', `${esc(care.t('searching'))} <span class="q">“${esc(ev.args.query || '')}”</span>`, true);
         else if (ev.type === 'sources') { ev.items.forEach(s => st.sources[s.n] = s); if (st.pending && !tl) st.pending.querySelector('.label').insertAdjacentHTML('beforeend', ` · ${ev.items.length} ${esc(care.t('pages'))}`); }
         else if (ev.type === 'tool_call' && ev.name === 'read_page') step(st, 'read', esc(care.t('readingFull')), true);
+        else if (ev.type === 'tool_call' && ev.name === 'list_guidelines') step(st, 'search', esc(care.t('catalogue')), true);
         else if (ev.type === 'read') { const s = ev.item; if (st.pending) st.pending.querySelector('.label').innerHTML = care.fill('reading', {ref: `<span class="q">${esc(s.ref || s.title)}</span>`, page: s.page}); }
         else if (ev.type === 'text' && tl) tl.push({kind: 'text', delta: ev.delta});
         else if (ev.type === 'text') {
