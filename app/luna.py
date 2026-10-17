@@ -39,17 +39,23 @@ def run(messages):
     return
   chat = llm.history(messages, keep=12, max_chars=8000, system=SYSTEM)
   sources = []  # page indices, numbered 1..n across this answer
+  answer = ''
   try:
-    for _ in range(MAX_TOOL_ROUNDS + 1):
+    for rnd in range(MAX_TOOL_ROUNDS + 1):
+      final = rnd == MAX_TOOL_ROUNDS  # last round: tools off, the model has to answer (as in guido.py)
       text, calls = '', []
-      for kind, val in llm.stream(chat, TOOLS):
+      for kind, val in llm.stream(chat, TOOLS, 'none' if final else None):
         if kind == 'text':
           text += val
           yield {'type': 'text', 'delta': val}
         else:
           calls = val
+      answer += text
       if not calls:
-        break
+        if answer.strip() or final:
+          break
+        chat += [{'role': 'assistant', 'content': text or '...'}, {'role': 'user', 'content': 'Answer now from the sources you found.'}]
+        continue
       results = []
       for call in calls:
         name, args = call['function']['name'], llm.args(call)
