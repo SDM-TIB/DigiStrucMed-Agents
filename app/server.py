@@ -291,6 +291,8 @@ class Handler(BaseHTTPRequestHandler):
     audit.record(self, 'call_tool' if body.get('via') == 'call' else 'chat', agent=agent.title(), text=str(last)[:200], turn=len(messages))
     if agent == 'lino':  # only lino runs on the gpu. luna and guido use the llm api and are always there
       gpu.touch(self.session())
+    if agent in ('luna', 'guido'):  # optional tool round budget, used by the evaluation ablations
+      return self.stream(CHATS[agent](messages, rounds=body.get('rounds')))
     return self.stream(CHATS[agent](messages))
 
   def end_call(self, body, via=None):

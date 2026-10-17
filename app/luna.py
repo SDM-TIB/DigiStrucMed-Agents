@@ -7,7 +7,8 @@ import config
 import corpus
 import llm
 
-MAX_TOOL_ROUNDS = 3
+MAX_TOOL_ROUNDS = 3  # default search budget; a request may ask for 1..ROUNDS_LIMIT (evaluation ablations)
+ROUNDS_LIMIT = 8
 LAST_ROUND = ('That was your last search round: no further searches or page reads are possible. '
               'Write your answer now from the sources you found, with their citation numbers. '
               'If they do not answer the question, say so.')
@@ -15,7 +16,7 @@ LAST_ROUND = ('That was your last search round: no further searches or page read
 SYSTEM = """You are Luna, an AI research assistant developed by the team at TIB (Leibniz Information Centre for Science and Technology). You answer questions about clinical guideline evidence on the heart and circulation, using a library of 204 guideline and patient-information documents (2,780 pages, English and German).
 
 How to answer:
-- For every medical question, call search_guidelines first with one precise query (search again only if the results clearly miss the topic; at most 3 searches). Use read_page when a snippet is cut off or you need the surrounding table or conditions.
+- For every medical question, call search_guidelines first with one precise query (search again only if the results clearly miss the topic; at most {{rounds}} searches). Use read_page when a snippet is cut off or you need the surrounding table or conditions.
 - Base medical statements only on retrieved sources. Cite them inline with their numbers in square brackets, one number per bracket, e.g. [1] or [2][3]. Never invent sources, page numbers, recommendation classes or evidence levels; report them only when the source text states them.
 - If the sources do not answer the question, say so plainly.
 - {languages}
@@ -36,16 +37,17 @@ TOOLS = [
 ]
 
 
-def run(messages):
+def run(messages, rounds=None):
   if not config.LLM_API_KEY:
     yield {'type': 'error', 'message': 'Chat is not configured (missing LLM_API_KEY).'}
     return
-  chat = llm.history(messages, keep=12, max_chars=8000, system=SYSTEM)
+  rounds = llm.rounds(rounds, MAX_TOOL_ROUNDS, ROUNDS_LIMIT)
+  chat = llm.history(messages, keep=12, max_chars=8000, system=SYSTEM.replace('{rounds}', str(rounds)))
   sources = []  # page indices, numbered 1..n across this answer
   answer = ''
   try:
-    for rnd in range(MAX_TOOL_ROUNDS + 1):
-      final = rnd == MAX_TOOL_ROUNDS  # last round: no tools sent at all (Gemini on Vertex AI ignores tool_choice none), the model has to answer
+    for rnd in range(rounds + 1):
+      final = rnd == rounds  # last round: no tools sent at all (Gemini on Vertex AI ignores tool_choice none), the model has to answer
       text, calls = '', []
       for kind, val in llm.stream(chat, None if final else TOOLS):
         if kind == 'text':
@@ -70,7 +72,7 @@ def run(messages):
         else:
           results.append({'error': 'Unknown tool'})
       chat += llm.tool_turn(text, calls, results)
-      if rnd == MAX_TOOL_ROUNDS - 1:  # the search budget is used up: say so, so the model plans its answer instead of searching on
+      if rnd == rounds - 1:  # the search budget is used up: say so, so the model plans its answer instead of searching on
         chat.append({'role': 'user', 'content': LAST_ROUND})
     if not answer.strip():  # every round ended in tool calls: answer from what was found
       for val in llm.answer_now(chat, 'Answer the question now from the sources you found. Do not search again.'):
