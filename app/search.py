@@ -233,8 +233,26 @@ def search(query, question=None, k=5):
   sims, view = best_chunk
   out = []
   for i in cand[:k]:
-    units = np.flatnonzero(view['owner'] == i)
-    best = sorted(units[np.argsort(-sims[units])[:2]].tolist())
     out.append({'page': i, 'relevance': None if rel.get(i) is None else round(rel[i], 2),
-                'passages': [idx['chunks'][u] for u in best]})
+                'passages': _windows(i, sims, view)})
   return out, mode
+
+
+def _windows(i, sims, view, n=2, width=1):
+  """the page text around its best chunks: each best 400-character chunk with `width` neighbours on each side
+  (about 1,200 characters), at most n windows that do not overlap, in page order. A value next to the passage
+  that matched (a dose, a threshold) stays in view"""
+  units = np.flatnonzero(view['owner'] == i)
+  if not len(units):
+    return []
+  text = pageunits._page_text(corpus.PAGES[i])
+  spans = pageunits.chunks(text, size=400, overlap=50)  # = the units of chunk_title_s400 on this page
+  order = [int(u - units[0]) for u in units[np.argsort(-sims[units])]]
+  picked = []
+  for c in order:
+    lo, hi = max(0, c - width), min(len(spans) - 1, c + width)
+    if all(hi < a or lo > b for a, b in picked):
+      picked.append((lo, hi))
+    if len(picked) == n:
+      break
+  return [text[spans[lo][0]:spans[hi][1]].strip() for lo, hi in sorted(picked)]
