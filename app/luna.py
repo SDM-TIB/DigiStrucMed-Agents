@@ -67,6 +67,10 @@ def run(messages):
         else:
           results.append({'error': 'Unknown tool'})
       chat += llm.tool_turn(text, calls, results)
+    if not answer.strip():  # every round ended in tool calls: answer from what was found
+      for val in llm.answer_now(chat, 'Answer the question now from the sources you found. Do not search again.'):
+        answer += val
+        yield {'type': 'text', 'delta': val}
     yield {'type': 'done'}
   except Exception as e:
     yield llm.error_event(e)
