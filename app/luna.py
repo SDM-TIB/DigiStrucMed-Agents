@@ -8,6 +8,9 @@ import corpus
 import llm
 
 MAX_TOOL_ROUNDS = 3
+LAST_ROUND = ('That was your last search round: no further searches or page reads are possible. '
+              'Write your answer now from the sources you found, with their citation numbers. '
+              'If they do not answer the question, say so.')
 
 SYSTEM = """You are Luna, an AI research assistant developed by the team at TIB (Leibniz Information Centre for Science and Technology). You answer questions about clinical guideline evidence on the heart and circulation, using a library of 204 guideline and patient-information documents (2,780 pages, English and German).
 
@@ -67,6 +70,8 @@ def run(messages):
         else:
           results.append({'error': 'Unknown tool'})
       chat += llm.tool_turn(text, calls, results)
+      if rnd == MAX_TOOL_ROUNDS - 1:  # the search budget is used up: say so, so the model plans its answer instead of searching on
+        chat.append({'role': 'user', 'content': LAST_ROUND})
     if not answer.strip():  # every round ended in tool calls: answer from what was found
       for val in llm.answer_now(chat, 'Answer the question now from the sources you found. Do not search again.'):
         answer += val
