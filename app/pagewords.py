@@ -19,6 +19,7 @@ from difflib import SequenceMatcher
 
 import config
 import corpus
+import textclean
 
 PATH = config.DATA / 'page_words.jsonl.gz'  # one page per line: read line by line, never the whole file at once
 TOKEN = re.compile(r'[0-9a-zäöüßàâæçéèêëîïôœùûüÿáíóúñа-яёऀ-ॿ]+')
@@ -173,7 +174,7 @@ def _shape(boxes, first, last):
 
 _TR = re.compile(r'<tr\b.*?</tr>', re.S | re.I)
 _TD = re.compile(r'<t[dh]\b[^>]*>(.*?)</t[dh]>', re.S | re.I)
-_squash = lambda t: re.sub(r'[^a-z0-9]+', '', re.sub(r'<[^>]+>', ' ', t).lower())
+_squash = lambda t: re.sub(r'[^a-z0-9]+', '', textclean.strip_tags(t).lower())
 
 
 def _table_row(page_id, text, words, boxes, out):

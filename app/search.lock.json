@@ -1,8 +1,8 @@
 {
- "object": "search/5f5ab2756a05/search_index.npz",
+ "object": "search/166d94b17c28/search_index.npz",
  "bucket": "luna-pages-tib-chat-1011-13273",
- "sha256": "5f5ab2756a055c71761d7438197c94257897b54636964e9daec782fb7a4060a4",
- "bytes": 146510482,
+ "sha256": "166d94b17c28ff241149bf69ef1f47b586ffd8971193820d77c6e60dd4a5dbc6",
+ "bytes": 150753198,
  "meta": {
   "model": {
    "id": "google/embeddinggemma-2",
@@ -12,20 +12,20 @@
   },
   "views": {
    "chunk_title_s400": {
-    "units": 45793
+    "units": 47169
    },
    "chunk_title_s600": {
-    "units": 30751
+    "units": 31669
    },
    "chunk_title": {
-    "units": 15304
+    "units": 15765
    },
    "page_plain": {
     "units": 2780
    }
   },
   "pages": 2780,
-  "source": "C:\\Users\\STEFFAN\\Desktop\\MASTERTHESIS\\projects\\03_reasoning_aware_guideline_retrieval\\experiments\\2026-10-17_embeddinggemma2_retrieval\\work\\kisski\\work\\full\\emb",
+  "source": "C:\\Users\\STEFFAN\\Desktop\\MASTERTHESIS\\projects\\03_reasoning_aware_guideline_retrieval\\experiments\\2026-10-17_embeddinggemma2_retrieval\\work\\kisski\\work\\fullx_v2\\emb",
   "built": "2026-10-17"
  }
 }

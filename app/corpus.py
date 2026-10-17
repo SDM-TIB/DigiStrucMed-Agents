@@ -10,6 +10,7 @@ import re
 from collections import Counter, defaultdict
 
 import config
+import textclean
 
 TOKEN = re.compile(r'[a-zäöüß0-9]+(?:[-/][a-zäöüß0-9]+)*', re.I)
 STOP = set(('the a an and or of in on to for with by is are be as at from that this these those it its was were not no can may '
@@ -29,7 +30,7 @@ def tokens(text):
 
 
 def plain(text):
-  text = re.sub(r'<[^>]+>', ' ', text)
+  text = textclean.strip_tags(text)
   text = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', text)
   return re.sub(r'[ \t]+', ' ', text)
 
@@ -123,7 +124,7 @@ def library():
 
 
 # ---- "look, here": the page and the table a recommendation was extracted from
-_squash = lambda t: re.sub(r'[^a-z0-9]+', '', html.unescape(re.sub(r'<[^>]+>', ' ', t)).lower())
+_squash = lambda t: re.sub(r'[^a-z0-9]+', '', html.unescape(textclean.strip_tags(t)).lower())
 _squashed, _toks = {}, {}
 PAGES_OF_DOC = {}
 for _i, _p in enumerate(PAGES):
@@ -133,7 +134,7 @@ MIN_RECALL = 0.6  # share of a text's words a page or table must hold to count a
 
 def _words(text):
   """words of a text, with latex commands dropped: the graph writes \\leq, \\mu where the page has ≤, μ"""
-  return set(re.findall(r'[a-z0-9]{2,}', html.unescape(re.sub(r'<[^>]+>|\\[a-zA-Z]+', ' ', text)).lower()))
+  return set(re.findall(r'[a-z0-9]{2,}', html.unescape(re.sub(r'\\[a-zA-Z]+', ' ', textclean.strip_tags(text))).lower()))
 
 
 def _page_squash(i):

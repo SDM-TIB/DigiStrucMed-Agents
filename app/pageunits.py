@@ -8,6 +8,7 @@ search.py checks the unit count of every view against the index and refuses an i
 """
 import html
 import re
+import textclean
 from html.parser import HTMLParser
 
 HEADING = re.compile(r'^\s{0,3}#{1,6}\s+(.+?)\s*$', re.M)
@@ -64,7 +65,7 @@ def table_text(text):
   """the page with every <table> replaced by one line per body row; other tags removed"""
   out = re.sub(r'<table\b.*?</table>', lambda m: '\n' + _render_table(m.group(0)) + '\n', text, flags=re.S | re.I)
   out = re.sub(r'<sup>(.*?)</sup>', r' \1', out, flags=re.S | re.I)
-  out = re.sub(r'<[^>]+>', ' ', out)
+  out = textclean.strip_tags(out)
   out = html.unescape(out)
   out = re.sub(r'[ \t]+', ' ', out)
   return re.sub(r'\n\s*\n+', '\n\n', out).strip()
