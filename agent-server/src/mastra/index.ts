@@ -1,14 +1,17 @@
 // The agent server: Mastra with one route, POST /luna/chat, that streams TIB Chat's chat events (server-sent events
 // in the app's own format: text, tool_call, sources, read, done, error), so the browser code stays unchanged.
 //
-// The loop is Mastra's (on the AI SDK): the model calls tools as it sees fit, several per step, and stops when it has
-// answered. maxSteps is only a safety bound against runaway loops (20, the AI SDK's default for agents).
+// The loop is Mastra's (on the AI SDK): the model calls tools as it sees fit, several per step, and the run ends when
+// the model answers without calling a tool. No step limit: Mastra applies stepCountIs(5) when neither maxSteps nor
+// stopWhen is given, so stopWhen is a condition that never fires (the AI SDK's isLoopFinished()). An evaluation can
+// still pass max_steps.
 import { Mastra } from '@mastra/core'
 import { RequestContext } from '@mastra/core/request-context'
 import { registerApiRoute } from '@mastra/core/server'
 import { luna } from './agents/luna.ts'
 
-const MAX_STEPS = 20
+// the AI SDK's isLoopFinished(): never stop on a condition, only when the model is done
+const loopFinished = () => false
 const DEBUG = process.env.DEBUG_CHUNKS === '1'  // log every stream chunk (development)
 const TOKEN = process.env.AGENT_TOKEN ?? ''  // local development; on Cloud Run the service is private (IAM)
 
@@ -25,7 +28,7 @@ const chatRoute = registerApiRoute('/luna/chat', {
   handler: async c => {
     if (TOKEN && c.req.header('X-Agent-Token') !== TOKEN) return c.json({ error: 'Agent token required' }, 401)
     const body = (await c.req.json()) as ChatBody
-    const maxSteps = Math.max(1, Math.min(MAX_STEPS, Number(body.max_steps) || MAX_STEPS))
+    const maxSteps = Number(body.max_steps) > 0 ? Number(body.max_steps) : undefined
     const messages = (body.messages ?? []).slice(-12)
       .filter(m => m.text)
       .map(m => m.role === 'assistant'
@@ -44,7 +47,7 @@ const chatRoute = registerApiRoute('/luna/chat', {
         try {
           const out = await luna.stream(messages, {
             requestContext,
-            maxSteps,
+            ...(maxSteps ? { maxSteps } : { stopWhen: loopFinished }),
             toolCallConcurrency: 4,
             providerOptions: { vertex: { thinkingConfig: { thinkingLevel: body.thinking ?? 'low' } } },
           })
