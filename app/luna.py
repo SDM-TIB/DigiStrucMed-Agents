@@ -4,13 +4,14 @@ The model plans its own retrieval with three tools and answers with [n] citation
   search_guidelines  EmbeddingGemma 2 search with clef-flash reranking (search.py), optionally within one guideline.
                      Each result carries its relevance and page windows; the response also shows in which
                      guidelines the likely relevant pages cluster ("facets"), so the agent sees beyond its top k.
-  read_page          the whole text of up to three pages at once, tables written as rows
+  read_page          up to three whole pages at once, as the original OCR source: Markdown with the HTML tables
   list_guidelines    the catalogue, to find a guideline to search in
 The loop follows common agent-harness practice (Vercel AI SDK loop control, Anthropic's guidance on tools for
 agents): a step budget with parallel tool calls per step, a notice when the budget is used up, a final answer turn
 without tools, and older tool results shortened so the context stays focused.
 yields ui events: tool_call, sources, read, text, done, error.
 """
+import html
 import json
 import re
 import urllib.request
@@ -19,14 +20,13 @@ import uuid
 import config
 import corpus
 import llm
-import pageunits
 import search
 import storage
 
 MAX_TOOL_ROUNDS = 6  # default step budget; a request may ask for 1..ROUNDS_LIMIT (evaluation ablations)
 ROUNDS_LIMIT = 10
 READ_MAX = 3  # pages per read_page call
-PAGE_CHARS = 12000
+PAGE_CHARS = 32000  # an original page; the longest of the 2,780 has 30,768 characters
 KEEP_FULL = 2  # tool turns kept in full; older tool results are shortened
 SHORT = 1500
 LAST_ROUND = ('That was your last tool step: no further searches or page reads are possible. '
@@ -39,7 +39,7 @@ How to work (you have up to {{rounds}} tool steps; several tool calls in one ste
 1. Plan. Identify the parts of the question: each population, situation, drug or guideline it asks about. For a question with several parts (two situations, two guidelines, then and now) search each part on its own; you may issue several search_guidelines calls in one step.
 2. Search. Phrase each query as a full description with the clinical terms, the population and the guideline if known. When the question names a guideline, set `guideline` (its title words or its number from list_guidelines) so the search stays inside it.
 3. Check. Each result has a relevance between 0 and 1 (how likely the page holds the specific answer) and page windows (tables written as rows, "Class: I; Level: A"). `facets` shows in which guidelines the likely relevant pages cluster. If the best relevance is low or the facets point elsewhere, search again with other words or another guideline.
-4. Read. Windows are excerpts. Read the pages that hold the answer with read_page (up to three at once) before you state an exact value (a dose, threshold, rate, percentage or duration), a class of recommendation or a level of evidence, unless a window states it completely.
+4. Read the original. Windows are cleaned excerpts made for searching. Before you state an exact value (a dose, threshold, rate, percentage or duration, with its sign: <, ≤, >, ≥), a class of recommendation or a level of evidence, read the page that holds it with read_page: it returns the original page with its HTML tables, so you can see which value, class and level belong to which row.
 5. Answer.
 
 How to answer:
@@ -66,7 +66,8 @@ TOOLS = [
             'guideline': {'type': 'string', 'description': 'Optional: search only in this guideline, given by its words '
                                                            '(e.g. "2021 ESC heart failure") or its number from list_guidelines'},
             'top_k': {'type': 'integer', 'description': 'Number of sources, 3-8 (default 5)'}}, ['query']),
-  llm.tool('read_page', 'Read the whole text of up to three pages returned as numbered sources (tables written as rows).',
+  llm.tool('read_page', 'Read up to three whole pages returned as numbered sources, as the original source: the OCR text in '
+                         'Markdown with the HTML tables (rows and columns as in the guideline, signs like < and > kept).',
            {'sources': {'type': 'array', 'items': {'type': 'integer'}, 'description': 'Source numbers from earlier search results'}},
            ['sources']),
   llm.tool('list_guidelines', 'The guideline catalogue: number, title, author/year, language and pages of each document, '
@@ -261,7 +262,7 @@ def _read(args, sources):
     n = int(n)
     p = corpus.PAGES[sources[n - 1]]
     yield {'type': 'read', 'item': corpus.card(n, sources[n - 1])}
-    pages.append({'source': n, 'title': p['title'], 'page': p['page'], 'text': pageunits.table_text(p['text'])[:PAGE_CHARS]})
+    pages.append({'source': n, 'title': p['title'], 'page': p['page'], 'original': html.unescape(p['text'])[:PAGE_CHARS]})
   out = {'pages': pages}
   if errors:
     out['errors'] = errors

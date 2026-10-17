@@ -17,6 +17,7 @@ import config
 import corpus
 import kg
 import llm
+import textclean
 
 PAGES_PER_UTTERANCE = 4
 GATE = (
@@ -39,7 +40,7 @@ SYSTEM = (
   "Write title and claims in the language of the speech."
 )
 
-_squash = lambda t: re.sub(r'[^a-z0-9]+', '', re.sub(r'<[^>]+>', ' ', t or '').lower())
+_squash = lambda t: re.sub(r'[^a-z0-9]+', '', textclean.strip_tags(t).lower())
 # recommendation text -> id, to attach class and level of evidence to a quote
 _recs = [(_squash(r['text'])[:80], rid) for rid, r in kg.RECS.items() if len(r['text']) > 60]
 
@@ -62,7 +63,7 @@ def _row_grade(table, quote_key):
   """class and level from the table row that holds the quote. esc tables put them in their own cells"""
   for row in re.findall(r'<tr\b.*?</tr>', table or '', flags=re.S | re.I):
     if quote_key[:60] in _squash(row):
-      cells = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<t[dh]\b.*?</t[dh]>', row, flags=re.S | re.I)]
+      cells = [textclean.strip_tags(c, '').strip() for c in re.findall(r'<t[dh]\b.*?</t[dh]>', row, flags=re.S | re.I)]
       cls = next((c for c in cells if CLASS.match(c)), None)
       loe = next((c for c in cells if LEVEL.match(c)), None)
       return ' · '.join(x for x in (cls and 'Class ' + cls, loe and 'LoE ' + loe) if x)

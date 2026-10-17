@@ -62,7 +62,8 @@ export const searchGuidelines = createTool({
 
 export const readPage = createTool({
   id: 'read_page',
-  description: 'Read the whole text of up to three pages returned as numbered sources (tables written as rows).',
+  description: 'Read up to three whole pages returned as numbered sources, as the original source: the OCR text in ' +
+      'Markdown with the HTML tables (rows and columns as in the guideline, signs like < and > kept).',
   inputSchema: z.object({
     sources: z.array(z.number().int()).min(1).max(3).describe('Source numbers from earlier search results'),
   }),
