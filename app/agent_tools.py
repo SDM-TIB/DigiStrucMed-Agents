@@ -89,6 +89,8 @@ def call(tool, body):
     ui, model = _drive(luna._search(args, _sources(run), str(body.get('question') or '')))
   elif tool == 'read':
     ui, model = _drive(luna._read({'sources': body.get('sources') or []}, _sources(run)))
+  elif tool == 'view':
+    return luna._view({'sources': body.get('sources') or []}, _sources(run))
   elif tool == 'catalogue':
     ui, model = [], luna._catalogue({'topic': body.get('topic')})
   else:

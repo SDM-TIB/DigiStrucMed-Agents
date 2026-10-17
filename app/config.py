@@ -85,7 +85,8 @@ EMBED_URL = env('EMBED_URL')
 # in-process loop of luna.py. The agent server calls the tool endpoints back (/api/agent/tools/*) with an identity
 # token of this app's service account; AGENT_TOKEN is a shared token for local development only
 AGENT_URL = env('AGENT_URL')
-AGENT_AISDK_URL = env('AGENT_AISDK_URL')  # the second harness (agent-server-aisdk/, AI SDK 7), chosen per request with 'harness'
+AGENT_AISDK_URL = env('AGENT_AISDK_URL')
+LUNA_IMAGE_TOOL = env('LUNA_IMAGE_TOOL') == '1'  # view_page for luna's agent: the rendered PDF page as an image  # the second harness (agent-server-aisdk/, AI SDK 7), chosen per request with 'harness'
 AGENT_TOKEN = env('AGENT_TOKEN')
 
 # private gcs bucket: page renders, usage log. empty = local files only (dev)

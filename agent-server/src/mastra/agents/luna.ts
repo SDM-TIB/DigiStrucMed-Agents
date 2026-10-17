@@ -2,7 +2,7 @@
 // the prompt, its language rule and the step budget have one source; the model runs on Vertex AI.
 import { Agent } from '@mastra/core/agent'
 import { createVertex } from '@ai-sdk/google-vertex'
-import { listGuidelines, readPage, searchGuidelines } from '../tools.ts'
+import { listGuidelines, readPage, searchGuidelines, viewPage } from '../tools.ts'
 
 const vertex = createVertex({
   project: process.env.GOOGLE_VERTEX_PROJECT,
@@ -17,5 +17,11 @@ export const luna = new Agent({
   description: 'Agentic RAG over cardiology guideline pages with cited answers.',
   instructions: ({ requestContext }) => String(requestContext.get('system') ?? 'You are Luna.'),
   model: vertex(MODEL),
-  tools: { search_guidelines: searchGuidelines, read_page: readPage, list_guidelines: listGuidelines },
+  // view_page only when the request asks for it (the app's image_tool switch)
+  tools: ({ requestContext }) => ({
+    search_guidelines: searchGuidelines,
+    read_page: readPage,
+    list_guidelines: listGuidelines,
+    ...(requestContext.get('imageTool') === true ? { view_page: viewPage } : {}),
+  }),
 })

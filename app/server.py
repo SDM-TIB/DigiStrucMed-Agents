@@ -299,7 +299,7 @@ class Handler(BaseHTTPRequestHandler):
     if agent == 'lino':  # only lino runs on the gpu. luna and guido use the llm api and are always there
       gpu.touch(self.session())
     if agent == 'luna':  # optional step bound and agent harness ('mastra' or 'aisdk'), for evaluations
-      return self.stream(luna.run(messages, rounds=body.get('rounds'), harness=body.get('harness')))
+      return self.stream(luna.run(messages, rounds=body.get('rounds'), harness=body.get('harness'), image_tool=body.get('image_tool')))
     if agent == 'guido':  # optional tool round budget, used by the evaluation ablations
       return self.stream(CHATS[agent](messages, rounds=body.get('rounds')))
     return self.stream(CHATS[agent](messages))

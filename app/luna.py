@@ -11,6 +11,7 @@ agents): a step budget with parallel tool calls per step, a notice when the budg
 without tools, and older tool results shortened so the context stays focused.
 yields ui events: tool_call, sources, read, text, done, error.
 """
+import base64
 import html
 import json
 import re
@@ -52,6 +53,12 @@ How to answer:
 - Formatting: Markdown only. Write symbols as plain Unicode (≤, ≥, ±, µg), never LaTeX or $...$.
 - If the user says they currently have severe chest pain, severe breathlessness or fainted, first tell them to call 112 immediately.""".format(languages=config.LANGUAGE_RULE, research=config.RESEARCH_RULE)
 
+# view_page (agent server only): the rendered PDF page as an image, for what the OCR text may have lost (figures,
+# footnotes, shifted table cells). Offered per request while it is evaluated, or always with LUNA_IMAGE_TOOL=1.
+VIEW_MAX = 2
+IMAGE_RULE = ('\n- If the original text of a page is unclear or a value may sit in a figure, a footnote or a shifted table '
+              'cell, look at the page itself with view_page (the rendered PDF page) before you answer.')
+
 # the agent server's loop has no fixed tool budget: the model searches until it can answer
 SYSTEM_AGENT = SYSTEM.replace('How to work (you have up to {rounds} tool steps; several tool calls in one step run together):',
                               'How to work (several tool calls in one step run together):')
@@ -79,7 +86,7 @@ TOOLS = [
 HARNESSES = {'mastra': lambda: config.AGENT_URL, 'aisdk': lambda: config.AGENT_AISDK_URL}
 
 
-def run(messages, rounds=None, harness=None):
+def run(messages, rounds=None, harness=None, image_tool=None):
   """the agent server runs the loop when AGENT_URL is set (agent-server/, Mastra; harness 'aisdk' picks the AI SDK 7
   server, agent-server-aisdk/); otherwise, or when it cannot be reached before it answers, the loop below runs here
   with the same prompt and tools"""
@@ -87,7 +94,7 @@ def run(messages, rounds=None, harness=None):
   if url:
     started = False
     try:
-      for ev in _via_agent(messages, rounds, url):
+      for ev in _via_agent(messages, rounds, url, config.LUNA_IMAGE_TOOL if image_tool is None else bool(image_tool)):
         started = True
         yield ev
       return
@@ -99,10 +106,10 @@ def run(messages, rounds=None, harness=None):
   yield from _local(messages, rounds)
 
 
-def _via_agent(messages, rounds, url):
+def _via_agent(messages, rounds, url, image_tool=False):
   """the Mastra agent's event stream, already in the chat's event format"""
   body = {'messages': [{'role': m.get('role'), 'text': m.get('text')} for m in messages if m.get('text')][-12:],
-          'system': SYSTEM_AGENT, 'run': uuid.uuid4().hex}
+          'system': SYSTEM_AGENT + (IMAGE_RULE if image_tool else ''), 'run': uuid.uuid4().hex, 'image_tool': image_tool}
   if rounds:  # an evaluation's explicit step bound
     body['max_steps'] = int(rounds)
   req = urllib.request.Request(url.rstrip('/') + '/luna/chat', data=json.dumps(body).encode(), method='POST',
@@ -269,3 +276,30 @@ def _read(args, sources):
   if len(wanted) > READ_MAX:
     out['note'] = f'At most {READ_MAX} pages per call; read the others in another call.'
   return out
+
+
+def _view(args, sources):
+  """the rendered PDF pages of up to VIEW_MAX sources, as WebP images (base64) for the model"""
+  wanted = args.get('sources')
+  if not isinstance(wanted, list):
+    wanted = [wanted]
+  images, errors, ui = [], [], []
+  for n in list(dict.fromkeys(str(x) for x in wanted))[:VIEW_MAX]:
+    if not n.isdigit() or not 1 <= int(n) <= len(sources):
+      errors.append(f'Unknown source {n}')
+      continue
+    n = int(n)
+    p = corpus.PAGES[sources[n - 1]]
+    data = storage.get(p['id'] + '.webp')
+    if not data:
+      errors.append(f'No image for source {n}')
+      continue
+    ui.append({'type': 'read', 'item': corpus.card(n, sources[n - 1])})
+    images.append({'source': n, 'title': p['title'], 'page': p['page'], 'mediaType': 'image/webp',
+                   'data': base64.b64encode(data).decode()})
+  model = {'pages': [{k: v for k, v in im.items() if k != 'data'} for im in images]}
+  if errors:
+    model['errors'] = errors
+  if len(wanted) > VIEW_MAX:
+    model['note'] = f'At most {VIEW_MAX} page images per call.'
+  return {'model': model, 'images': images, 'ui': ui}
