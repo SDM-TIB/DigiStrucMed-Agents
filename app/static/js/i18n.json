@@ -418,7 +418,13 @@
     "Used {n} sources": "{n} Quellen verwendet",
     "Open page": "Seite öffnen",
     "Source {n}": "Quelle {n}",
-    "relevance {r}": "Relevanz {r}"
+    "relevance {r}": "Relevanz {r}",
+    "Head of Scientific Data Management, TIB; Professor, Leibniz University Hannover; Member, L3S Research Center": "Leitung Scientific Data Management, TIB; Professur, Leibniz Universität Hannover; Mitglied, Forschungszentrum L3S",
+    "Works on semantic data management, data integration, federated query processing and machine learning over knowledge graphs, with a focus on neuro-symbolic AI for interpretable and trustworthy systems, for example in medicine.": "Forschung zu semantischem Datenmanagement, Datenintegration, föderierter Anfrageverarbeitung und maschinellem Lernen über Wissensgraphen, mit Schwerpunkt auf neuro-symbolischer KI für interpretierbare und vertrauenswürdige Systeme, etwa in der Medizin.",
+    "Postdoctoral Researcher, Scientific Data Management, TIB": "Postdoc, Scientific Data Management, TIB",
+    "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.": "Forschung zu transparenter KI auf Basis von Wissensgraphen und Kausalität, in den Projekten TrustKG und P4-LUCAT.",
+    "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover": "Wissenschaftliche Mitarbeit, Scientific Data Management, TIB; Promotion, Leibniz Universität Hannover",
+    "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.": "Forschung zu erklärbaren kausalen Modellen über kognitiven Wissensgraphen, in den Projekten TrustKG und ImProVIT."
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -838,7 +844,13 @@
     "Used {n} sources": "Usó {n} fuentes",
     "Open page": "Abrir página",
     "Source {n}": "Fuente {n}",
-    "relevance {r}": "relevancia {r}"
+    "relevance {r}": "relevancia {r}",
+    "Head of Scientific Data Management, TIB; Professor, Leibniz University Hannover; Member, L3S Research Center": "Dirección de Scientific Data Management, TIB; cátedra, Leibniz Universität Hannover; miembro del centro de investigación L3S",
+    "Works on semantic data management, data integration, federated query processing and machine learning over knowledge graphs, with a focus on neuro-symbolic AI for interpretable and trustworthy systems, for example in medicine.": "Investigación en gestión semántica de datos, integración de datos, consultas federadas y aprendizaje automático sobre grafos de conocimiento, con foco en IA neurosimbólica para sistemas interpretables y fiables, por ejemplo en medicina.",
+    "Postdoctoral Researcher, Scientific Data Management, TIB": "Posdoc, Scientific Data Management, TIB",
+    "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.": "Investigación en IA transparente sobre grafos de conocimiento y causalidad, en los proyectos TrustKG y P4-LUCAT.",
+    "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover": "Asistente de investigación, Scientific Data Management, TIB; doctorado, Leibniz Universität Hannover",
+    "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.": "Investigación en modelos causales explicables sobre grafos de conocimiento cognitivos, en los proyectos TrustKG e ImProVIT."
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1258,7 +1270,13 @@
     "Used {n} sources": "Использовано источников: {n}",
     "Open page": "Открыть страницу",
     "Source {n}": "Источник {n}",
-    "relevance {r}": "релевантность {r}"
+    "relevance {r}": "релевантность {r}",
+    "Head of Scientific Data Management, TIB; Professor, Leibniz University Hannover; Member, L3S Research Center": "Руководство группой Scientific Data Management, TIB; профессура, Ганноверский университет им. Лейбница; член исследовательского центра L3S",
+    "Works on semantic data management, data integration, federated query processing and machine learning over knowledge graphs, with a focus on neuro-symbolic AI for interpretable and trustworthy systems, for example in medicine.": "Исследования в области семантического управления данными, интеграции данных, федеративной обработки запросов и машинного обучения на графах знаний, с акцентом на нейросимволический ИИ для интерпретируемых и надёжных систем, например в медицине.",
+    "Postdoctoral Researcher, Scientific Data Management, TIB": "Постдок, Scientific Data Management, TIB",
+    "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.": "Исследования прозрачного ИИ на основе графов знаний и причинности в проектах TrustKG и P4-LUCAT.",
+    "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover": "Научный сотрудник, Scientific Data Management, TIB; аспирантура, Ганноверский университет им. Лейбница",
+    "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.": "Исследования объяснимых причинных моделей на когнитивных графах знаний в проектах TrustKG и ImProVIT."
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -1678,6 +1696,12 @@
     "Used {n} sources": "{n} स्रोतों का उपयोग किया",
     "Open page": "पृष्ठ खोलें",
     "Source {n}": "स्रोत {n}",
-    "relevance {r}": "प्रासंगिकता {r}"
+    "relevance {r}": "प्रासंगिकता {r}",
+    "Head of Scientific Data Management, TIB; Professor, Leibniz University Hannover; Member, L3S Research Center": "प्रमुख, Scientific Data Management, TIB; प्रोफ़ेसर, लाइबनिज़ यूनिवर्सिटी हैनोवर; सदस्य, L3S रिसर्च सेंटर",
+    "Works on semantic data management, data integration, federated query processing and machine learning over knowledge graphs, with a focus on neuro-symbolic AI for interpretable and trustworthy systems, for example in medicine.": "सिमैंटिक डेटा मैनेजमेंट, डेटा इंटीग्रेशन, फ़ेडरेटेड क्वेरी प्रोसेसिंग और नॉलेज ग्राफ़ पर मशीन लर्निंग पर शोध, व्याख्येय और भरोसेमंद प्रणालियों के लिए न्यूरो-सिम्बॉलिक AI पर ज़ोर के साथ, जैसे चिकित्सा में।",
+    "Postdoctoral Researcher, Scientific Data Management, TIB": "पोस्टडॉक्टरल शोधकर्ता, Scientific Data Management, TIB",
+    "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.": "नॉलेज ग्राफ़ और कार्य-कारण पर आधारित पारदर्शी AI पर शोध, TrustKG और P4-LUCAT परियोजनाओं में।",
+    "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover": "रिसर्च असिस्टेंट, Scientific Data Management, TIB; PhD उम्मीदवार, लाइबनिज़ यूनिवर्सिटी हैनोवर",
+    "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.": "संज्ञानात्मक नॉलेज ग्राफ़ पर व्याख्येय कारणात्मक मॉडल पर शोध, TrustKG और ImProVIT परियोजनाओं में।"
   }
 }
