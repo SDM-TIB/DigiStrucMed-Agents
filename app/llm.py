@@ -102,6 +102,14 @@ def tool(name, description, properties, required):
           'parameters': {'type': 'object', 'properties': properties, 'required': required}}}
 
 
+def rounds(requested, default, limit):
+  """tool round budget of one answer: the requested number clamped to 1..limit, else the default"""
+  try:
+    return max(1, min(limit, int(requested))) if requested is not None else default
+  except (TypeError, ValueError):
+    return default
+
+
 def history(messages, keep, max_chars, system=None):
   """[{role, text}] from the browser -> chat messages"""
   out = [{'role': 'system', 'content': system}] if system else []

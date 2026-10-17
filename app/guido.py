@@ -18,7 +18,8 @@ import kg
 import retrieve
 from kg import CONCEPTS, IN, OUT, REC_ROLES, RECS
 
-MAX_ROUNDS = 3
+MAX_ROUNDS = 3  # default exploration budget; a request may ask for 1..ROUNDS_LIMIT (evaluation ablations)
+ROUNDS_LIMIT = 8
 LAST_ROUND = ('That was your last exploration round: no further graph calls are possible. '
               'Write your answer now from the explored graph, with the citation numbers of the recommendations. '
               'If the graph does not answer the question, say so.')
@@ -169,17 +170,18 @@ class Walk:
              'ref': RECS[r]['ref'], 'page': None, 'snippet': RECS[r]['text']} for i, r in enumerate(self.numbered)]
 
 
-def run(messages):
+def run(messages, rounds=None):
   if not config.LLM_API_KEY:
     yield {'type': 'error', 'message': 'Chat is not configured (missing LLM_API_KEY).'}
     return
   question = next((m['text'] for m in reversed(messages) if m.get('role') == 'user' and m.get('text')), '')
   walk = Walk(question)
+  rounds = llm.rounds(rounds, MAX_ROUNDS, ROUNDS_LIMIT)
   chat = llm.history(messages, keep=10, max_chars=6000, system=SYSTEM)
   answer = ''
   try:
-    for rnd in range(MAX_ROUNDS + 1):
-      final = rnd == MAX_ROUNDS  # last round: no tools sent at all (Gemini on Vertex AI ignores tool_choice none), the model has to answer
+    for rnd in range(rounds + 1):
+      final = rnd == rounds  # last round: no tools sent at all (Gemini on Vertex AI ignores tool_choice none), the model has to answer
       text, calls = '', []
       for kind, val in llm.stream(chat, None if final else TOOLS):
         if kind == 'text':
@@ -197,7 +199,7 @@ def run(messages):
       for call in calls:
         results.append((yield from _tool(call, walk, question)))
       chat += llm.tool_turn(text, calls, results)
-      if rnd == MAX_ROUNDS - 1:  # the exploration budget is used up: say so, so the model plans its answer instead of exploring on
+      if rnd == rounds - 1:  # the exploration budget is used up: say so, so the model plans its answer instead of exploring on
         chat.append({'role': 'user', 'content': LAST_ROUND})
     if not answer.strip():  # every round ended in tool calls: answer from the explored graph
       for val in llm.answer_now(chat, 'Answer the question now from the explored graph. Do not call tools again.'):
