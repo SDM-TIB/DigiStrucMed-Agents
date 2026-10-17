@@ -340,6 +340,7 @@ GET_ROUTES = {
   '/api/graph/search': lambda q: {'items': graph.search(q.get('q', '')[:160], [k for k in q.get('kinds', '').split(',') if k] or None)},
   '/api/graph/node': lambda q: graph.node(q.get('id', '')),
   '/api/search/status': lambda q: page_search.status(),
+  '/api/search/semantic': lambda q: page_search.semantic(q.get('q', '')),
   '/api/graph/neighbours': lambda q: graph.neighbours(q.get('id', ''), q.get('p') or None, q.get('dir') or None,
                                                        q.get('limit', 40), q.get('offset', 0)),
 }

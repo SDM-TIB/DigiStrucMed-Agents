@@ -1065,3 +1065,24 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .gx-tip b{display:inline-flex;align-items:center;gap:6px}.gx-tip p{margin:4px 0 0}
 @media (max-width:900px){.gx{grid-template-columns:1fr}.gx-side{border-left:0;border-top:1px solid var(--line);max-height:40vh}.src-title{flex-wrap:wrap;gap:10px}}
 .kx-full{margin:12px 0 4px;padding:8px 12px;border-radius:8px;border:1px solid var(--accent-soft);background:var(--accent-softer);color:var(--accent);font-weight:600;font-size:13px}
+/* semantic search: the embeddings toggle in the search box and its results */
+.srch-vec{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:var(--side);color:var(--muted);font:600 12px/1 inherit;cursor:pointer;transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
+.srch-vec svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}
+.srch-vec:hover{color:var(--ink)}
+.srch-vec[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 4px var(--accent-soft)}
+@media (max-width:640px){.srch-vec span{display:none}.srch-box kbd{display:none}}
+.sem-wait{display:flex;align-items:center;gap:10px;margin-top:22px;color:var(--muted);font-size:14px}
+.sem-dots{display:inline-flex;gap:4px}.sem-dots i{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:semdot 1s infinite ease-in-out}
+.sem-dots i:nth-child(2){animation-delay:.15s}.sem-dots i:nth-child(3){animation-delay:.3s}
+@keyframes semdot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+.sem-how{display:flex;flex-direction:column;gap:10px;margin-top:22px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:var(--win);animation:rise .35s var(--ease) both}
+.sem-how p{margin:0;font-size:13px;color:var(--muted);line-height:1.5}
+.sem-vec{display:grid;grid-template-columns:repeat(48,1fr);gap:2px;height:26px}
+.sem-vec i{border-radius:3px;background:color-mix(in oklch,var(--accent) calc(max(var(--v),0) * 100%),color-mix(in oklch,oklch(0.65 0.17 25) calc(max(calc(var(--v) * -1),0) * 100%),var(--side)));animation:rise .4s var(--ease) both}
+.sem-it{display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;padding:11px 12px;margin:0 -12px;border-radius:12px;transition:background .12s;animation:rise .35s var(--ease) both}
+.sem-it:hover{background:var(--accent-softer)}
+.sem-it .tx p{margin:4px 0;font-size:13px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.sem-it .tx small{color:var(--muted);font-size:12px}
+.sem-score{flex:none;width:58px;display:flex;flex-direction:column;gap:5px;padding-top:2px}
+.sem-score b{font:650 14px/1 var(--font, inherit);color:var(--ink)}
+.sem-bar{height:5px;border-radius:3px;background:var(--side);overflow:hidden}.sem-bar i{display:block;height:100%;border-radius:3px;background:var(--accent)}

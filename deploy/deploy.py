@@ -112,8 +112,8 @@ def deploy_embed(env):
   it. 4 GiB holds the model with torch; the app wakes it when it starts and falls back to bm25 while it is cold"""
   project, region = env['GCP_PROJECT'], env.get('GCP_REGION', 'europe-west3')
   run('gcloud', 'run', 'deploy', 'tib-embed', '--source', str(ROOT / 'embed-server'), f'--region={region}', f'--project={project}',
-      '--no-allow-unauthenticated', '--memory=4Gi', '--cpu=2', '--min-instances=0', '--max-instances=2', '--cpu-boost',
-      '--timeout=120', '--concurrency=4', '--quiet', quiet=True)
+      '--no-allow-unauthenticated', '--memory=4Gi', '--cpu=2', '--min-instances=0', '--max-instances=4', '--cpu-boost',
+      '--timeout=120', '--concurrency=2', '--quiet', quiet=True)
   number = run('gcloud', 'projects', 'describe', project, '--format=value(projectNumber)', quiet=True).strip()
   run('gcloud', 'run', 'services', 'add-iam-policy-binding', 'tib-embed', f'--region={region}', f'--project={project}',
       f'--member=serviceAccount:{number}-compute@developer.gserviceaccount.com', '--role=roles/run.invoker', quiet=True)

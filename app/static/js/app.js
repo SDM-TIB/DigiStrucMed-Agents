@@ -498,7 +498,7 @@ function openSearch() { view('search'); loadData(); if (!$('#srch-try').children
   setTimeout(() => $('#srch-q').focus(), 50); }
 $('#nav-search').onclick = openSearch;
 addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !$('#app').classList.contains('hidden')) { e.preventDefault(); openSearch(); $('#srch-q').select(); } });
-$('#srch-q').addEventListener('input', e => { clearTimeout(srchTimer); srchTimer = setTimeout(() => runSearch(e.target.value), 200); });
+$('#srch-q').addEventListener('input', e => { clearTimeout(srchTimer); srchTimer = setTimeout(() => runSearch(e.target.value), srchVec ? 650 : 200); });
 $('#srch-q').addEventListener('keydown', e => { if (e.key === 'Enter') $('#srch-res .srch-it')?.click(); });
 function srchTerms(q) { return q.toLowerCase().split(/\s+/).filter(t => t.length > 1); }
 function srchMark(text, terms) {
@@ -511,8 +511,33 @@ function srchAround(text, terms, n = 160) {
   const t = text.replace(/\s+/g, ' '), i = terms.length ? t.toLowerCase().indexOf(terms[0]) : 0;
   const a = Math.max(0, i - 50); return (a ? '… ' : '') + t.slice(a, a + n) + (t.length > a + n ? ' …' : '');
 }
+// semantic mode: the query goes to EmbeddingGemma 2 alone (no keywords), pages ranked by cosine similarity of their
+// best 400-character passage; the result shows the similarity and the query vector, so you can see what happens
+let srchVec = false;
+$('#srch-vec').onclick = () => {
+  srchVec = !srchVec;
+  $('#srch-vec').setAttribute('aria-pressed', String(srchVec));
+  $('#srch-q').placeholder = uiText(srchVec ? 'Describe what you are looking for, in your own words' : 'Search agents, conversations, guidelines, the knowledge graph and videos');
+  $('#srch-q').focus();
+  if ($('#srch-q').value.trim()) runSearch($('#srch-q').value);
+};
+async function runSemantic(q, seq) {
+  const res = $('#srch-res');
+  res.innerHTML = '<div class="sem-wait"><span class="sem-dots"><i></i><i></i><i></i></span>' + esc(uiText('Embedding your question with EmbeddingGemma 2…')) + '</div>';
+  let x; try { x = await fetch('/api/search/semantic?q=' + encodeURIComponent(q)).then(r => r.json()); } catch { x = {available: false, hits: []}; }
+  if (seq !== srchSeq) return;
+  if (!x.available) { res.innerHTML = '<p class="srch-empty">' + esc(uiText('Semantic search is warming up. Try again in a moment.')) + '</p>'; return; }
+  const cells = x.query_vector.map(v => `<i style="--v:${v}"></i>`).join('');
+  const top = Math.max(...x.hits.map(h => h.similarity), 0.0001);
+  const hits = x.hits.map((h, i) => `<button class="sem-it" data-i="${i}" style="animation-delay:${i * 35}ms"><span class="sem-score"><b>${h.similarity.toFixed(2)}</b><span class="sem-bar"><i style="width:${Math.max(4, 100 * h.similarity / top)}%"></i></span></span><span class="tx"><b>${esc(h.title)}</b><p>${esc(h.passage)}</p><small>${h.ref ? esc(h.ref) + ' · ' : ''}${esc(uiText('page {p}', {p: h.page}))}</small></span></button>`).join('');
+  res.innerHTML = `<section class="sem-how"><div class="sem-vec" title="${esc(uiText('Your question as a vector: {d} numbers, shown as 48 averaged cells', {d: x.dims}))}">${cells}</div>
+    <p>${esc(uiText('Your question became a vector of {d} numbers ({m}). It was compared with {n} passage vectors by cosine similarity in {s} ms; each page is ranked by its closest passage.', {d: x.dims, m: x.model, n: x.vectors.toLocaleString(), s: x.ms.score}))}</p></section>
+    <section class="srch-grp"><h3>${esc(uiText('Closest guideline pages'))}<span>${x.hits.length}</span></h3>${hits}</section>`;
+  res.querySelectorAll('.sem-it').forEach(b => b.onclick = () => { const p = x.hits[b.dataset.i]; const d = LIB.find(d => d.pages.some(([id]) => id === p.page_id)); if (!d) return; openDocument(d); srcIdx = Math.max(0, d.pages.findIndex(([id]) => id === p.page_id)); renderSource(); });
+}
 async function runSearch(q) {
   const seq = ++srchSeq, terms = srchTerms(q), res = $('#srch-res');
+  if (srchVec && q.trim().length > 2) return runSemantic(q, seq);
   if (!terms.length) { res.innerHTML = '<p class="srch-empty">Search across Luna, Lino and Guido, your conversations, all guideline documents and pages, the knowledge graph and the videos.</p>'; return; }
   const groups = [];
   // local: agents, conversations, documents, videos

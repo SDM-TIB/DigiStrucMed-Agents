@@ -6,6 +6,15 @@
      "photo": "steffan-wolter.jpg", "link": "https://www.linkedin.com/in/steffan-wolter"},
     {"name": "Mahsa Forghani", "role": "TIB and Leibniz University Hannover",
      "about": "Finishing a master's in computer science. Brings extensive experience in building knowledge graphs and connecting them to language models, and fine-tuned the model behind Lino with rules mined from the guideline knowledge graph.",
-     "photo": "mahsa-forghani.jpg", "link": "https://github.com/Mahsa-for"}
+     "photo": "mahsa-forghani.jpg", "link": "https://github.com/Mahsa-for"},
+    {"name": "Prof. Dr. Maria-Esther Vidal", "role": "Head of Scientific Data Management, TIB; Professor, Leibniz University Hannover; Member, L3S Research Center",
+     "about": "Works on semantic data management, data integration, federated query processing and machine learning over knowledge graphs, with a focus on neuro-symbolic AI for interpretable and trustworthy systems, for example in medicine.",
+     "photo": "maria-esther-vidal.jpg", "link": "https://www.tib.eu/en/research-development/scientific-data-management/staff/maria-esther-vidal"},
+    {"name": "Dr. Disha Purohit", "role": "Postdoctoral Researcher, Scientific Data Management, TIB",
+     "about": "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.",
+     "photo": "disha-purohit.jpg", "link": "https://www.tib.eu/en/research-development/research-groups-and-labs/scientific-data-management/staff/disha-purohit"},
+    {"name": "Yashrajsinh Chudasama, M.Sc.", "role": "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover",
+     "about": "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.",
+     "photo": "yashrajsinh-chudasama.jpg", "link": "https://www.tib.eu/en/research-development/research-groups-and-labs/scientific-data-management/staff/yashrajsinh-chudasama"}
   ]
 }

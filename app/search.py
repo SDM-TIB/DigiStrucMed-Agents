@@ -126,7 +126,7 @@ def _get(url, timeout):
     return None
 
 
-def embed(texts, timeout=25):
+def embed(texts, timeout=60):
   body = json.dumps({'input': texts}).encode()
   req = urllib.request.Request(config.EMBED_URL.rstrip('/') + '/v1/embeddings', data=body, method='POST',
                                headers={'Authorization': 'Bearer ' + _identity_token(), 'Content-Type': 'application/json'})
@@ -186,12 +186,13 @@ def search(query, question=None, k=5, docs=None):
     warm()
   vecs = None
   if idx is not None and config.EMBED_URL:
-    for attempt in range(2):  # one retry: a cold or busy embedding service can drop a request
+    for attempt in range(3):  # a cold or busy embedding service can drop a request: retry with backoff
       try:
         vecs = dict(zip(PROMPTS, embed([PROMPTS['qa'] + query, PROMPTS['search'] + query])))
         break
       except Exception:
         vecs = None
+        time.sleep(2 ** attempt)
   allowed = None if not docs else np.array([p['doc'] in docs for p in corpus.PAGES])
   lex_order = [i for i in corpus.bm25(query, k=len(corpus.PAGES), per_doc=len(corpus.PAGES)) if allowed is None or allowed[i]]
   lex_rank = np.full(len(corpus.PAGES), len(corpus.PAGES) + 1, dtype=np.int64)
@@ -255,3 +256,33 @@ def _windows(i, sims, view, n=2, width=1):
     if len(picked) == n:
       break
   return [text[spans[lo][0]:spans[hi][1]].strip() for lo, hi in sorted(picked)]
+
+
+def semantic(query, k=10):
+  """embedding search only, for the search page's semantic mode: the query embedded with the retrieval prompt,
+  cosine similarity against every 400-character chunk, a page scored by its best chunk. Returns the pages with their
+  similarity and best passage, the query vector folded into 48 cells for display, and timings"""
+  query = query.strip()[:300]
+  idx = _state['index']
+  if not query or idx is None or not config.EMBED_URL:
+    return {'available': False, 'hits': []}
+  t0 = time.time()
+  q = embed([PROMPTS['search'] + query])[0]
+  t1 = time.time()
+  view = idx['views']['chunk_title_s400']
+  sims = view['vec'] @ q
+  page_score = np.full(len(corpus.PAGES), -1.0, dtype=np.float32)
+  page_score[view['pages']] = np.maximum.reduceat(sims, view['starts'])
+  top = [int(i) for i in np.argsort(-page_score)[:k]]
+  t2 = time.time()
+  hits = []
+  for i in top:
+    units = np.flatnonzero(view['owner'] == i)
+    u = int(units[np.argmax(sims[units])])
+    hits.append({**corpus.card(0, i, query, width=260), 'similarity': round(float(page_score[i]), 3),
+                 'passage': idx['chunks'][u][:420]})
+  cells = q.reshape(48, -1).mean(axis=1)
+  return {'available': True, 'hits': hits, 'model': 'EmbeddingGemma 2', 'dims': int(q.shape[0]),
+          'vectors': int(len(view['owner'])), 'prompt': PROMPTS['search'].strip(),
+          'query_vector': [round(float(x), 4) for x in cells / (np.abs(cells).max() + 1e-9)],
+          'ms': {'embed': round(1000 * (t1 - t0)), 'score': round(1000 * (t2 - t1))}}
