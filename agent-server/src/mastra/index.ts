@@ -1,23 +1,22 @@
 // The agent server: Mastra with one route, POST /luna/chat, that streams TIB Chat's chat events (server-sent events
 // in the app's own format: text, tool_call, sources, read, done, error), so the browser code stays unchanged.
 //
-// Loop control (AI SDK loop control through Mastra): at most `rounds` tool steps, several tool calls per step;
-// prepareStep tells the model when its last tool step has come and takes the tools away on the answer step, so every
-// run ends in an answer.
+// The loop is Mastra's (on the AI SDK): the model calls tools as it sees fit, several per step, and stops when it has
+// answered. maxSteps is only a safety bound against runaway loops (20, the AI SDK's default for agents).
 import { Mastra } from '@mastra/core'
 import { RequestContext } from '@mastra/core/request-context'
 import { registerApiRoute } from '@mastra/core/server'
 import { luna } from './agents/luna.ts'
 
-const LAST_STEP = 'That was your last tool step: no further searches or page reads are possible. Write your answer now ' +
-  'from the sources you found, with their citation numbers. If they do not answer the question, say so.'
+const MAX_STEPS = 20
+const DEBUG = process.env.DEBUG_CHUNKS === '1'  // log every stream chunk (development)
 const TOKEN = process.env.AGENT_TOKEN ?? ''  // local development; on Cloud Run the service is private (IAM)
 
 type ChatBody = {
   messages: Array<{ role: string; text: string }>
   system: string
   run: string
-  rounds?: number
+  max_steps?: number
   thinking?: 'minimal' | 'low' | 'medium' | 'high'
 }
 
@@ -26,7 +25,7 @@ const chatRoute = registerApiRoute('/luna/chat', {
   handler: async c => {
     if (TOKEN && c.req.header('X-Agent-Token') !== TOKEN) return c.json({ error: 'Agent token required' }, 401)
     const body = (await c.req.json()) as ChatBody
-    const rounds = Math.max(1, Math.min(10, Number(body.rounds) || 6))
+    const maxSteps = Math.max(1, Math.min(MAX_STEPS, Number(body.max_steps) || MAX_STEPS))
     const messages = (body.messages ?? []).slice(-12)
       .filter(m => m.text)
       .map(m => m.role === 'assistant'
@@ -45,17 +44,12 @@ const chatRoute = registerApiRoute('/luna/chat', {
         try {
           const out = await luna.stream(messages, {
             requestContext,
-            maxSteps: rounds + 1,
+            maxSteps,
             toolCallConcurrency: 4,
             providerOptions: { vertex: { thinkingConfig: { thinkingLevel: body.thinking ?? 'low' } } },
-            prepareStep: ({ stepNumber, systemMessages }) => {
-              if (stepNumber === rounds) {  // the answer step: no tools, and the model is told why
-                return { activeTools: [], toolChoice: 'none', systemMessages: [...systemMessages, { role: 'system', content: LAST_STEP }] }
-              }
-              return undefined
-            },
           })
           for await (const chunk of out.fullStream as unknown as AsyncIterable<{ type: string; payload: any }>) {
+            if (DEBUG) console.error(`[${body.run}] ${chunk.type}`, JSON.stringify(chunk.payload ?? {}).slice(0, 300))
             if (chunk.type === 'text-delta') send({ type: 'text', delta: chunk.payload.text })
             else if (chunk.type === 'tool-call') send({ type: 'tool_call', name: chunk.payload.toolName, args: chunk.payload.args })
             else if (chunk.type === 'tool-result') for (const ev of chunk.payload.result?.ui ?? []) send(ev)

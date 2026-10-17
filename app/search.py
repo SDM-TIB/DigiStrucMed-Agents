@@ -163,7 +163,7 @@ def _judge(question, query, i):
     time.sleep(0.5 * 2 ** attempt)
 
 
-_pool = concurrent.futures.ThreadPoolExecutor(CANDIDATES)
+_pool = concurrent.futures.ThreadPoolExecutor(4 * CANDIDATES)  # shared by concurrent searches: several agent runs, several searches per step
 
 
 # ---- the search
