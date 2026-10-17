@@ -26,7 +26,7 @@ browser ── /api/chat/luna ──> app (Python, luna.run)
 
 These are the AI SDK loop controls, used through Mastra:
 - **Mastra's loop, unmodified.** The model calls tools as it sees fit and stops when it has answered; several tool calls in one step run concurrently (`toolCallConcurrency` 4).
-- **No step limit.** The run ends when the model answers without a tool call. Mastra would apply `stepCountIs(5)` when neither `maxSteps` nor `stopWhen` is given, so the route passes a stop condition that never fires, the AI SDK's `isLoopFinished()`. The prompt sets no step budget. An evaluation can pass `max_steps`.
+- **No step limit.** The run ends when the model answers without a tool call: `stopWhen: isLoopFinished()` from the AI SDK (`ai`). Without a stop condition Mastra would end after 5 steps. The prompt sets no step budget. An evaluation can pass `max_steps`, which becomes `stepCountIs(n)`. `ai` is pinned to 6.x, the AI SDK generation whose `StopCondition` Mastra 1.78 accepts.
 - **Thinking level `low`** (`providerOptions.vertex.thinkingConfig`), as in the app's other agents.
 - **Context.** `toModelOutput` keeps the browser's source cards out of the model's context. Page windows instead of whole pages keep search results short, and whole pages come only through `read_page`.
 
