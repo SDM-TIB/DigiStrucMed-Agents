@@ -3,6 +3,7 @@
   python deploy/deploy.py app      # Cloud Run service (secrets to Secret Manager, then a source deploy of app/)
   python deploy/deploy.py app --code-only   # only the source deploy. what GitHub Actions runs: no .env, no secret
                                             # values, the service keeps the Secret Manager references it already has
+  python deploy/deploy.py embed    # EmbeddingGemma 2 service for Luna's search (embed-server/), private; prints EMBED_URL
   python deploy/deploy.py gpu      # Lino's vLLM server in every Modal workspace of the pool (deploy_new_modal.py --all)
   python deploy/deploy.py assets push|pull   # videos and the LoRA adapter, kept in the bucket, not in git
 
@@ -20,7 +21,8 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SECRETS = ('TAVUS_API_KEY', 'TAVUS_EXTRA_KEYS', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
            'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'MODAL_EXTRA_TOKENS', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
-SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'MAX_CALL_SECONDS', 'GRAPH_ENDPOINT')
+SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'MAX_CALL_SECONDS', 'GRAPH_ENDPOINT',
+            'EMBED_URL')
 # large files that live in the bucket under assets/, not in git
 ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter', 'tavus/knowledge_base': 'assets/tavus-kb'}
 
@@ -96,11 +98,26 @@ def source_deploy(env, project, region, service, bucket, secrets_flag):
   # --no-invoker-iam-check because org policies often forbid allUsers. the app has its own password
   # Direct VPC egress: the graph server (graph-server/) has only an internal address in the default subnet
   print(run('gcloud', 'run', 'deploy', service, '--source', str(ROOT / 'app'), f'--region={region}', f'--project={project}',
-            '--no-invoker-iam-check', '--min-instances=1', '--max-instances=1', '--memory=1Gi', '--cpu=1',
+            '--no-invoker-iam-check', '--min-instances=1', '--max-instances=1', '--memory=2Gi', '--cpu=1',
             '--network=default', '--subnet=default', '--vpc-egress=private-ranges-only',
             *secrets_flag, f'--env-vars-file={env_file}', '--quiet', quiet=True) or 'deployed')
   env_file.unlink()
   print(run('gcloud', 'run', 'services', 'describe', service, f'--region={region}', f'--project={project}', '--format=value(status.url)', quiet=True))
+
+
+def deploy_embed(env):
+  """the embedding service: private (no unauthenticated access), scales to zero, the app's runtime account may invoke
+  it. 4 GiB holds the model with torch; the app wakes it when it starts and falls back to bm25 while it is cold"""
+  project, region = env['GCP_PROJECT'], env.get('GCP_REGION', 'europe-west3')
+  run('gcloud', 'run', 'deploy', 'tib-embed', '--source', str(ROOT / 'embed-server'), f'--region={region}', f'--project={project}',
+      '--no-allow-unauthenticated', '--memory=4Gi', '--cpu=2', '--min-instances=0', '--max-instances=2', '--cpu-boost',
+      '--timeout=120', '--concurrency=4', '--quiet', quiet=True)
+  number = run('gcloud', 'projects', 'describe', project, '--format=value(projectNumber)', quiet=True).strip()
+  run('gcloud', 'run', 'services', 'add-iam-policy-binding', 'tib-embed', f'--region={region}', f'--project={project}',
+      f'--member=serviceAccount:{number}-compute@developer.gserviceaccount.com', '--role=roles/run.invoker', quiet=True)
+  url = run('gcloud', 'run', 'services', 'describe', 'tib-embed', f'--region={region}', f'--project={project}',
+            '--format=value(status.url)', quiet=True).strip()
+  print(f'EMBED_URL={url}  (put it in .env and in the repository variable EMBED_URL, then deploy the app)')
 
 
 def deploy_gpu(env):
@@ -120,6 +137,8 @@ if __name__ == '__main__':
   env = dotenv()
   if what == 'app':
     deploy_app(env, code_only='--code-only' in sys.argv)
+  elif what == 'embed':
+    deploy_embed(env)
   elif what == 'gpu':
     deploy_gpu(env)
   elif what == 'assets' and sys.argv[2:] in (['push'], ['pull']):

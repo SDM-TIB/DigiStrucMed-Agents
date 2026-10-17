@@ -6,6 +6,8 @@ yields ui events: tool_call, sources, read, text, done, error.
 import config
 import corpus
 import llm
+import pageunits
+import search
 
 MAX_TOOL_ROUNDS = 3  # default search budget; a request may ask for 1..ROUNDS_LIMIT (evaluation ablations)
 ROUNDS_LIMIT = 8
@@ -17,6 +19,7 @@ SYSTEM = """You are Luna, an AI research assistant developed by the team at TIB 
 
 How to answer:
 - For every medical question, call search_guidelines first with one precise query (search again only if the results clearly miss the topic; at most {{rounds}} searches). Use read_page when a snippet is cut off or you need the surrounding table or conditions.
+- Each search result has passages (tables written as rows, "Class: I; Level: A") and, when available, a relevance between 0 and 1: how likely the page holds the specific answer. Prefer high-relevance pages; if the best relevance is low, search again with other words before you answer.
 - Base medical statements only on retrieved sources. Cite them inline with their numbers in square brackets, one number per bracket, e.g. [1] or [2][3]. Never invent sources, page numbers, recommendation classes or evidence levels; report them only when the source text states them.
 - If the sources do not answer the question, say so plainly.
 - {languages}
@@ -28,8 +31,9 @@ How to answer:
 
 TOOLS = [
   llm.tool('search_guidelines',
-           'Full-text search over all guideline pages. Returns numbered sources (document title, author/year if known, page number, snippet). '
-           'Use precise clinical terms; try synonyms or German terms if results are weak.',
+           'Semantic search over all guideline pages (EmbeddingGemma 2, reranked by a relevance model). Returns numbered sources: '
+           'document title, author/year if known, page number, relevance (0-1) and the best passages. '
+           'Describe what you look for in a full phrase with the clinical terms, population and guideline if known.',
            {'query': {'type': 'string', 'description': 'Search query, e.g. "beta-blocker HFrEF recommendation class"'},
             'top_k': {'type': 'integer', 'description': 'Number of sources, 3-8 (default 5)'}}, ['query']),
   llm.tool('read_page', 'Read the full text of one page that was returned as a numbered source.',
@@ -43,6 +47,7 @@ def run(messages, rounds=None):
     return
   rounds = llm.rounds(rounds, MAX_TOOL_ROUNDS, ROUNDS_LIMIT)
   chat = llm.history(messages, keep=12, max_chars=8000, system=SYSTEM.replace('{rounds}', str(rounds)))
+  question = next((m['text'] for m in reversed(messages) if m.get('role') == 'user' and m.get('text')), '')
   sources = []  # page indices, numbered 1..n across this answer
   answer = ''
   try:
@@ -66,7 +71,7 @@ def run(messages, rounds=None):
         name, args = call['function']['name'], llm.args(call)
         yield {'type': 'tool_call', 'name': name, 'args': args}
         if name == 'search_guidelines':
-          results.append((yield from _search(args, sources)))
+          results.append((yield from _search(args, sources, question)))
         elif name == 'read_page':
           results.append((yield from _read(args, sources)))
         else:
@@ -83,17 +88,23 @@ def run(messages, rounds=None):
     yield llm.error_event(e)
 
 
-def _search(args, sources):
+def _search(args, sources, question=''):
   q = str(args.get('query', ''))[:300]
   k = max(3, min(8, int(args.get('top_k') or 5)))
-  cards = []
-  for i in corpus.bm25(q, k):
+  hits, mode = search.search(q, question=question[:1000] or None, k=k)
+  cards, found = [], []
+  for h in hits:
+    i = h['page']
     if i not in sources:
       sources.append(i)
-    cards.append(corpus.card(sources.index(i) + 1, i, q))
-  yield {'type': 'sources', 'query': q, 'items': cards}
-  return {'sources': [{k2: c[k2] for k2 in ('n', 'title', 'ref', 'page', 'snippet') if c.get(k2)} for c in cards]
-          or 'No matching pages. Try other terms.'}
+    n = sources.index(i) + 1
+    cards.append({**corpus.card(n, i, q), 'relevance': h['relevance']})
+    p = corpus.PAGES[i]
+    hit = {'n': n, 'title': p['title'], 'ref': p.get('ref'), 'page': p['page'], 'relevance': h['relevance'],
+           'passages': h['passages'] or [cards[-1].get('snippet')]}
+    found.append({k2: v for k2, v in hit.items() if v not in (None, '', [])})
+  yield {'type': 'sources', 'query': q, 'items': cards, 'mode': mode}
+  return {'sources': found} if found else 'No matching pages. Try other terms.'
 
 
 def _read(args, sources):
@@ -102,4 +113,4 @@ def _read(args, sources):
     return {'error': f'Unknown source {n}'}
   p = corpus.PAGES[sources[n - 1]]
   yield {'type': 'read', 'item': corpus.card(n, sources[n - 1])}
-  return {'source': n, 'title': p['title'], 'page': p['page'], 'text': p['plain'][:7000]}
+  return {'source': n, 'title': p['title'], 'page': p['page'], 'text': pageunits.table_text(p['text'])[:12000]}

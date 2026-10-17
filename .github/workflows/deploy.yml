@@ -66,3 +66,4 @@ jobs:
           LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
           MAX_CALL_SECONDS: ${{ vars.MAX_CALL_SECONDS }}
           GRAPH_ENDPOINT: ${{ vars.GRAPH_ENDPOINT }}
+          EMBED_URL: ${{ vars.EMBED_URL }}

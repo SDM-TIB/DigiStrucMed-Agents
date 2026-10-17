@@ -30,6 +30,7 @@ import followups
 import lino
 import llm
 import pagewords
+import search as page_search
 import triage
 import luna
 import storage
@@ -330,6 +331,7 @@ GET_ROUTES = {
   '/api/graph/kinds': lambda q: {'kinds': graph.kinds()},
   '/api/graph/search': lambda q: {'items': graph.search(q.get('q', '')[:160], [k for k in q.get('kinds', '').split(',') if k] or None)},
   '/api/graph/node': lambda q: graph.node(q.get('id', '')),
+  '/api/search/status': lambda q: page_search.status(),
   '/api/graph/neighbours': lambda q: graph.neighbours(q.get('id', ''), q.get('p') or None, q.get('dir') or None,
                                                        q.get('limit', 40), q.get('offset', 0)),
 }
@@ -337,4 +339,5 @@ GET_ROUTES = {
 if __name__ == '__main__':
   mimetypes.add_type('image/svg+xml', '.svg')
   llm.warm()  # before listening: cloud run only routes to a new revision once it accepts connections
+  page_search.warm()  # luna's page index loads in the background; the search uses bm25 until it is ready
   ThreadingHTTPServer(('0.0.0.0', config.PORT), Handler).serve_forever()

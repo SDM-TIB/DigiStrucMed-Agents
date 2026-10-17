@@ -43,6 +43,19 @@ def get(name):
     return None
 
 
+def get_large(name, timeout=300):
+  """bytes of a large object (an index file): streamed, with a long timeout; None if missing"""
+  if not config.BUCKET:
+    path = config.LOCAL_BUCKET / name
+    return path.read_bytes() if path.is_file() else None
+  url = f'https://storage.googleapis.com/storage/v1/b/{config.BUCKET}/o/{urllib.parse.quote(name, safe="")}?alt=media'
+  try:
+    with urllib.request.urlopen(urllib.request.Request(url, headers=_auth()), timeout=timeout) as r:
+      return b''.join(iter(lambda: r.read(1 << 22), b''))
+  except (urllib.error.URLError, OSError):
+    return None
+
+
 def put(name, data, content_type='application/octet-stream'):
   if not config.BUCKET:
     return
