@@ -69,13 +69,17 @@ LINO_API_KEY = env('LINO_API_KEY')
 MODAL_TOKENS = [(i.strip(), s.strip()) for i, s in [(env('MODAL_TOKEN_ID'), env('MODAL_TOKEN_SECRET')),
                 *(p.split(':', 1) for p in env('MODAL_EXTRA_TOKENS').split(',') if ':' in p)] if i.strip() and s.strip()]
 
-# cloudflare workers ai: clef-flash directs guido's shared screen, decides the triage banners and judges lino's check
+# cloudflare workers ai: clef-flash directs guido's shared screen, decides the triage banners, judges lino's check
+# and reranks luna's search (search.py)
 CF_ACCOUNT_ID = env('CF_ACCOUNT_ID')
 CF_API_TOKEN = env('CF_API_TOKEN')
 
 # the final MHH guideline graph: SPARQL endpoint of the graph server (QLever, graph-server/). on cloud run the VM's
 # internal address through Direct VPC egress; locally the IAP tunnel of graph-server/ui-tunnel.ps1
 GRAPH_ENDPOINT = env('GRAPH_ENDPOINT', 'http://localhost:7001')
+
+# EmbeddingGemma 2 embedding service for luna's search (embed-server/, a private Cloud Run service). empty = bm25 only
+EMBED_URL = env('EMBED_URL')
 
 # private gcs bucket: page renders, usage log. empty = local files only (dev)
 BUCKET = env('PAGE_BUCKET')

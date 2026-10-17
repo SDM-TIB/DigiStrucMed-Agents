@@ -1,0 +1,31 @@
+{
+ "object": "search/5f5ab2756a05/search_index.npz",
+ "bucket": "luna-pages-tib-chat-1011-13273",
+ "sha256": "5f5ab2756a055c71761d7438197c94257897b54636964e9daec782fb7a4060a4",
+ "bytes": 146510482,
+ "meta": {
+  "model": {
+   "id": "google/embeddinggemma-2",
+   "revision": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+   "document_prompt": "title: {title} | text: {text}",
+   "pooling": "mean over all tokens, L2-normalised"
+  },
+  "views": {
+   "chunk_title_s400": {
+    "units": 45793
+   },
+   "chunk_title_s600": {
+    "units": 30751
+   },
+   "chunk_title": {
+    "units": 15304
+   },
+   "page_plain": {
+    "units": 2780
+   }
+  },
+  "pages": 2780,
+  "source": "C:\\Users\\STEFFAN\\Desktop\\MASTERTHESIS\\projects\\03_reasoning_aware_guideline_retrieval\\experiments\\2026-10-17_embeddinggemma2_retrieval\\work\\kisski\\work\\full\\emb",
+  "built": "2026-10-17"
+ }
+}

@@ -12,3 +12,5 @@ __pycache__/
 pipeline/.vectors_cache.json
 .env.bak*
 app/data/page_words.partial.jsonl
+pipeline/out/
+app/data/search_index.npz
