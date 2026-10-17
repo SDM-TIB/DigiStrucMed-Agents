@@ -2,16 +2,14 @@
 // in the app's own format: text, tool_call, sources, read, done, error), so the browser code stays unchanged.
 //
 // The loop is Mastra's (on the AI SDK): the model calls tools as it sees fit, several per step, and the run ends when
-// the model answers without calling a tool. No step limit: Mastra applies stepCountIs(5) when neither maxSteps nor
-// stopWhen is given, so stopWhen is a condition that never fires (the AI SDK's isLoopFinished()). An evaluation can
-// still pass max_steps.
+// the model answers without calling a tool: stopWhen is the AI SDK's isLoopFinished() (without a stop condition
+// Mastra would end after 5 steps). An evaluation can bound the loop with max_steps, which becomes stepCountIs(n).
 import { Mastra } from '@mastra/core'
 import { RequestContext } from '@mastra/core/request-context'
 import { registerApiRoute } from '@mastra/core/server'
+import { isLoopFinished, stepCountIs } from 'ai'
 import { luna } from './agents/luna.ts'
 
-// the AI SDK's isLoopFinished(): never stop on a condition, only when the model is done
-const loopFinished = () => false
 const DEBUG = process.env.DEBUG_CHUNKS === '1'  // log every stream chunk (development)
 const TOKEN = process.env.AGENT_TOKEN ?? ''  // local development; on Cloud Run the service is private (IAM)
 
@@ -47,7 +45,7 @@ const chatRoute = registerApiRoute('/luna/chat', {
         try {
           const out = await luna.stream(messages, {
             requestContext,
-            ...(maxSteps ? { maxSteps } : { stopWhen: loopFinished }),
+            stopWhen: maxSteps ? stepCountIs(maxSteps) : isLoopFinished(),
             toolCallConcurrency: 4,
             providerOptions: { vertex: { thinkingConfig: { thinkingLevel: body.thinking ?? 'low' } } },
           })
