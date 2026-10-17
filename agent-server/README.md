@@ -25,8 +25,8 @@ browser ── /api/chat/luna ──> app (Python, luna.run)
 ## Loop control
 
 These are the AI SDK loop controls, used through Mastra:
-- **`maxSteps = rounds + 1`.** The default is 6 tool steps. Several tool calls in one step run concurrently (`toolCallConcurrency` 4).
-- **`prepareStep` on the answer step.** It removes the tools (`activeTools: []`, `toolChoice: 'none'`) and adds a system message that the last tool step has passed, so every run ends in an answer.
+- **Mastra's loop, unmodified.** The model calls tools as it sees fit and stops when it has answered; several tool calls in one step run concurrently (`toolCallConcurrency` 4).
+- **`maxSteps` 20.** This is only a safety bound against runaway loops, the AI SDK's default for agents; the prompt sets no step budget.
 - **Thinking level `low`** (`providerOptions.vertex.thinkingConfig`), as in the app's other agents.
 - **Context.** `toModelOutput` keeps the browser's source cards out of the model's context. Page windows instead of whole pages keep search results short, and whole pages come only through `read_page`.
 

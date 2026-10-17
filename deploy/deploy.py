@@ -99,7 +99,7 @@ def source_deploy(env, project, region, service, bucket, secrets_flag):
   # --no-invoker-iam-check because org policies often forbid allUsers. the app has its own password
   # Direct VPC egress: the graph server (graph-server/) has only an internal address in the default subnet
   print(run('gcloud', 'run', 'deploy', service, '--source', str(ROOT / 'app'), f'--region={region}', f'--project={project}',
-            '--no-invoker-iam-check', '--min-instances=1', '--max-instances=1', '--memory=2Gi', '--cpu=1',
+            '--no-invoker-iam-check', '--min-instances=1', '--max-instances=1', '--memory=2Gi', '--cpu=1', '--timeout=900',
             '--network=default', '--subnet=default', '--vpc-egress=private-ranges-only',
             *secrets_flag, f'--env-vars-file={env_file}', '--quiet', quiet=True) or 'deployed')
   env_file.unlink()
@@ -134,7 +134,7 @@ def deploy_agent(env):
               'LUNA_MODEL': env.get('LUNA_MODEL', 'gemini-3.8-flash')}
   run('gcloud', 'run', 'deploy', 'luna-agent', '--source', str(ROOT / 'agent-server'), f'--region={region}', f'--project={project}',
       '--no-allow-unauthenticated', '--memory=1Gi', '--cpu=1', '--min-instances=0', '--max-instances=3', '--cpu-boost',
-      '--timeout=300', '--concurrency=20', f'--service-account={runtime.split(":", 1)[1]}',
+      '--timeout=600', '--concurrency=20', f'--service-account={runtime.split(":", 1)[1]}',
       '--set-env-vars=' + ','.join(f'{k}={v}' for k, v in settings.items()), '--quiet', quiet=True)
   run('gcloud', 'run', 'services', 'add-iam-policy-binding', 'luna-agent', f'--region={region}', f'--project={project}',
       f'--member={runtime}', '--role=roles/run.invoker', quiet=True)

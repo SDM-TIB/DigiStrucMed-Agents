@@ -52,6 +52,10 @@ How to answer:
 - Formatting: Markdown only. Write symbols as plain Unicode (≤, ≥, ±, µg), never LaTeX or $...$.
 - If the user says they currently have severe chest pain, severe breathlessness or fainted, first tell them to call 112 immediately.""".format(languages=config.LANGUAGE_RULE, research=config.RESEARCH_RULE)
 
+# the agent server's loop has no fixed tool budget: the model searches until it can answer
+SYSTEM_AGENT = SYSTEM.replace('How to work (you have up to {rounds} tool steps; several tool calls in one step run together):',
+                              'How to work (several tool calls in one step run together):')
+
 TOOLS = [
   llm.tool('search_guidelines',
            'Semantic search over the guideline pages (EmbeddingGemma 2, each candidate page judged by a relevance model). '
@@ -91,15 +95,16 @@ def run(messages, rounds=None):
 
 def _via_agent(messages, rounds=None):
   """the Mastra agent's event stream, already in the chat's event format"""
-  rounds = llm.rounds(rounds, MAX_TOOL_ROUNDS, ROUNDS_LIMIT)
   body = {'messages': [{'role': m.get('role'), 'text': m.get('text')} for m in messages if m.get('text')][-12:],
-          'system': SYSTEM.replace('{rounds}', str(rounds)), 'run': uuid.uuid4().hex, 'rounds': rounds}
+          'system': SYSTEM_AGENT, 'run': uuid.uuid4().hex}
+  if rounds:  # an evaluation's explicit step bound
+    body['max_steps'] = int(rounds)
   req = urllib.request.Request(config.AGENT_URL.rstrip('/') + '/luna/chat', data=json.dumps(body).encode(), method='POST',
                                headers={'Content-Type': 'application/json', 'X-Agent-Token': config.AGENT_TOKEN,
                                         'Authorization': 'Bearer ' + storage.identity_token(config.AGENT_URL)}
                                if config.AGENT_TOKEN else
                                {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + storage.identity_token(config.AGENT_URL)})
-  with urllib.request.urlopen(req, timeout=300) as r:
+  with urllib.request.urlopen(req, timeout=600) as r:
     for raw in r:
       line = raw.decode('utf-8', 'replace').strip()
       if line.startswith('data:'):
