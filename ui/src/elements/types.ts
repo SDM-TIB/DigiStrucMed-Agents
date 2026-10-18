@@ -10,6 +10,19 @@ export type Source = {
   relevance?: number
 }
 
+export type SearchStage = {
+  stage: 'embed' | 'compare' | 'rerank'
+  status: 'running' | 'done' | 'error'
+  ms?: number
+  model?: string
+  dims?: number
+  texts?: number
+  vectors?: number
+  candidates?: number
+  judged?: number
+  of?: number
+}
+
 export type StepKind = 'thought' | 'search' | 'read' | 'view' | 'catalogue' | 'tool'
 
 export type Step = {
@@ -22,6 +35,7 @@ export type Step = {
   hits?: Source[] // what a search found
   mode?: string // the search mode that served it
   pages?: Source[] // what read_page / view_page opened
+  progress?: Record<string, SearchStage> // a search's stages as they happen (embed, compare, rerank)
   t0: number
   t1?: number
 }

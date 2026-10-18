@@ -2,7 +2,7 @@
 // open while she researches, folded once she answers. Inside, every step as she takes it: thought summaries
 // (Reasoning), searches and page reads (Tool, input to output), each found page a link to the source viewer.
 import * as React from 'react'
-import { BookOpenIcon, BrainIcon, CircleAlertIcon, ImageIcon, LibraryIcon, SearchIcon, WrenchIcon } from 'lucide-react'
+import { BinaryIcon, BookOpenIcon, BrainIcon, CircleAlertIcon, GaugeIcon, ImageIcon, LibraryIcon, ListOrderedIcon, SearchIcon, WrenchIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { CodeBlock, CodeBlockContent } from '@/components/ui/code-block'
@@ -16,7 +16,7 @@ import {
   TraceLine,
   TraceTitle,
 } from '@/components/ui/trace'
-import type { Bridge, Source, Step } from './types'
+import type { Bridge, SearchStage, Source, Step } from './types'
 
 const ICON = { thought: BrainIcon, search: SearchIcon, read: BookOpenIcon, view: ImageIcon, catalogue: LibraryIcon, tool: WrenchIcon }
 
@@ -94,6 +94,37 @@ function stepTitle(step: Step, t: Bridge['t']) {
   }
 }
 
+// what the search does while Luna waits: the query becomes vectors, the vectors meet the index, a second model reads
+// the candidates. one line per stage, with its time; the running stage shimmers
+function SearchStages({ progress, bridge }: { progress: Record<string, SearchStage>; bridge: Bridge }) {
+  const { t } = bridge
+  const num = (n?: number) => (n ?? 0).toLocaleString()
+  const lines: Array<{ key: string; icon: typeof BinaryIcon; text: string; st: SearchStage }> = []
+  const e = progress.embed, c = progress.compare, r = progress.rerank
+  if (e) lines.push({ key: 'embed', icon: BinaryIcon, st: e, text: e.status === 'running'
+    ? t('Turning the query into vectors ({model})', { model: e.model ?? '' })
+    : e.status === 'error' ? t('Embedding service unavailable, keyword search instead')
+    : t('Query as vectors: {texts} × {dims} numbers ({model})', { texts: e.texts ?? 2, dims: e.dims ?? '', model: e.model ?? '' }) })
+  if (c) lines.push({ key: 'compare', icon: ListOrderedIcon, st: c, text: c.vectors
+    ? t('Compared with {vectors} passage vectors and the keyword index: {n} candidate pages', { vectors: num(c.vectors), n: c.candidates ?? '' })
+    : t('Keyword search only: {n} pages', { n: c.candidates ?? '' }) })
+  if (r) lines.push({ key: 'rerank', icon: GaugeIcon, st: r, text: r.status === 'running'
+    ? t('{model} reads each candidate page: {judged} of {of}', { model: r.model ?? '', judged: r.judged ?? 0, of: r.of ?? '' })
+    : t('{model} judged {judged} of {of} pages', { model: r.model ?? '', judged: r.judged ?? 0, of: r.of ?? '' }) })
+  if (!lines.length) return null
+  return (
+    <Trace className="gap-1.5">
+      {lines.map(({ key, icon: Icon, text, st }) => (
+        <TraceLine key={key} status={st.status === 'running' ? 'running' : st.status === 'error' ? 'error' : undefined}>
+          <TraceIcon><Icon /></TraceIcon>
+          <TraceTitle className="text-[12.5px]">{text}</TraceTitle>
+          {st.ms != null && <TraceDescription className="text-[12px]">{seconds(0, st.ms)}</TraceDescription>}
+        </TraceLine>
+      ))}
+    </Trace>
+  )
+}
+
 function ThoughtBody({ text }: { text: string }) {
   // Gemini's summaries start with a **heading**; the trigger shows it, the body the rest
   const body = text.replace(/^\s*\*\*(.+?)\*\*\s*/, '').replace(/\*\*(.+?)\*\*/g, '$1').trim()
@@ -104,7 +135,8 @@ function StepItem({ step, bridge }: { step: Step; bridge: Bridge }) {
   const { t } = bridge
   const Icon = step.status === 'error' ? CircleAlertIcon : ICON[step.kind]
   const running = step.status === 'running'
-  const { open, onOpenChange } = useAutoOpen(step.kind === 'thought' && running)
+  // thoughts and searches open while they run, so their progress shows, and fold when done
+  const { open, onOpenChange } = useAutoOpen((step.kind === 'thought' || step.kind === 'search') && running)
   const status = running ? 'running' : step.status === 'error' ? 'error' : undefined
   const hits = step.hits ?? []
   const pages = step.pages ?? []
@@ -125,6 +157,7 @@ function StepItem({ step, bridge }: { step: Step; bridge: Bridge }) {
         {step.kind === 'thought' && <ThoughtBody text={step.text ?? ''} />}
         {step.kind === 'search' && (
           <div className="flex flex-col gap-2.5">
+            {step.progress && <SearchStages progress={step.progress} bridge={bridge} />}
             <CodeBlock size="sm" className="bg-muted/40">
               <CodeBlockContent wrap className="max-h-28 text-[11.5px]">
                 {JSON.stringify({ query: step.args?.query, ...(step.args?.guideline ? { guideline: step.args.guideline } : {}) }, null, 1)}
@@ -136,7 +169,7 @@ function StepItem({ step, bridge }: { step: Step; bridge: Bridge }) {
                 <span>{t('ranked by meaning, then re-read by a second model')}</span>
               </div>
             )}
-            {running && !hits.length && <span className="shimmer text-xs">{t('Searching')}</span>}
+            {running && !hits.length && !step.progress && <span className="shimmer text-xs">{t('Searching')}</span>}
             {hits.length > 0 && <Trace className="gap-1.5">{hits.map(s => <PageLine key={s.n} s={s} bridge={bridge} quote={s.snippet ?? undefined} />)}</Trace>}
           </div>
         )}

@@ -15,11 +15,13 @@ import base64
 import html
 import json
 import re
+import threading
 import urllib.request
 import uuid
 
 import config
 import corpus
+import live
 import llm
 import search
 import storage
@@ -118,11 +120,33 @@ def _via_agent(messages, rounds, url, image_tool=False, agent='luna', system=Non
                                         'Authorization': 'Bearer ' + storage.identity_token(url)}
                                if config.AGENT_TOKEN else
                                {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + storage.identity_token(url)})
-  with urllib.request.urlopen(req, timeout=600) as r:
-    for raw in r:
-      line = raw.decode('utf-8', 'replace').strip()
-      if line.startswith('data:'):
-        yield json.loads(line[5:])
+  # the agent's stream and the run's live channel (search progress from the tool endpoints) in one stream: a reader
+  # thread puts the agent's events into the channel, this generator yields everything in the order it arrives
+  channel = live.open_run(body['run'])
+  end = object()
+
+  def read():
+    try:
+      with urllib.request.urlopen(req, timeout=600) as r:
+        for raw in r:
+          line = raw.decode('utf-8', 'replace').strip()
+          if line.startswith('data:'):
+            channel.put(json.loads(line[5:]))
+    except Exception as e:  # handed to the consumer, which raises it there
+      channel.put(e)
+    channel.put(end)
+
+  threading.Thread(target=read, daemon=True).start()
+  try:
+    while True:
+      ev = channel.get()
+      if ev is end:
+        return
+      if isinstance(ev, Exception):
+        raise ev
+      yield ev
+  finally:
+    live.close(body['run'])
 
 
 def _local(messages, rounds=None):
@@ -228,11 +252,11 @@ def _guideline_filter(value):
 
 
 # ---- the tools
-def _search(args, sources, question=''):
+def _search(args, sources, question='', progress=None):
   q = str(args.get('query', ''))[:300]
   k = max(3, min(8, int(args.get('top_k') or 5)))
   docs, scope = _guideline_filter(args.get('guideline'))
-  res = search.search(q, question=question[:1000] or None, k=k, docs=docs)
+  res = search.search(q, question=question[:1000] or None, k=k, docs=docs, progress=progress)
   cards, found = [], []
   for h in res['hits']:
     i = h['page']

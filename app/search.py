@@ -173,19 +173,25 @@ def _rank(scores):
   return r
 
 
-def search(query, question=None, k=5, docs=None):
+def search(query, question=None, k=5, docs=None, progress=None):
   """{'hits': [{'page', 'relevance', 'passages'}], 'mode', 'facets'}
+  progress: optional callback, called with each stage as it starts and ends ({'stage': 'embed' | 'compare' |
+  'rerank', 'status': 'running' | 'done', 'ms', and what the stage worked on}); the timings are also logged
   query: what to look for now; question: the user's question it serves (defaults to the query); docs: document ids to
   search in (a guideline filter), None for all. facets: for each document, how many of the reranked candidates it
   holds and how many of them are likely relevant (relevance >= 0.5), so the caller sees where evidence clusters
   beyond the top k"""
   question = (question or query).strip()
   query = query.strip()
+  report = progress or (lambda ev: None)
+  t_start = time.time()
   idx = _state['index']
   if idx is None:
     warm()
   vecs = None
   if idx is not None and config.EMBED_URL:
+    report({'stage': 'embed', 'status': 'running', 'model': 'EmbeddingGemma 2'})
+    t0 = time.time()
     for attempt in range(3):  # a cold or busy embedding service can drop a request: retry with backoff
       try:
         vecs = dict(zip(PROMPTS, embed([PROMPTS['qa'] + query, PROMPTS['search'] + query])))
@@ -193,11 +199,17 @@ def search(query, question=None, k=5, docs=None):
       except Exception:
         vecs = None
         time.sleep(2 ** attempt)
+    t_embed = round((time.time() - t0) * 1000)
+    report({'stage': 'embed', 'status': 'done' if vecs is not None else 'error', 'ms': t_embed, 'model': 'EmbeddingGemma 2',
+            'dims': int(next(iter(vecs.values())).shape[0]) if vecs else None, 'texts': len(PROMPTS)})
+  t0 = time.time()
   allowed = None if not docs else np.array([p['doc'] in docs for p in corpus.PAGES])
   lex_order = [i for i in corpus.bm25(query, k=len(corpus.PAGES), per_doc=len(corpus.PAGES)) if allowed is None or allowed[i]]
   lex_rank = np.full(len(corpus.PAGES), len(corpus.PAGES) + 1, dtype=np.int64)
   lex_rank[lex_order] = np.arange(1, len(lex_order) + 1)
   if vecs is None:
+    report({'stage': 'compare', 'status': 'done', 'ms': round((time.time() - t0) * 1000), 'vectors': 0, 'keyword': True, 'candidates': k})
+    print(f'search: bm25 only, {round((time.time() - t_start) * 1000)} ms', flush=True)
     return {'hits': [{'page': i, 'relevance': None, 'passages': []} for i in lex_order[:k]], 'mode': 'bm25', 'facets': []}
 
   fused = 1 / (RRF_K + lex_rank)
@@ -213,11 +225,24 @@ def search(query, question=None, k=5, docs=None):
   if allowed is not None:
     fused[~allowed] = -1.0
   cand = [int(i) for i in np.argsort(-fused, kind='stable')[:min(CANDIDATES, len(corpus.PAGES) if allowed is None else int(allowed.sum()))]]
+  t_compare = round((time.time() - t0) * 1000)
+  report({'stage': 'compare', 'status': 'done', 'ms': t_compare, 'vectors': int(sum(len(v['vec']) for v in idx['views'].values())),
+          'views': len(idx['views']), 'keyword': True, 'candidates': len(cand)})
 
   mode = 'embeddinggemma2'
   rel = {}
+  t_rerank = 0
   if config.CF_ACCOUNT_ID and config.CF_API_TOKEN:
-    rel = dict(zip(cand, _pool.map(lambda i: _judge(question, query, i), cand)))
+    report({'stage': 'rerank', 'status': 'running', 'model': 'clef-flash', 'judged': 0, 'of': len(cand)})
+    t0 = time.time()
+    futures = {_pool.submit(_judge, question, query, i): i for i in cand}
+    for n, f in enumerate(concurrent.futures.as_completed(futures), 1):
+      rel[futures[f]] = f.result()
+      if n % 8 == 0 and n < len(cand):
+        report({'stage': 'rerank', 'status': 'running', 'model': 'clef-flash', 'judged': n, 'of': len(cand)})
+    t_rerank = round((time.time() - t0) * 1000)
+    report({'stage': 'rerank', 'status': 'done', 'ms': t_rerank, 'model': 'clef-flash',
+            'judged': sum(v is not None for v in rel.values()), 'of': len(cand)})
     if sum(v is not None for v in rel.values()) >= CANDIDATES // 2:
       mode = 'embeddinggemma2+clef-flash'
       cand.sort(key=lambda i: -(rel[i] if rel[i] is not None else -1.0))  # stable: ties keep the fused order
@@ -235,6 +260,8 @@ def search(query, question=None, k=5, docs=None):
     f['candidates'] += 1
     f['likely_relevant'] += int((rel.get(i) or 0) >= 0.5)
   facets = sorted(facets.values(), key=lambda f: (-f['likely_relevant'], -f['candidates']))
+  print(f"search: {round((time.time() - t_start) * 1000)} ms (embed {t_embed if vecs else '-'}, compare {t_compare}, "
+        f"rerank {t_rerank}) mode {mode}", flush=True)
   return {'hits': out, 'mode': mode, 'facets': facets}
 
 

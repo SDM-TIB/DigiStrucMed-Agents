@@ -11,7 +11,7 @@ import { Answer } from './elements/answer'
 import { ChainOfThought } from './elements/chain-of-thought'
 import { InlineCitation } from './elements/inline-citation'
 import { Sources } from './elements/sources'
-import type { Bridge, Source, Step, StepKind } from './elements/types'
+import type { Bridge, SearchStage, Source, Step, StepKind } from './elements/types'
 
 type ChatEvent = {
   type: string
@@ -22,6 +22,7 @@ type ChatEvent = {
   mode?: string
   item?: Source
   delta?: string
+  stage?: SearchStage['stage']
 }
 
 const KIND: Record<string, StepKind> = { search_guidelines: 'search', read_page: 'read', view_page: 'view', list_guidelines: 'catalogue' }
@@ -85,6 +86,14 @@ class MessageUI {
           ?? this.steps.find(x => x.kind === 'search' && !x.hits)
         if (!s) return false
         Object.assign(s, { hits: ev.items ?? [], mode: ev.mode, status: 'done', t1: now })
+        break
+      }
+      case 'search_progress': {
+        // the app's search reports its stages while it runs (app/search.py progress, app/live.py)
+        const s = this.last(x => x.kind === 'search' && x.status === 'running' && String(x.args?.query ?? '') === String(ev.query ?? ''))
+          ?? this.last(x => x.kind === 'search' && x.status === 'running')
+        if (!s || !ev.stage) return false
+        s.progress = { ...(s.progress ?? {}), [ev.stage]: ev as unknown as SearchStage }
         break
       }
       case 'read': {

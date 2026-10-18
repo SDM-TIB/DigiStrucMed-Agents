@@ -19,6 +19,7 @@ import urllib.parse
 import urllib.request
 
 import config
+import live
 import luna
 
 RUN_TTL = 3600
@@ -107,7 +108,8 @@ def _guido(tool, body):
     nid = str(body.get('node_id', '')).strip()
     model = w.expand(nid, events)
   elif tool == 'guido_search':
-    model = w.search_pages(str(body.get('query', ''))[:300], events)
+    q = str(body.get('query', ''))[:300]
+    model = w.search_pages(q, events, lambda ev: live.publish(run, {'type': 'search_progress', 'query': q, **ev}))
   elif tool == 'guido_read':
     model = w.read_pages(body.get('sources') or [], events)
   else:
@@ -122,7 +124,8 @@ def call(tool, body):
   run = body.get('run') or 'default'
   if tool == 'search':
     args = {k: body.get(k) for k in ('query', 'guideline', 'top_k') if body.get(k) not in (None, '')}
-    ui, model = _drive(luna._search(args, _sources(run), str(body.get('question') or '')))
+    progress = lambda ev: live.publish(run, {'type': 'search_progress', 'query': str(args.get('query', ''))[:300], **ev})
+    ui, model = _drive(luna._search(args, _sources(run), str(body.get('question') or ''), progress))
   elif tool == 'read':
     ui, model = _drive(luna._read({'sources': body.get('sources') or []}, _sources(run)))
   elif tool == 'view':

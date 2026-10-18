@@ -875,7 +875,7 @@ function citeify(html) {
 // the fixed texts of index.html in the patient's language: static/js/i18n.json, keyed by the english text. conversation
 // content (answers, cards, banners) is not touched, it carries its own language
 const I18N = {dict: null, text: new WeakMap(), attr: new WeakMap(), pat: {}};
-const I18N_SKIP = 'script,style,.thread,#stage-cards,.gcheck,.next,.care-alert,#srcx-quote,#feed,.jr-host,#dq-list,.langs';
+const I18N_SKIP = 'script,style,.thread,#stage-cards,.gcheck,.next,.care-alert,#srcx-quote,#feed,.jr-host,.langs';
 // a key may carry placeholders: "{n} pages" also translates "12 pages". a one-letter placeholder stands for a number
 // or a time like 2:05, a longer one for any text, which is itself looked up again ("{what} · {n} nodes")
 function i18nPatterns(l) {
@@ -928,7 +928,7 @@ new MutationObserver(() => { if (care.lang !== 'en' && !i18nTimer) i18nTimer = s
   .observe(document.body, {subtree: true, childList: true, characterData: true});
 fetch('/static/js/i18n.json').then(r => r.ok ? r.json() : null).then(d => { I18N.dict = d; I18N.pat = {}; translatePage(); composerText(); }).catch(() => {});
 addEventListener('care-lang', translatePage);
-addEventListener('care-lang', () => { setDial(dialIdx, true); composerText(); $('#dq-label').textContent = care.t('myQuestions'); });
+addEventListener('care-lang', () => { setDial(dialIdx, true); composerText(); });
 care.setLang((navigator.language || 'en').slice(0, 2).toLowerCase());  // until the patient writes, the browser's language
 // fixed, hand-written safety texts from care.js. the banner shows when a message sounds like an emergency right now
 function careAlert(level = 'emergency', l = care.lang) {
@@ -976,51 +976,17 @@ async function guidelineCheck(question, answer, after, place) {
   fillCheck(box, res, lang);
   return res;
 }
-// next steps under an answer: what to ask next (sends it), what to take to the doctor (collects it)
+// next steps under an answer: questions to ask next, each sends itself
 async function nextSteps(question, answer, el) {
   if (!answer || answer.length < 40 || /^\s*[\[{]/.test(answer)) return;
   let res; try { res = await post('/api/followups', {question, answer}); } catch { return; }
-  if (!res || res.error || !(res.ask || []).length && !(res.doctor || []).length) return;
+  if (!res || res.error || !(res.ask || []).length) return;
   const lang = langOf(answer), box = document.createElement('div'); box.className = 'next'; box.lang = lang;
-  const row = (kind, label, items) => items.length ? `<div class="next-row ${kind}"><span>${esc(care.t(label, lang))}</span>${items.map(q =>
-    `<button data-kind="${kind}" ${kind === 'doctor' ? `title="${esc(care.t('addToList', lang))}"` : ''}>${kind === 'doctor' ? '<i aria-hidden="true">+</i>' : ''}${esc(q)}</button>`).join('')}</div>` : '';
-  box.innerHTML = row('ask', 'askNext', res.ask || []) + row('doctor', 'forDoctor', res.doctor || []);
-  box.onclick = e => {
-    const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.kind === 'ask') { if (!chatBusy) sendChat(b.textContent); return; }
-    addDoctorQuestion(b.textContent.replace(/^\+/, '').trim(), lang); b.classList.add('done'); b.disabled = true;
-  };
+  box.innerHTML = `<div class="next-row ask"><span>${esc(care.t('askNext', lang))}</span>${res.ask.map(q => `<button data-kind="ask">${esc(q)}</button>`).join('')}</div>`;
+  box.onclick = e => { const b = e.target.closest('button'); if (b && !chatBusy) sendChat(b.textContent); };
   (el.querySelector('.care-note') || el.querySelector('.refs')).after(box); scrollFeed();
 }
-// the patient's own list of questions for their doctor. kept in this browser only
-const DQ_KEY = 'tib-doctor-questions';
-const dqLoad = () => { try { return JSON.parse(localStorage.getItem(DQ_KEY) || '[]'); } catch { return []; } };
-const dqSave = list => { try { localStorage.setItem(DQ_KEY, JSON.stringify(list)); } catch {} renderDoctorQuestions(); };
-function addDoctorQuestion(q, lang) {
-  const list = dqLoad(); if (!list.includes(q)) dqSave([...list, q]);
-  status(care.t('added', lang)); $('#dq-label').textContent = care.t('myQuestions', lang);
-}
-function renderDoctorQuestions() {
-  const list = dqLoad(), btn = $('#dq-btn');
-  btn.classList.toggle('hidden', !list.length); btn.querySelector('b').textContent = list.length;
-  $('#dq-list').innerHTML = list.length ? list.map((q, i) => `<li><span>${esc(q)}</span><button data-i="${i}" aria-label="Remove">×</button></li>`).join('')
-    : `<li class="empty">${esc(care.t('noQuestions'))}</li>`;
-}
-function openDoctorQuestions() {
-  const l = care.lang;
-  $('#dq-title').textContent = care.t('myQuestions', l); $('#dq-copy').textContent = care.t('copy', l); $('#dq-clear').textContent = care.t('clear', l);
-  renderDoctorQuestions(); $('#dq').classList.remove('hidden'); $('#dq-copy').focus();
-}
-const closeDoctorQuestions = () => { $('#dq').classList.add('hidden'); $('#dq-btn').focus(); };
-$('#dq-btn').onclick = openDoctorQuestions;
-$('#dq-x').onclick = closeDoctorQuestions;
-$('#dq').addEventListener('click', e => { if (e.target === $('#dq')) closeDoctorQuestions(); });
-addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dq').classList.contains('hidden')) closeDoctorQuestions(); });
-$('#dq-list').onclick = e => { const b = e.target.closest('button[data-i]'); if (b) { const list = dqLoad(); list.splice(+b.dataset.i, 1); dqSave(list); } };
-$('#dq-clear').onclick = () => dqSave([]);
-$('#dq-copy').onclick = () => navigator.clipboard.writeText(dqLoad().map((q, i) => `${i + 1}. ${q}`).join('\n'))
-  .then(() => { $('#dq-copy').textContent = care.t('copied'); setTimeout(() => $('#dq-copy').textContent = care.t('copy'), 1600); }).catch(() => {});
-setTimeout(() => { $('#dq-label').textContent = care.t('myQuestions'); renderDoctorQuestions(); });
+try { localStorage.removeItem('tib-doctor-questions'); } catch {}  // the former list of questions for the doctor
 // parts of a cited answer without any citation get a quiet marker: the patient sees what is not backed by a source
 function markUncited(st) {
   if (!st.answer.querySelector('.cite')) return;

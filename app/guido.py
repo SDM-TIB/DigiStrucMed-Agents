@@ -240,10 +240,10 @@ class Walk:
     events.append(self.event(pids, [(x, cid, 'on page') for x in pids], None, 'pages', 2))
     return '\nPages most about it:\n' + '\n'.join('  ' + self.page_line(x) for x in pids)
 
-  def search_pages(self, query, events):
+  def search_pages(self, query, events, progress=None):
     """Luna's two-stage page search (EmbeddingGemma 2 + clef-flash), its pages joined into the walk"""
     import search
-    res = search.search(query, question=self.question[:1000] or None, k=5)
+    res = search.search(query, question=self.question[:1000] or None, k=5, progress=progress)
     pids = ['p:' + corpus.PAGES[h['page']]['id'] for h in res['hits']]
     if not pids:
       return 'No matching pages. Try other words.'
