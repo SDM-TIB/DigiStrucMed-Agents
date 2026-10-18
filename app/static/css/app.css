@@ -525,6 +525,10 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 @media (max-width:760px){.ab-person.wide{flex-direction:column;align-items:center;text-align:center}}
 .ab-person small{color:var(--muted);font-size:12.5px;line-height:17px}
 /* the institutions: one panel like the cards above, each logo on its own tile of equal size */
+/* About: stacked on small screens, in reading order (intro, agents, team, institutions); two columns on a desktop
+   so the whole page fits without scrolling */
+.ab-grid{display:flex;flex-direction:column}.ab-col{display:contents}
+.ab-intro{order:1}.ab-agents{order:2}.ab-col>.ab-h{order:3}.ab-team{order:4}.ab-logos{order:5}
 .ab-logos{margin:30px 0 8px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--win);animation:rise .4s var(--ease) .2s both}
 .ab-logos .ab-h{margin:0 0 14px}
 .ab-logos .logos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
@@ -1094,3 +1098,35 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .sem-score{flex:none;width:58px;display:flex;flex-direction:column;gap:5px;padding-top:2px}
 .sem-score b{font:650 14px/1 var(--font, inherit);color:var(--ink)}
 .sem-bar{height:5px;border-radius:3px;background:var(--side);overflow:hidden}.sem-bar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+
+/* About on a desktop: everything on one screen. Intro left, agents and institutions right, the team as one row */
+@media (min-width:1100px) and (min-height:600px){
+  #view-about .lib-body{padding:12px 28px 14px}
+  .about{max-width:1600px}
+  .ab-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);grid-template-areas:"intro agents" "intro logos" "teamh teamh" "team team";gap:0 28px;align-items:start}
+  .ab-intro{grid-area:intro}.ab-agents{grid-area:agents}.ab-logos{grid-area:logos}.ab-col>.ab-h{grid-area:teamh}.ab-team{grid-area:team}
+  .ab-intro .kicker{margin-bottom:4px}
+  .ab-intro .ab-lead{font-size:15px;line-height:22px;margin:0 0 6px}
+  .ab-intro p{font-size:13.5px;line-height:19.5px;margin:0 0 5px}
+  .ab-intro p,.ab-did{max-width:none}
+  .ab-did{font-size:13px;line-height:19px;margin:0 0 6px}.ab-did li{margin-bottom:2px}
+  .ab-intro .ab-note{font-size:12.5px;line-height:18px;margin:0}
+  .ab-agents{grid-template-columns:minmax(0,1fr);gap:8px;margin:0}
+  .ab-agents article{align-items:center;gap:12px;padding:7px 12px;border-radius:14px}
+  .ab-agents .orb.lg{width:38px;height:38px}
+  .ab-agents b{font-size:14.5px;line-height:19px}.ab-agents span{font-size:12.5px;line-height:17px}
+  .ab-h{font-size:15px;line-height:20px;margin:0 0 8px}
+  .ab-col>.ab-h{margin-top:10px}
+  .ab-logos{margin:10px 0 0;padding:10px 14px;border-radius:14px}
+  .ab-logos .logos{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+  .logo-tile{height:50px;padding:6px 10px;border-radius:10px}
+  .ab-logos .l-luh,.ab-logos .l-l3s{height:30px}.ab-logos .l-caimed{height:20px}.ab-logos .l-tib{height:24px}.ab-logos .l-sdm{height:38px}
+  .ab-team{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+  /* a team card: photo beside name and role, the description below across the card */
+  .ab-person.wide{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:10px;row-gap:2px;align-content:start;padding:10px 12px;border-radius:14px}
+  .ab-person.wide .ab-txt{display:contents}
+  .ab-person.wide .ab-pic{width:44px;height:44px;grid-row:1/3;align-self:start}
+  .ab-person.wide b{grid-column:2;font-size:13.5px;line-height:18px}
+  .ab-person.wide small{grid-column:2;font-size:11.5px;line-height:15px}
+  .ab-person.wide .ab-txt p{grid-column:1/-1;margin-top:6px;font-size:11.5px;line-height:15.5px}
+}
