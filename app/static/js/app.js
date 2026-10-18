@@ -594,10 +594,20 @@ function composerText() {
 }
 $('#att-x').onclick = () => { setAttach(false); $('#msg').focus(); };
 // Lino's storyboard answer is JSON {title, scenes[]}: show it as scene cards when it parses.
+// the small model often stops before its last closing brackets: complete them, outside strings, in the right order.
+// anything else stays as the model wrote it (then no storyboard view, the json block remains)
+function closeJson(s) {
+  const open = []; let str = false, esc = false;
+  for (const ch of s) {
+    if (str) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') str = false; continue; }
+    if (ch === '"') str = true; else if (ch === '{' || ch === '[') open.push(ch === '{' ? '}' : ']'); else if (ch === '}' || ch === ']') open.pop();
+  }
+  return str ? s : s.replace(/[\s,]+$/, '') + open.reverse().join('');
+}
 function renderStoryboard(st) {
   const raw = st.raw, a = raw.indexOf('{'), b = raw.lastIndexOf('}');
   if (a < 0 || b <= a) return;
-  let j; try { j = JSON.parse(raw.slice(a, b + 1)); } catch { return; }
+  let j; try { j = JSON.parse(raw.slice(a, b + 1)); } catch { try { j = JSON.parse(closeJson(raw.slice(a))); } catch { return; } }
   if (!j || !Array.isArray(j.scenes) || !j.scenes.length) return;
   if (st.sd) st.ui.releaseAnswer();  // the storyboard replaces the streamed text
   st.answer.innerHTML = `<div class="sb"><div class="sb-head"><span>${esc(uiText('Storyboard'))}</span><h4>${esc(String(j.title || uiText('Untitled')))}</h4></div>` + j.scenes.map((sc, i) =>
