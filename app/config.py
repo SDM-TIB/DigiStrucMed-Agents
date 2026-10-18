@@ -85,6 +85,9 @@ EMBED_URL = env('EMBED_URL')
 # in-process loop of luna.py. The agent server calls the tool endpoints back (/api/agent/tools/*) with an identity
 # token of this app's service account; AGENT_TOKEN is a shared token for local development only
 AGENT_URL = env('AGENT_URL')
+# guido's loop: 'local' = the evaluated 3-round loop in guido.py over concepts and recommendations; 'mastra' = guido v2 on
+# the agent server, free loop, the guideline pages part of his graph, page search and reading. a request may choose
+GUIDO_HARNESS = env('GUIDO_HARNESS', 'local')
 AGENT_AISDK_URL = env('AGENT_AISDK_URL')
 LUNA_IMAGE_TOOL = env('LUNA_IMAGE_TOOL') == '1'  # view_page for luna's agent: the rendered PDF page as an image  # the second harness (agent-server-aisdk/, AI SDK 7), chosen per request with 'harness'
 AGENT_TOKEN = env('AGENT_TOKEN')

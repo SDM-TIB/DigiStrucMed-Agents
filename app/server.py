@@ -208,7 +208,7 @@ class Handler(BaseHTTPRequestHandler):
       return self.send(403, {'error': 'Same-origin request required'})
     length = int(self.headers.get('Content-Length') or 0)
     body = json.loads(self.rfile.read(length) or b'{}') if length else {}
-    if self.path.startswith('/api/agent/tools/'):  # luna's tools for the agent server, server to server, by token
+    if self.path.startswith('/api/agent/tools/'):  # luna's and guido's tools for the agent server, server to server
       if not agent_tools.authorised(self.headers, self.headers.get('Host', '')):
         return self.send(401, {'error': 'Agent identity required'})
       res = agent_tools.call(self.path.rsplit('/', 1)[-1], body)
@@ -300,8 +300,8 @@ class Handler(BaseHTTPRequestHandler):
       gpu.touch(self.session())
     if agent == 'luna':  # optional step bound and agent harness ('mastra' or 'aisdk'), for evaluations
       return self.stream(luna.run(messages, rounds=body.get('rounds'), harness=body.get('harness'), image_tool=body.get('image_tool')))
-    if agent == 'guido':  # optional tool round budget, used by the evaluation ablations
-      return self.stream(CHATS[agent](messages, rounds=body.get('rounds')))
+    if agent == 'guido':  # optional round/step bound and harness ('local' or 'mastra' = guido v2), for evaluations
+      return self.stream(guido.run(messages, rounds=body.get('rounds'), harness=body.get('harness')))
     return self.stream(CHATS[agent](messages))
 
   def end_call(self, body, via=None):

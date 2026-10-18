@@ -135,6 +135,13 @@ def agent_view():
     'links': 'SELECT ?e ?src ?status ?method ?rec ?eff ?name WHERE { ?ls f:anchor ?e ; f:terminologySource ?src ; f:linkStatus ?status ; '
              'f:method ?method ; f:decisionRecord ?rec . OPTIONAL { ?ls f:effectiveConcept ?eff . OPTIONAL { ?eff rdfs:label ?name } } '
              'FILTER STRSTARTS(STR(?e), "http://digistrucmed.org/entity/") }',
+    # the guideline pages as part of the walk: a page names a concept when one of its detected mentions is linked to
+    # the same UMLS concept as the concept itself (both as the selected Top1 of their link sets); ?n counts the
+    # mentions, so a walk can prefer the pages that are about a concept over those that only name it once
+    'pagecon': 'SELECT ?page ?e (COUNT(?occ) AS ?n) WHERE { ?els f:anchor ?e ; f:terminologySource "umls" ; '
+               'f:linkStatus "selected_top1" ; f:effectiveConcept ?code . FILTER STRSTARTS(STR(?e), "http://digistrucmed.org/entity/") '
+               '?ls f:effectiveConcept ?code ; f:terminologySource "umls" ; f:linkStatus "selected_top1" ; f:anchor ?q . '
+               '?q a m:RetrievalQuery . ?occ m:ofQuery ?q . ?page m:hasOccurrence ?occ } GROUP BY ?page ?e',
   }
   with ThreadPoolExecutor(6) as pool:
     rows = dict(zip(q, pool.map(lambda s: sparql(s, timeout=300), q.values())))
@@ -200,8 +207,15 @@ def agent_view():
     if r['o'] != r['e']:
       edges.add((concept(r['e']), concept(r['o']), RELATIONS[r['p']]))
   used = {a for a, _, _ in edges} | {b for _, b, _ in edges}
+  # pages: page id -> [(concept id, mentions)] for the concepts of this view; a recommendation's page from its block id
+  pages = collections.defaultdict(list)
+  for r in rows['pagecon']:
+    if r['e'] in concepts and concepts[r['e']]['id'] in used:
+      pages[local(r['page'])].append((concepts[r['e']]['id'], int(r['n'])))
+  for rec in recs.values():
+    rec['page_id'] = next((pb[3:].rsplit('_g', 1)[0] for pb in rec['src']), None)
   return {'concepts': [c | {'iri': e} for e, c in concepts.items() if c['id'] in used], 'recs': list(recs.values()),
-          'guides': [g for g in guides.values() if g['id'] in used], 'edges': sorted(edges)}
+          'guides': [g for g in guides.values() if g['id'] in used], 'edges': sorted(edges), 'pages': dict(pages)}
 
 
 def load_agent_view(attempts=12, wait=10):
@@ -211,7 +225,8 @@ def load_agent_view(attempts=12, wait=10):
       t0 = time.time()
       view = agent_view()
       print(f"graph: agent view {len(view['concepts'])} concepts, {len(view['recs'])} recommendations, "
-            f"{len(view['edges'])} edges in {time.time() - t0:.1f}s from {config.GRAPH_ENDPOINT}", flush=True)
+            f"{len(view['edges'])} edges, {len(view['pages'])} pages with "
+            f"{sum(len(v) for v in view['pages'].values())} page-concept links in {time.time() - t0:.1f}s from {config.GRAPH_ENDPOINT}", flush=True)
       return view
     except GraphUnavailable as e:
       print(f'graph: {e} (attempt {i + 1}/{attempts})', flush=True)

@@ -82,7 +82,43 @@ def _drive(gen):
     return events, stop.value
 
 
+def walk(run):
+  """guido's walk of one run, if his tools were called"""
+  with _lock:
+    entry = _runs.get(str(run)[:80])
+    return entry.get('walk') if entry else None
+
+
+def _guido(tool, body):
+  """guido v2's tools: explore, expand, search_pages, read_page over one walk per run (guido.Walk with the pages)"""
+  import guido
+  run = str(body.get('run') or 'default')
+  _sources(run)  # creates and refreshes the run entry
+  with _lock:
+    entry = _runs[run[:80]]
+    if 'walk' not in entry:
+      entry['walk'] = guido.Walk(str(body.get('question') or ''), pages=True)
+    w = entry['walk']
+  events = []
+  if tool == 'guido_explore':
+    q = str(body.get('query', ''))[:200]
+    model = w.explore(q, w.question, events)
+  elif tool == 'guido_expand':
+    nid = str(body.get('node_id', '')).strip()
+    model = w.expand(nid, events)
+  elif tool == 'guido_search':
+    model = w.search_pages(str(body.get('query', ''))[:300], events)
+  elif tool == 'guido_read':
+    model = w.read_pages(body.get('sources') or [], events)
+  else:
+    return None
+  events.append({'type': 'sources', 'query': tool, 'items': w.sources()})
+  return {'model': model, 'ui': events}
+
+
 def call(tool, body):
+  if tool.startswith('guido_'):
+    return _guido(tool, body)
   run = body.get('run') or 'default'
   if tool == 'search':
     args = {k: body.get(k) for k in ('query', 'guideline', 'top_k') if body.get(k) not in (None, '')}

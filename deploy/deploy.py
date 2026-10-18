@@ -25,7 +25,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SECRETS = ('TAVUS_API_KEY', 'TAVUS_EXTRA_KEYS', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
            'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'MODAL_EXTRA_TOKENS', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
 SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'MAX_CALL_SECONDS', 'GRAPH_ENDPOINT',
-            'EMBED_URL', 'AGENT_URL', 'AGENT_AISDK_URL', 'LUNA_IMAGE_TOOL')
+            'EMBED_URL', 'AGENT_URL', 'AGENT_AISDK_URL', 'LUNA_IMAGE_TOOL', 'GUIDO_HARNESS')
 # large files that live in the bucket under assets/, not in git
 ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter', 'tavus/knowledge_base': 'assets/tavus-kb'}
 

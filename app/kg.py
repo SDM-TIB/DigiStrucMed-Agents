@@ -4,6 +4,8 @@ node ids:  c:<entity>  concept     r:<text unit>  recommendation     g:<guidelin
 edges:     rec -> concept  (population | target | condition | parameter | mention)
            rec -> guide    (source)
            concept -> concept  (subclass of, treated with, has symptom, ...)
+pages:     p:<page id>, the guideline pages of the graph. page -> concept when a detected mention on the page is linked to
+           the concept's UMLS concept (graph.agent_view 'pagecon'); rec -> page from the recommendation's source block
 loaded once at startup from the graph server (graph.agent_view), the same graph the explorer shows. every concept
 carries its link set per terminology (UMLS, SNOMED CT, MeSH, RxNorm, LOINC, Wikidata) from the graph's entity-links.
 """
@@ -21,7 +23,22 @@ OUT, IN = defaultdict(list), defaultdict(list)
 for a, b, role in _g['edges']:
   OUT[a].append((b, role))
   IN[b].append((a, role))
-del _g
+# the page layer. weights are tf-idf: mentions on the page times log(pages / pages naming the concept), so "patient"
+# (on most pages) leads nowhere and "sacubitril" leads to the pages about it
+PAGE_CONCEPTS = {'p:' + pid: links for pid, links in _g['pages'].items()}
+_df = Counter(c for links in PAGE_CONCEPTS.values() for c, _ in links)
+IDF = {c: math.log((len(PAGE_CONCEPTS) + 1) / (n + 1)) for c, n in _df.items()}
+CONCEPT_PAGES = defaultdict(list)
+for _pid, _links in PAGE_CONCEPTS.items():
+  for _c, _n in _links:
+    CONCEPT_PAGES[_c].append((_pid, _n * IDF[_c]))
+for _c in CONCEPT_PAGES:
+  CONCEPT_PAGES[_c].sort(key=lambda x: -x[1])
+PAGE_RECS = defaultdict(list)
+for _r in RECS.values():
+  if _r.get('page_id'):
+    PAGE_RECS['p:' + _r['page_id']].append(_r['id'])
+del _g, _df
 REC_ROLES = {'population', 'target', 'condition', 'parameter', 'mention'}
 CODE_NAME = {'umls': 'UMLS', 'snomed': 'SNOMED CT', 'mesh': 'MeSH', 'rxnorm': 'RxNorm', 'loinc': 'LOINC', 'wikidata': 'Wikidata'}
 SELECTORS = (('clef', 'CLEF'), ('gemini', 'Gemini 2.5 Flash Lite'), ('luna', 'Luna'))
@@ -92,7 +109,45 @@ def label(nid):
     return CONCEPTS[nid]['label']
   if nid in GUIDES:
     return GUIDES[nid]['label']
+  if nid.startswith('p:'):
+    p = page(nid)
+    return f"{p.get('ref') or p['title']}, p. {p['page']}" if p else nid
   return nid
+
+
+def page(pid):
+  """the corpus record of a page node p:<page id>, or None"""
+  import corpus
+  return corpus.PAGE_BY_ID.get(pid[2:]) if pid.startswith('p:') else None
+
+
+_page_index = {}
+
+
+def page_index(pid):
+  """the position of a page node's page in corpus.PAGES (what search.py and corpus.card count with), or None"""
+  import corpus
+  if not _page_index:
+    _page_index.update({'p:' + q['id']: i for i, q in enumerate(corpus.PAGES)})
+  return _page_index.get(pid)
+
+
+def page_concepts(pid, k=12):
+  """the concepts a page is most about, by tf-idf"""
+  return sorted(((c, n * IDF.get(c, 0)) for c, n in PAGE_CONCEPTS.get(pid, [])), key=lambda x: -x[1])[:k]
+
+
+def pages_for(cids, k=4, prefer=()):
+  """pages where these concepts appear together: tf-idf summed over the concepts, pages of `prefer` (recommendation
+  pages already in the walk) first among equals"""
+  score = Counter()
+  for c in cids:
+    for pid, w in CONCEPT_PAGES.get(c, [])[:200]:
+      score[pid] += w
+  for pid in prefer:
+    if pid in score:
+      score[pid] *= 1.25
+  return [pid for pid, _ in score.most_common(k)]
 
 
 def rec_score(rid, query_tokens):
@@ -143,6 +198,10 @@ def node_view(nid, hop):
     return {'id': nid, 'kind': 'rec', 'label': (r['ref'] or 'Recommendation') + (' · ' + g if g else ''), 'text': r['text'][:220], 'hop': hop}
   if nid in GUIDES:
     return {'id': nid, 'kind': 'guide', 'label': GUIDES[nid]['label'], 'hop': hop}
+  if nid.startswith('p:'):
+    p = page(nid)
+    return {'id': nid, 'kind': 'page', 'label': label(nid), 'text': (p['title'] if p else '')[:220], 'hop': hop,
+            'page_id': nid[2:]}
   return {'id': nid, 'kind': 'concept', 'label': CONCEPTS[nid]['label'], 'hop': hop}
 
 

@@ -191,7 +191,7 @@ function loadData() {
 
 /* ---------------- guido's live knowledge graph (force-graph) ---------------- */
 const KG = {fg: null, nodes: [], links: [], byId: new Map(), cited: new Set(), pathIds: new Set(), hop: 0, hover: null};
-const KG_COL = {concept: '#4b63e0', rec: '#2fa36b', guide: '#8a90a0', seedRing: 'rgba(75,99,224,.28)', link: 'rgba(110,118,140,.35)', hot: '#4b63e0'};
+const KG_COL = {concept: '#4b63e0', rec: '#2fa36b', guide: '#8a90a0', page: '#d97706', seedRing: 'rgba(75,99,224,.28)', link: 'rgba(110,118,140,.35)', hot: '#4b63e0'};
 function kgInit() {
   if (KG.fg || !window.ForceGraph) return;
   const el = $('#kg-canvas');
@@ -202,7 +202,7 @@ function kgInit() {
     .linkDirectionalParticleColor(() => KG_COL.hot)
     .nodeCanvasObject(kgDraw).nodePointerAreaPaint((n, color, ctx) => { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, kgR(n) + 3, 0, 2 * Math.PI); ctx.fill(); })
     .onNodeHover(n => { KG.hover = n || null; el.style.cursor = n ? 'pointer' : ''; kgTip(n); })
-    .onNodeClick(n => kgTip(n, true));
+    .onNodeClick(n => { kgTip(n, true); if (n.kind === 'page' && n.page_id) window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: n.page_id}})); });
   KG.fg.d3Force('charge').strength(n => n.kind === 'question' ? -600 : -220);
   KG.fg.d3Force('link').distance(l => l.role === 'question' ? 90 : l.role === 'source' ? 40 : 70);
   KG.fg.d3Force('collide', kgCollide(n => n.kind === 'question' ? 48 : KG.wave === -1 ? (KG.pathIds.has(n.id) ? 46 : 8) : 13));
@@ -228,7 +228,7 @@ function kgRecLabel(n, lim) {
   const t = (n.text || n.label).replace(/\s+/g, ' '), room = lim - (grade ? grade.length + 3 : 0);
   return (t.length > room ? t.slice(0, room - 1).trimEnd() + '…' : t) + (grade ? ' · ' + grade : '');
 }
-function kgR(n) { return n.kind === 'concept' ? (n.hop === 0 ? 9 : 6) : n.kind === 'rec' ? 5 : 4; }
+function kgR(n) { return n.kind === 'concept' ? (n.hop === 0 ? 9 : 6) : n.kind === 'rec' ? 5 : n.kind === 'page' ? 5.5 : 4; }
 function kgDraw(n, ctx, scale) {
   if (n.kind === 'question') {
     const fs = 13 / scale, txt = n.label.length > 46 ? n.label.slice(0, 45) + '…' : n.label;
@@ -245,6 +245,7 @@ function kgDraw(n, ctx, scale) {
   if (KG.cited.has(n.id)) { ctx.strokeStyle = '#f2b136'; ctx.lineWidth = 3 / scale; ctx.beginPath(); ctx.arc(n.x, n.y, r + 3.5, 0, 2 * Math.PI); ctx.stroke(); }
   ctx.fillStyle = KG_COL[n.kind] || KG_COL.concept; ctx.beginPath();
   if (n.kind === 'rec') { const w = r * 1.7; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - w / 2, w, w, 2) : ctx.rect(n.x - w / 2, n.y - w / 2, w, w); }
+  else if (n.kind === 'page') { const w = r * 1.4, h = r * 1.9; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - h / 2, w, h, 1.5) : ctx.rect(n.x - w / 2, n.y - h / 2, w, h); }  // a sheet: a guideline page
   else ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
   ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2 / scale; ctx.stroke();
   const showLabel = KG.hover === n || (KG.wave === -1 ? KG.pathIds.has(n.id) : n.hop === 0 || n.wave === KG.wave);
@@ -265,7 +266,8 @@ function kgTip(n, sticky) {
   const tip = $('#kg-tip');
   if (!n) { if (!tip.dataset.sticky) tip.classList.add('hidden'); return; }
   tip.dataset.sticky = sticky ? '1' : '';
-  tip.innerHTML = n.kind === 'rec' ? `<b>${esc(n.label)}</b>${esc(n.text || '')}` : `<b>${esc(n.label)}</b>${n.kind === 'guide' ? 'Source guideline' : 'Concept in the knowledge graph'}`;
+  tip.innerHTML = n.kind === 'rec' ? `<b>${esc(n.label)}</b>${esc(n.text || '')}` : n.kind === 'page' ? `<b>${esc(n.label)}</b>${esc(n.text || '')} · ${esc(uiText('Guideline page'))}`
+    : `<b>${esc(n.label)}</b>${n.kind === 'guide' ? 'Source guideline' : 'Concept in the knowledge graph'}`;
   tip.classList.remove('hidden');
 }
 // The camera follows the traversal: centre on the newest wave of nodes, then settle on them.
@@ -1258,6 +1260,7 @@ function kxDraw(n, ctx, scale) {
   if (KX.used.has(n.id)) { ctx.strokeStyle = '#f2b136'; ctx.lineWidth = 3 / scale; ctx.beginPath(); ctx.arc(n.x, n.y, r + 3.5, 0, 2 * Math.PI); ctx.stroke(); }
   ctx.fillStyle = kxCol(n); ctx.beginPath();
   if (n.kind === 'rec') { const w = r * 1.7; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - w / 2, w, w, 2) : ctx.rect(n.x - w / 2, n.y - w / 2, w, w); }
+  else if (n.kind === 'page') { const w = r * 1.4, h = r * 1.9; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - h / 2, w, h, 1.5) : ctx.rect(n.x - w / 2, n.y - h / 2, w, h); }  // a sheet: a guideline page
   else ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
   ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = (KX.expanded.has(n.id) ? 2 : 1) / scale; ctx.stroke();
   const show = sel || n.id === KX.origin || KX.hover === n || KX.nbrs.has(n.id) || KX.used.has(n.id) || scale > 1.8;
@@ -1386,6 +1389,8 @@ function makeTimeline(st, opts = {}) {
     }
     if (ev.action === 'hop2') { hud('walk', uiText('to {names}', {names: names(concepts, 3)})); return step(st, 'search', uiText('Following the top recommendations to {names}', {names: names(concepts)}), true); }
     if (ev.action === 'expanded') return step(st, 'search', uiText('Expanding {c} one hop further', {c: `<span class="q">${esc(lab(ev.focus))}</span>`}), true);
+    if (ev.action === 'pages') { const pages = ev.nodes.filter(n => n.kind === 'page'); hud('read', uiText('{n} guideline pages', {n: pages.length}));
+      return step(st, 'read', uiText('Guideline pages where these concepts meet: {names}', {names: names(pages)}), true); }
   }
   function chunks(ev) {   // reveal large hops in small waves so nodes visibly grow out of their parent
     if (ev.action === 'done' || ev.nodes.length <= 4) return [ev];

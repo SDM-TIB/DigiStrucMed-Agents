@@ -425,7 +425,10 @@
     "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.": "Forschung zu transparenter KI auf Basis von Wissensgraphen und Kausalität, in den Projekten TrustKG und P4-LUCAT.",
     "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover": "Wissenschaftliche Mitarbeit, Scientific Data Management, TIB; Promotion, Leibniz Universität Hannover",
     "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.": "Forschung zu erklärbaren kausalen Modellen über kognitiven Wissensgraphen, in den Projekten TrustKG und ImProVIT.",
-    "Institutions": "Einrichtungen"
+    "Institutions": "Einrichtungen",
+    "Guideline page": "Leitlinienseite",
+    "{n} guideline pages": "{n} Leitlinienseiten",
+    "Guideline pages where these concepts meet: {names}": "Leitlinienseiten, auf denen diese Konzepte zusammenkommen: {names}"
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -852,7 +855,10 @@
     "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.": "Investigación en IA transparente sobre grafos de conocimiento y causalidad, en los proyectos TrustKG y P4-LUCAT.",
     "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover": "Asistente de investigación, Scientific Data Management, TIB; doctorado, Leibniz Universität Hannover",
     "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.": "Investigación en modelos causales explicables sobre grafos de conocimiento cognitivos, en los proyectos TrustKG e ImProVIT.",
-    "Institutions": "Instituciones"
+    "Institutions": "Instituciones",
+    "Guideline page": "Página de la guía",
+    "{n} guideline pages": "{n} páginas de guías",
+    "Guideline pages where these concepts meet: {names}": "Páginas de guías donde coinciden estos conceptos: {names}"
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1279,7 +1285,10 @@
     "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.": "Исследования прозрачного ИИ на основе графов знаний и причинности в проектах TrustKG и P4-LUCAT.",
     "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover": "Научный сотрудник, Scientific Data Management, TIB; аспирантура, Ганноверский университет им. Лейбница",
     "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.": "Исследования объяснимых причинных моделей на когнитивных графах знаний в проектах TrustKG и ImProVIT.",
-    "Institutions": "Организации"
+    "Institutions": "Организации",
+    "Guideline page": "Страница рекомендаций",
+    "{n} guideline pages": "страниц рекомендаций: {n}",
+    "Guideline pages where these concepts meet: {names}": "Страницы рекомендаций, где встречаются эти понятия: {names}"
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -1706,6 +1715,9 @@
     "Works on transparent AI on top of knowledge graphs and causality, in the TrustKG and P4-LUCAT projects.": "नॉलेज ग्राफ़ और कार्य-कारण पर आधारित पारदर्शी AI पर शोध, TrustKG और P4-LUCAT परियोजनाओं में।",
     "Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover": "रिसर्च असिस्टेंट, Scientific Data Management, TIB; PhD उम्मीदवार, लाइबनिज़ यूनिवर्सिटी हैनोवर",
     "Works on explainable causal models over cognitive knowledge graphs, in the TrustKG and ImProVIT projects.": "संज्ञानात्मक नॉलेज ग्राफ़ पर व्याख्येय कारणात्मक मॉडल पर शोध, TrustKG और ImProVIT परियोजनाओं में।",
-    "Institutions": "संस्थान"
+    "Institutions": "संस्थान",
+    "Guideline page": "दिशानिर्देश का पृष्ठ",
+    "{n} guideline pages": "{n} दिशानिर्देश पृष्ठ",
+    "Guideline pages where these concepts meet: {names}": "दिशानिर्देश पृष्ठ जहाँ ये अवधारणाएँ मिलती हैं: {names}"
   }
 }

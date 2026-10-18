@@ -103,3 +103,50 @@ export const viewPage = createTool({
     }
   },
 })
+
+// Guido v2's tools: the walk over the guideline knowledge graph (app/guido.py Walk, with the guideline pages as nodes),
+// one walk per run in the app (app/agent_tools.py). Each returns the text the model reads; the graph events for the
+// browser travel in `ui`.
+export const explore = createTool({
+  id: 'explore',
+  description: 'Link medical terms to the guideline knowledge graph (concepts and recommendation texts) and return the ' +
+    'recommendations closest to them (personalized pagerank, with class/level of evidence, relations and connected ' +
+    'concepts) and the guideline pages where these concepts appear together.',
+  inputSchema: z.object({
+    query: z.string().describe('Key medical terms in English with synonyms, e.g. "aspirin dose secondary prevention antiplatelet"'),
+  }),
+  execute: async (input, ctx) => callApp('guido_explore', { ...input, ...runOf(ctx) }),
+  toModelOutput: toModel,
+})
+
+export const expand = createTool({
+  id: 'expand',
+  description: 'Go one hop further from a node already shown: a concept id (c:...), a recommendation or page number, or a ' +
+    'page node (p:...). A page node shows the concepts and recommendations on that page.',
+  inputSchema: z.object({ node_id: z.string() }),
+  execute: async (input, ctx) => callApp('guido_expand', { ...input, ...runOf(ctx) }),
+  toModelOutput: toModel,
+})
+
+export const searchPages = createTool({
+  id: 'search_pages',
+  description: 'Semantic search over all guideline pages (EmbeddingGemma 2, each candidate page judged by a relevance ' +
+    'model). The pages join the graph with their concepts and recommendations. Use it for exact values and for what ' +
+    'the recommendation texts do not state.',
+  inputSchema: z.object({
+    query: z.string().describe('What to find, as a full phrase with the clinical terms and the population'),
+  }),
+  execute: async (input, ctx) => callApp('guido_search', { ...input, ...runOf(ctx) }),
+  toModelOutput: toModel,
+})
+
+export const readPageGuido = createTool({
+  id: 'read_page',
+  description: 'Read up to three pages as they were printed (OCR text in Markdown with the HTML tables, signs like < and > ' +
+    'kept), by their numbers or page nodes; a recommendation number reads its page.',
+  inputSchema: z.object({
+    sources: z.array(z.union([z.number().int(), z.string()])).min(1).max(3).describe('Page or recommendation numbers, or page nodes p:...'),
+  }),
+  execute: async (input, ctx) => callApp('guido_read', { ...input, ...runOf(ctx) }),
+  toModelOutput: toModel,
+})

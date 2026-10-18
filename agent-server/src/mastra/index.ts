@@ -1,4 +1,4 @@
-// The agent server: Mastra with one route, POST /luna/chat, that streams TIB Chat's chat events (server-sent events
+// The agent server: Mastra with one route per agent, POST /luna/chat and /guido/chat, that streams TIB Chat's chat events (server-sent events
 // in the app's own format: text, tool_call, sources, read, done, error), so the browser code stays unchanged.
 //
 // The loop is Mastra's (on the AI SDK): the model calls tools as it sees fit, several per step, and the run ends when
@@ -8,6 +8,8 @@ import { Mastra } from '@mastra/core'
 import { RequestContext } from '@mastra/core/request-context'
 import { registerApiRoute } from '@mastra/core/server'
 import { isLoopFinished, stepCountIs } from 'ai'
+import type { Agent } from '@mastra/core/agent'
+import { guido } from './agents/guido.ts'
 import { luna } from './agents/luna.ts'
 
 const DEBUG = process.env.DEBUG_CHUNKS === '1'  // log every stream chunk (development)
@@ -22,7 +24,8 @@ type ChatBody = {
   image_tool?: boolean
 }
 
-const chatRoute = registerApiRoute('/luna/chat', {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const chatRoute = (path: string, agent: Agent<any, any, any>) => registerApiRoute(path, {
   method: 'POST',
   handler: async c => {
     if (TOKEN && c.req.header('X-Agent-Token') !== TOKEN) return c.json({ error: 'Agent token required' }, 401)
@@ -45,7 +48,7 @@ const chatRoute = registerApiRoute('/luna/chat', {
       async start(controller) {
         const send = (ev: Record<string, unknown>) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(ev)}\n\n`))
         try {
-          const out = await luna.stream(messages, {
+          const out = await agent.stream(messages, {
             requestContext,
             stopWhen: maxSteps ? stepCountIs(maxSteps) : isLoopFinished(),
             toolCallConcurrency: 4,
@@ -74,9 +77,9 @@ const chatRoute = registerApiRoute('/luna/chat', {
 })
 
 export const mastra = new Mastra({
-  agents: { luna },
+  agents: { luna, guido },
   server: {
     host: '0.0.0.0',
-    apiRoutes: [chatRoute],
+    apiRoutes: [chatRoute('/luna/chat', luna), chatRoute('/guido/chat', guido)],
   },
 })

@@ -106,13 +106,14 @@ def run(messages, rounds=None, harness=None, image_tool=None):
   yield from _local(messages, rounds)
 
 
-def _via_agent(messages, rounds, url, image_tool=False):
-  """the Mastra agent's event stream, already in the chat's event format"""
+def _via_agent(messages, rounds, url, image_tool=False, agent='luna', system=None, run=None):
+  """an agent of the agent server (luna, or guido from guido.py), its event stream already in the chat's format"""
   body = {'messages': [{'role': m.get('role'), 'text': m.get('text')} for m in messages if m.get('text')][-12:],
-          'system': SYSTEM_AGENT + (IMAGE_RULE if image_tool else ''), 'run': uuid.uuid4().hex, 'image_tool': image_tool}
+          'system': system or SYSTEM_AGENT + (IMAGE_RULE if image_tool else ''), 'run': run or uuid.uuid4().hex,
+          'image_tool': image_tool}
   if rounds:  # an evaluation's explicit step bound
     body['max_steps'] = int(rounds)
-  req = urllib.request.Request(url.rstrip('/') + '/luna/chat', data=json.dumps(body).encode(), method='POST',
+  req = urllib.request.Request(url.rstrip('/') + f'/{agent}/chat', data=json.dumps(body).encode(), method='POST',
                                headers={'Content-Type': 'application/json', 'X-Agent-Token': config.AGENT_TOKEN,
                                         'Authorization': 'Bearer ' + storage.identity_token(url)}
                                if config.AGENT_TOKEN else
