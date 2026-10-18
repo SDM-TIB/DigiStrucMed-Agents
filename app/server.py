@@ -299,7 +299,9 @@ class Handler(BaseHTTPRequestHandler):
     if agent == 'lino':  # only lino runs on the gpu. luna and guido use the llm api and are always there
       gpu.touch(self.session())
     if agent == 'luna':  # optional step bound and agent harness ('mastra' or 'aisdk'), for evaluations
-      return self.stream(luna.run(messages, rounds=body.get('rounds'), harness=body.get('harness'), image_tool=body.get('image_tool')))
+      candidates = body.get('candidates') if body.get('candidates') in page_search.CANDIDATE_METHODS else None
+      return self.stream(luna.run(messages, rounds=body.get('rounds'), harness=body.get('harness'), image_tool=body.get('image_tool'),
+                                  candidates=candidates))
     if agent == 'guido':  # optional round/step bound and harness ('local' or 'mastra' = guido v2), for evaluations
       return self.stream(guido.run(messages, rounds=body.get('rounds'), harness=body.get('harness')))
     return self.stream(CHATS[agent](messages))
@@ -340,7 +342,7 @@ GET_ROUTES = {
   '/api/graph/search': lambda q: {'items': graph.search(q.get('q', '')[:160], [k for k in q.get('kinds', '').split(',') if k] or None)},
   '/api/graph/node': lambda q: graph.node(q.get('id', '')),
   '/api/search/status': lambda q: (page_search.warm(), page_search.status())[1],  # opening the app wakes the embedding service
-  '/api/search/semantic': lambda q: page_search.semantic(q.get('q', '')),
+  '/api/search/semantic': lambda q: page_search.semantic(q.get('q', ''), use=[u for u in q['use'].split(',') if u in page_search.USES] if 'use' in q else None),
   '/api/graph/neighbours': lambda q: graph.neighbours(q.get('id', ''), q.get('p') or None, q.get('dir') or None,
                                                        q.get('limit', 40), q.get('offset', 0)),
 }

@@ -8,7 +8,7 @@ the run ends. The service runs as a single instance, so the tool call and the st
 import queue
 import threading
 
-_channels, _lock = {}, threading.Lock()
+_channels, _options, _lock = {}, {}, threading.Lock()
 
 
 def open_run(run):
@@ -26,3 +26,15 @@ def publish(run, event):
 def close(run):
   with _lock:
     _channels.pop(str(run), None)
+    _options.pop(str(run), None)
+
+
+def set_options(run, options):
+  """settings of one run that its tool calls read (an evaluation's variant, e.g. how the search finds candidates)"""
+  with _lock:
+    _options[str(run)] = dict(options)
+
+
+def options(run):
+  with _lock:
+    return dict(_options.get(str(run), {}))

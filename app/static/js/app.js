@@ -495,7 +495,7 @@ const SRCH_IC = {
   c: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>',
   r: '<svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>'};
 let srchSeq = 0, srchTimer = 0;
-function openSearch() { view('search'); loadData(); if (!$('#srch-try').children.length) {
+function openSearch() { view('search'); loadData(); renderSemUse(); if (!$('#srch-try').children.length) {
   $('#srch-try').innerHTML = ['aspirin', 'SGLT2 inhibitors', 'HFrEF', 'Guido', 'side effects', 'Herzinsuffizienz'].map(t => `<button>${esc(t)}</button>`).join('');
   $('#srch-try').querySelectorAll('button').forEach(b => b.onclick = () => { $('#srch-q').value = b.textContent; runSearch(b.textContent); });
   runSearch(''); }
@@ -520,9 +520,35 @@ function srchAround(text, terms, n = 160) {
 // the best segment on its modality's scale, the share of your words on the page, and the kind of page you ask for.
 // each hit shows why it was found
 let srchVec = false;
+// what the embedding search compares, switchable: the three kinds of vectors (at least one stays on) and the two
+// bonuses. all on is the measured default; one alone shows what it finds by itself (e.g. only the page images)
+const SEM_USE = [['passage', 'Passages', 'Every 400-character passage of a page'], ['page', 'Whole page', 'The whole page text as one vector'],
+  ['image', 'Page image', 'The rendered PDF page as an image vector'], ['words', 'Your words', 'Bonus for the share of your words on the page'],
+  ['kinds', 'Page kind', 'Bonus for the kind of page you ask for (table, recommendation table, references, abbreviations)']];
+const SEM_VEC = ['passage', 'page', 'image'];
+let semUse = (() => { try { const v = JSON.parse(localStorage.getItem('semUse')); if (Array.isArray(v) && v.some(u => SEM_VEC.includes(u))) return v; } catch {} return SEM_USE.map(u => u[0]); })();
+function renderSemUse() {
+  const el = $('#sem-use');
+  el.classList.toggle('hidden', !srchVec);
+  const vecOn = SEM_VEC.filter(u => semUse.includes(u));
+  el.innerHTML = `<span class="sem-use-l">${esc(uiText('Compare with'))}</span>` + SEM_USE.map(([id, label, tip], i) => {
+    const on = semUse.includes(id), last = on && SEM_VEC.includes(id) && vecOn.length === 1;
+    return (i === 3 ? '<span class="sem-use-sep"></span>' : '') + `<button type="button" data-u="${id}" aria-pressed="${on}" ${last ? 'disabled' : ''} title="${esc(uiText(last ? 'At least one kind of vector stays on' : tip))}"><i></i>${esc(uiText(label))}</button>`;
+  }).join('') + (semUse.length < SEM_USE.length ? `<button type="button" class="sem-use-all">${esc(uiText('All (default)'))}</button>` : '');
+  el.querySelectorAll('button[data-u]').forEach(b => b.onclick = () => {
+    const u = b.dataset.u;
+    semUse = semUse.includes(u) ? semUse.filter(x => x !== u) : SEM_USE.map(x => x[0]).filter(x => x === u || semUse.includes(x));
+    try { localStorage.setItem('semUse', JSON.stringify(semUse)); } catch {}
+    renderSemUse();
+    if ($('#srch-q').value.trim()) runSearch($('#srch-q').value);
+  });
+  const all = el.querySelector('.sem-use-all');
+  if (all) all.onclick = () => { semUse = SEM_USE.map(x => x[0]); try { localStorage.removeItem('semUse'); } catch {} renderSemUse(); if ($('#srch-q').value.trim()) runSearch($('#srch-q').value); };
+}
 $('#srch-vec').onclick = () => {
   srchVec = !srchVec;
   $('#srch-vec').setAttribute('aria-pressed', String(srchVec));
+  renderSemUse();
   $('#srch-q').placeholder = uiText(srchVec ? 'Describe what you are looking for, in your own words' : 'Search agents, conversations, guidelines, the knowledge graph and videos');
   $('#srch-q').focus();
   if ($('#srch-q').value.trim()) runSearch($('#srch-q').value);
@@ -530,7 +556,7 @@ $('#srch-vec').onclick = () => {
 async function runSemantic(q, seq) {
   const res = $('#srch-res');
   res.innerHTML = '<div class="sem-wait"><span class="sem-dots"><i></i><i></i><i></i></span>' + esc(uiText('Embedding your question with EmbeddingGemma 2…')) + '</div>';
-  let x; try { x = await fetch('/api/search/semantic?q=' + encodeURIComponent(q)).then(r => r.json()); } catch { x = {available: false, hits: []}; }
+  let x; try { x = await fetch('/api/search/semantic?q=' + encodeURIComponent(q) + '&use=' + semUse.join(',')).then(r => r.json()); } catch { x = {available: false, hits: []}; }
   if (seq !== srchSeq) return;
   if (!x.available) { res.innerHTML = '<p class="srch-empty">' + esc(uiText('Semantic search is warming up. Try again in a moment.')) + '</p>'; return; }
   const cells = x.query_vector.map(v => `<i style="--v:${v}"></i>`).join('');
@@ -539,9 +565,12 @@ async function runSemantic(q, seq) {
   const why = h => h.match ? `<span class="sem-why"><span class="sem-chip m-${h.match}" title="${esc(uiText('cosine {c}, {z} standard deviations above the mean', {c: h.similarity.toFixed(2), z: h.z.toFixed(1)}))}">${esc(uiText('matched by ' + MATCH[h.match]))} · z ${h.z.toFixed(1)}</span>${h.words ? `<span class="sem-chip">${esc(uiText('{p}% of your words', {p: Math.round(100 * h.words)}))}</span>` : ''}${(h.kinds || []).map(k => `<span class="sem-chip k">${esc(uiText(k))}</span>`).join('')}</span>` : '';
   const hits = x.hits.map((h, i) => `<button class="sem-it" data-i="${i}" style="animation-delay:${i * 35}ms"><span class="sem-score"><b>${val(h).toFixed(2)}</b><span class="sem-bar"><i style="width:${Math.max(4, 100 * val(h) / top)}%"></i></span></span><span class="tx"><b>${esc(h.title)}</b>${why(h)}<p>${esc(h.passage)}</p><small>${h.ref ? esc(h.ref) + ' · ' : ''}${esc(uiText('page {p}', {p: h.page}))}</small></span></button>`).join('');
   const seg = x.segments || {};
+  const SEG_NAME = {passage: '{n} passages', page: '{n} whole pages', image: '{n} page images'};
+  const used = Object.entries(seg).map(([k, n]) => uiText(SEG_NAME[k], {n: n.toLocaleString()})).join(', ');
   const how = x.method === 'digup'
-    ? uiText('Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors: {a} passages, {b} whole pages and {c} page images. Each kind of vector is put on its own scale, a page counts with its best match, the share of your words on the page adds to it', {d: x.dims, m: x.model, s: x.ms.score, n: x.vectors.toLocaleString(), a: (seg.passage || 0).toLocaleString(), b: (seg.page || 0).toLocaleString(), c: (seg.image || 0).toLocaleString()})
-      + (x.asked && x.asked.length ? uiText(', and pages of the kind you asked for get a bonus: {k}.', {k: x.asked.map(k => uiText(k) + ' (' + (x.kind_pages[k] || 0) + ')').join(', ')}) : '.')
+    ? uiText('Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors ({u}). Each kind of vector is put on its own scale and a page counts with its best match', {d: x.dims, m: x.model, s: x.ms.score, n: x.vectors.toLocaleString(), u: used})
+      + ((x.use || []).includes('words') ? uiText('; the share of your words on the page adds to it') : '')
+      + (x.asked && x.asked.length ? uiText('; pages of the kind you asked for get a bonus: {k}', {k: x.asked.map(k => uiText(k) + ' (' + (x.kind_pages[k] || 0) + ')').join(', ')}) : '') + '.'
     : uiText('Your question became a vector of {d} numbers ({m}). It was compared with {n} passage vectors by cosine similarity in {s} ms; each page is ranked by its closest passage.', {d: x.dims, m: x.model, n: x.vectors.toLocaleString(), s: x.ms.score});
   res.innerHTML = `<section class="sem-how"><div class="sem-vec" title="${esc(uiText('Your question as a vector: {d} numbers, shown as 48 averaged cells', {d: x.dims}))}">${cells}</div>
     <p>${esc(how)}</p></section>

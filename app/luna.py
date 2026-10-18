@@ -88,7 +88,7 @@ TOOLS = [
 HARNESSES = {'mastra': lambda: config.AGENT_URL, 'aisdk': lambda: config.AGENT_AISDK_URL}
 
 
-def run(messages, rounds=None, harness=None, image_tool=None):
+def run(messages, rounds=None, harness=None, image_tool=None, candidates=None):
   """the agent server runs the loop when AGENT_URL is set (agent-server/, Mastra; harness 'aisdk' picks the AI SDK 7
   server, agent-server-aisdk/); otherwise, or when it cannot be reached before it answers, the loop below runs here
   with the same prompt and tools"""
@@ -96,7 +96,8 @@ def run(messages, rounds=None, harness=None, image_tool=None):
   if url:
     started = False
     try:
-      for ev in _via_agent(messages, rounds, url, config.LUNA_IMAGE_TOOL if image_tool is None else bool(image_tool)):
+      for ev in _via_agent(messages, rounds, url, config.LUNA_IMAGE_TOOL if image_tool is None else bool(image_tool),
+                           candidates=candidates):
         started = True
         yield ev
       return
@@ -108,8 +109,9 @@ def run(messages, rounds=None, harness=None, image_tool=None):
   yield from _local(messages, rounds)
 
 
-def _via_agent(messages, rounds, url, image_tool=False, agent='luna', system=None, run=None):
-  """an agent of the agent server (luna, or guido from guido.py), its event stream already in the chat's format"""
+def _via_agent(messages, rounds, url, image_tool=False, agent='luna', system=None, run=None, candidates=None):
+  """an agent of the agent server (luna, or guido from guido.py), its event stream already in the chat's format.
+  candidates: how this run's searches find their candidate pages (search.candidates), for an evaluation's variant"""
   body = {'messages': [{'role': m.get('role'), 'text': m.get('text')} for m in messages if m.get('text')][-12:],
           'system': system or SYSTEM_AGENT + (IMAGE_RULE if image_tool else ''), 'run': run or uuid.uuid4().hex,
           'image_tool': image_tool}
@@ -123,6 +125,8 @@ def _via_agent(messages, rounds, url, image_tool=False, agent='luna', system=Non
   # the agent's stream and the run's live channel (search progress from the tool endpoints) in one stream: a reader
   # thread puts the agent's events into the channel, this generator yields everything in the order it arrives
   channel = live.open_run(body['run'])
+  if candidates:
+    live.set_options(body['run'], {'candidates': candidates})
   end = object()
 
   def read():
@@ -252,11 +256,11 @@ def _guideline_filter(value):
 
 
 # ---- the tools
-def _search(args, sources, question='', progress=None):
+def _search(args, sources, question='', progress=None, method=None):
   q = str(args.get('query', ''))[:300]
   k = max(3, min(8, int(args.get('top_k') or 5)))
   docs, scope = _guideline_filter(args.get('guideline'))
-  res = search.search(q, question=question[:1000] or None, k=k, docs=docs, progress=progress)
+  res = search.search(q, question=question[:1000] or None, k=k, docs=docs, progress=progress, method=method)
   cards, found = [], []
   for h in res['hits']:
     i = h['page']

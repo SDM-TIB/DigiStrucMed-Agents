@@ -187,8 +187,37 @@ def _rank(scores):
   return r
 
 
-def search(query, question=None, k=5, docs=None, progress=None):
+CANDIDATE_METHODS = ('rrf', 'digup')
+
+
+def candidates(query, vecs, allowed=None, method=None, n=CANDIDATES):
+  """the pages the reranker reads, best first. method 'rrf': reciprocal-rank fusion of BM25 and every text view under
+  both prompts (the study's recipe); 'digup': digup() on the search-prompt vector (passages, whole page, page image,
+  word share, kind hints). allowed: a mask of the pages that may be returned (a guideline filter), or None"""
+  method = method or config.SEARCH_CANDIDATES
+  idx = _state['index']
+  if method == 'digup' and IMAGE_VIEW in idx['views']:
+    score = digup(vecs['search'], query, idx)[0].astype(np.float64)
+  else:
+    lex_order = [i for i in corpus.bm25(query, k=len(corpus.PAGES), per_doc=len(corpus.PAGES)) if allowed is None or allowed[i]]
+    lex_rank = np.full(len(corpus.PAGES), len(corpus.PAGES) + 1, dtype=np.int64)
+    lex_rank[lex_order] = np.arange(1, len(lex_order) + 1)
+    score = 1 / (RRF_K + lex_rank)
+    for name in VIEWS:  # the text views only
+      view = idx['views'][name]
+      for q in vecs.values():
+        page_score = np.full(len(corpus.PAGES), -1.0, dtype=np.float32)
+        page_score[view['pages']] = np.maximum.reduceat(view['vec'] @ q, view['starts'])
+        score = score + 1 / (RRF_K + _rank(page_score))
+  if allowed is not None:
+    score = np.where(allowed, score, -np.inf)
+  n = min(n, len(corpus.PAGES) if allowed is None else int(allowed.sum()))
+  return [int(i) for i in np.argsort(-score, kind='stable')[:n]]
+
+
+def search(query, question=None, k=5, docs=None, progress=None, method=None):
   """{'hits': [{'page', 'relevance', 'passages'}], 'mode', 'facets'}
+  method: how the candidates are found (candidates(); default config.SEARCH_CANDIDATES)
   progress: optional callback, called with each stage as it starts and ends ({'stage': 'embed' | 'compare' |
   'rerank', 'status': 'running' | 'done', 'ms', and what the stage worked on}); the timings are also logged
   query: what to look for now; question: the user's question it serves (defaults to the query); docs: document ids to
@@ -218,32 +247,21 @@ def search(query, question=None, k=5, docs=None, progress=None):
             'dims': int(next(iter(vecs.values())).shape[0]) if vecs else None, 'texts': len(PROMPTS)})
   t0 = time.time()
   allowed = None if not docs else np.array([p['doc'] in docs for p in corpus.PAGES])
-  lex_order = [i for i in corpus.bm25(query, k=len(corpus.PAGES), per_doc=len(corpus.PAGES)) if allowed is None or allowed[i]]
-  lex_rank = np.full(len(corpus.PAGES), len(corpus.PAGES) + 1, dtype=np.int64)
-  lex_rank[lex_order] = np.arange(1, len(lex_order) + 1)
   if vecs is None:
+    lex_order = [i for i in corpus.bm25(query, k=len(corpus.PAGES), per_doc=len(corpus.PAGES)) if allowed is None or allowed[i]]
     report({'stage': 'compare', 'status': 'done', 'ms': round((time.time() - t0) * 1000), 'vectors': 0, 'keyword': True, 'candidates': k})
     print(f'search: bm25 only, {round((time.time() - t_start) * 1000)} ms', flush=True)
     return {'hits': [{'page': i, 'relevance': None, 'passages': []} for i in lex_order[:k]], 'mode': 'bm25', 'facets': []}
 
-  fused = 1 / (RRF_K + lex_rank)
-  best_chunk = None
-  for name in VIEWS:  # the text views; the page image takes part in the search page's ranking only (semantic)
-    view = idx['views'][name]
-    for prompt, q in vecs.items():
-      sims = view['vec'] @ q
-      page_score = np.full(len(corpus.PAGES), -1.0, dtype=np.float32)
-      page_score[view['pages']] = np.maximum.reduceat(sims, view['starts'])
-      fused += 1 / (RRF_K + _rank(page_score))
-      if name == 'chunk_title_s400' and prompt == 'qa':
-        best_chunk = (sims, view)
-  if allowed is not None:
-    fused[~allowed] = -1.0
-  cand = [int(i) for i in np.argsort(-fused, kind='stable')[:min(CANDIDATES, len(corpus.PAGES) if allowed is None else int(allowed.sum()))]]
+  method = method if method in CANDIDATE_METHODS else config.SEARCH_CANDIDATES
+  cand = candidates(query, vecs, allowed, method)
+  view = idx['views']['chunk_title_s400']
+  best_chunk = (view['vec'] @ vecs['qa'], view)  # the passages shown with each hit
   t_compare = round((time.time() - t0) * 1000)
   label = lambda i: f"{corpus.PAGES[i].get('ref') or pageunits.doc_title(corpus.PAGES[i]['title'])[:28]}, p. {corpus.PAGES[i]['page']}"
-  report({'stage': 'compare', 'status': 'done', 'ms': t_compare, 'vectors': int(sum(len(idx['views'][v]['vec']) for v in VIEWS)),
-          'views': len(VIEWS), 'keyword': True, 'candidates': len(cand),
+  used = [v for v in VIEWS] if method == 'rrf' else [v for v, _, _ in SEGMENTS if v in idx['views']]
+  report({'stage': 'compare', 'status': 'done', 'ms': t_compare, 'vectors': int(sum(len(idx['views'][v]['vec']) for v in used)),
+          'views': len(used), 'keyword': True, 'candidates': len(cand), 'method': method,
           'pages': [{'id': corpus.PAGES[i]['id'], 'label': label(i)} for i in cand]})  # in fused order, for the live view
 
   mode = 'embeddinggemma2'
@@ -280,7 +298,7 @@ def search(query, question=None, k=5, docs=None, progress=None):
     f['likely_relevant'] += int((rel.get(i) or 0) >= 0.5)
   facets = sorted(facets.values(), key=lambda f: (-f['likely_relevant'], -f['candidates']))
   print(f"search: {round((time.time() - t_start) * 1000)} ms (embed {t_embed if vecs else '-'}, compare {t_compare}, "
-        f"rerank {t_rerank}) mode {mode}", flush=True)
+        f"rerank {t_rerank}) mode {mode}, candidates {method}", flush=True)
   return {'hits': out, 'mode': mode, 'facets': facets}
 
 
@@ -312,16 +330,21 @@ Z_GATE, WORD_WEIGHT = 2.0, 2.0
 # +1, a soft boost, not a filter. Our kinds are kinds of guideline page, read from the structured page text (tables as
 # HTML): (words in the query that ask for the kind, the test a page passes)
 GRADED_ROW = re.compile(r'<td[^>]*>\s*(?:I|IIa|IIb|III|1|2a|2b|3)[a-z]?\s*</td>\s*<td[^>]*>\s*(?:A|B|C|B-R|B-NR|C-LD|C-EO)[a-z]?\s*</td>')
+# the words in English, German, Spanish, Russian and Hindi, the languages of the app
+TABLE = r'(\btables?\b(?! of contents)|\btabellen?|\btablas?\b|таблиц|तालिका)'  # a table of contents is not a table
+RECOMMENDATION = r'(\brecommendations?\b|empfehlung|recomendaci|рекомендац|सिफ़ारिश|सिफारिश)'
 PAGE_KINDS = {
   # any table
-  'table': (r'\btables?\b(?! of contents)', lambda t: '<table' in t),  # a table of contents is not a table
+  'table': (TABLE, lambda t: '<table' in t),
   # a table of recommendations: at least three rows with a class of recommendation in one cell and a level of
-  # evidence in the next (a table that only defines the classes has no level beside them)
-  'recommendation table': (r'\brecommendations?\b.*\btables?\b|\btables?\b.*\brecommendations?\b',
+  # evidence in the next (a table that only defines the classes has no level beside them). "Empfehlungstabelle" is
+  # one word in German
+  'recommendation table': (rf'{RECOMMENDATION}.*{TABLE}|{TABLE}.*{RECOMMENDATION}|empfehlungstabelle',
                            lambda t: len(GRADED_ROW.findall(t)) >= 3),
-  'reference list': (r'\breferences?\b|\bbibliograph|\bcited (studies|papers|literature)\b',
-                     lambda t: len(re.findall(r'et al\.', t)) >= 12),
-  'abbreviations': (r'\babbreviations?\b|\bacronyms?\b', lambda t: re.search(r'abbreviations', t, re.I) is not None and t.count('\n') > 20),
+  'reference list': (r'\breferences?\b|bibliogra|\bcited (studies|papers|literature)\b|literaturverzeichnis|\breferencias\b'
+                     r'|список литературы|संदर्भ सूची', lambda t: len(re.findall(r'et al\.', t)) >= 12),
+  'abbreviations': (r'\babbreviations?\b|\bacronyms?\b|abkürzung|\babreviaturas?\b|\bsiglas\b|сокращени|संक्षिप्त',
+                    lambda t: re.search(r'abbreviations', t, re.I) is not None and t.count('\n') > 20),
 }
 
 
@@ -341,16 +364,24 @@ def word_coverage(query, words):
   return np.array([sum(t in tx for t in terms) / len(terms) for tx in words])
 
 
-def digup(q, query, idx, hints=True):
+USES = ('passage', 'page', 'image', 'words', 'kinds')  # what a semantic search may use; the search page toggles them
+
+
+def digup(q, query, idx, hints=True, use=None):
   """every segment of a page (its 400-character passages, the whole page, the rendered page as an image) is compared
   with the query; the cosines are centred on the mean of their own modality (text, image) and divided by the spread of
   all centred scores (at least 0.02), so image and text similarities share one scale. A page counts with its best
   segment's z. It qualifies when that stands out (z >= 2) or the page holds at least half of the query's words; score
   = z + 2.0 * coverage^1.5, + 1 for each kind of page the query asks for (PAGE_KINDS), qualifying pages first. Measured against the passage-only ranking on the guideline QA test
   set (478 questions with their evidence page) and on queries for kinds of page (MASTERTHESIS,
-  experiments/2026-10-18_semantic_page_search)"""
+  experiments/2026-10-18_semantic_page_search).
+  use: the parts to rank with (USES), all by default; at least one kind of segment. With 'image' alone a page is ranked
+  by its rendered image only, which shows what the image sees"""
   n = len(corpus.PAGES)
-  parts = [(idx['views'][v], name, mod) for v, name, mod in SEGMENTS if v in idx['views']]
+  use = set(USES) if use is None else set(use)
+  parts = [(idx['views'][v], name, mod) for v, name, mod in SEGMENTS if v in idx['views'] and name in use]
+  if not parts:
+    parts = [(idx['views'][v], name, mod) for v, name, mod in SEGMENTS[:1]]
   sims = np.concatenate([v['vec'] @ q for v, _, _ in parts])
   owner = np.concatenate([v['owner'] for v, _, _ in parts])
   modality = np.concatenate([np.full(len(v['owner']), mod) for v, _, mod in parts])
@@ -364,18 +395,18 @@ def digup(q, query, idx, hints=True):
   first = order[np.r_[True, owner[order][1:] != owner[order][:-1]]]
   best, seg = np.full(n, -np.inf), np.zeros(n, dtype=np.int64)
   best[owner[first]], seg[owner[first]] = z[first], first
-  cov = word_coverage(query, idx['words'])
+  cov = word_coverage(query, idx['words']) if 'words' in use else np.zeros(n)
   score = np.maximum(best, 0) + WORD_WEIGHT * cov ** 1.5
-  asked = kind_hints(query) if hints else set()
+  asked = kind_hints(query) if hints and 'kinds' in use else set()
   for k in asked:
     score = score + idx['kinds'][k]
   qualifies = (best >= Z_GATE) | (cov >= 0.5)
   return np.where(qualifies, score, score - 1e6), {'z': best, 'segment': seg, 'cosine': sims, 'kind': kind,
                                                    'words': cov, 'qualifies': qualifies, 'segments': len(sims),
-                                                   'asked': sorted(asked)}
+                                                   'asked': sorted(asked), 'use': [u for u in USES if u in use]}
 
 
-def semantic(query, k=10):
+def semantic(query, k=10, use=None):
   """embedding search for the search page's semantic mode (no keyword index, no reranker): the query embedded with the
   retrieval prompt and ranked by digup(). Returns the pages with the segment that matched (passage, page or page
   image), its cosine and z, the share of the query's words on the page, the query vector folded into 48 cells, and
@@ -387,7 +418,7 @@ def semantic(query, k=10):
   t0 = time.time()
   q = embed([PROMPTS['search'] + query])[0]
   t1 = time.time()
-  score, why = digup(q, query, idx)
+  score, why = digup(q, query, idx, use=use)
   top = [int(i) for i in np.argsort(-score, kind='stable')[:k]]
   t2 = time.time()
   passages = idx['views']['chunk_title_s400']
@@ -402,9 +433,10 @@ def semantic(query, k=10):
                  'qualified': bool(why['qualifies'][i]), 'kinds': [k for k in why['asked'] if idx['kinds'][k][i]],
                  'passage': idx['chunks'][u][:420]})
   cells = q.reshape(48, -1).mean(axis=1)
-  counts = {name: int(len(idx['views'][v]['owner'])) for v, name, _ in SEGMENTS if v in idx['views']}
+  counts = {name: int(len(idx['views'][v]['owner'])) for v, name, _ in SEGMENTS if v in idx['views'] and name in why['use']}
   return {'available': True, 'hits': hits, 'model': 'EmbeddingGemma 2', 'dims': int(q.shape[0]),
-          'vectors': int(why['segments']), 'segments': counts, 'method': 'digup', 'asked': why['asked'],
+          'vectors': int(why['segments']), 'segments': counts, 'method': 'digup', 'asked': why['asked'], 'use': why['use'],
+          'image_view': IMAGE_VIEW in idx['views'],
           'kind_pages': {k: int(idx['kinds'][k].sum()) for k in why['asked']}, 'prompt': PROMPTS['search'].strip(),
           'query_vector': [round(float(x), 4) for x in cells / (np.abs(cells).max() + 1e-9)],
           'ms': {'embed': round(1000 * (t1 - t0)), 'score': round(1000 * (t2 - t1))}}

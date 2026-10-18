@@ -637,6 +637,16 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .srch-box input{flex:1;border:0;outline:0;background:none;font-size:16px;color:var(--ink);min-width:0}
 .srch-box kbd{font:600 11px/1 var(--font, inherit);padding:5px 7px;border-radius:6px;border:1px solid var(--line);background:var(--side);color:var(--muted)}
 .srch-try{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sem-use{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+.sem-use-l{font-size:12px;color:var(--muted);margin-right:2px}
+.sem-use-sep{width:1px;height:18px;background:var(--line);margin:0 4px}
+.sem-use button{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:14px;border:1px solid var(--line);background:var(--win);font-size:12.5px;color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s,opacity .15s}
+.sem-use button i{width:8px;height:8px;border-radius:50%;border:1.5px solid currentColor;transition:background .15s}
+.sem-use button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-softer)}
+.sem-use button[aria-pressed="true"] i{background:currentColor}
+.sem-use button:disabled{opacity:.55;cursor:not-allowed}
+.sem-use button:not(:disabled):hover{border-color:var(--accent)}
+.sem-use .sem-use-all{border-style:dashed}
 .srch-try button{height:30px;padding:0 13px;border-radius:15px;border:1px solid var(--line);background:var(--win);font-size:13px;color:var(--ink-2)}
 .srch-try button:hover{border-color:var(--accent);color:var(--accent)}
 .srch-body{flex:1;overflow:auto;padding:8px 28px 40px}

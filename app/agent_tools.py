@@ -125,7 +125,8 @@ def call(tool, body):
   if tool == 'search':
     args = {k: body.get(k) for k in ('query', 'guideline', 'top_k') if body.get(k) not in (None, '')}
     progress = lambda ev: live.publish(run, {'type': 'search_progress', 'query': str(args.get('query', ''))[:300], **ev})
-    ui, model = _drive(luna._search(args, _sources(run), str(body.get('question') or ''), progress))
+    method = live.options(run).get('candidates')  # an evaluation's variant, else the app's setting
+    ui, model = _drive(luna._search(args, _sources(run), str(body.get('question') or ''), progress, method))
   elif tool == 'read':
     ui, model = _drive(luna._read({'sources': body.get('sources') or []}, _sources(run)))
   elif tool == 'view':
