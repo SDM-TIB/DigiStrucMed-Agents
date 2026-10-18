@@ -125,6 +125,31 @@ function SearchStages({ progress, bridge }: { progress: Record<string, SearchSta
   )
 }
 
+// the candidate pages of a search as tiles: they appear when the vectors have ranked them, each fills with its
+// relevance while clef-flash reads it, and the five that go to the agent are marked at the end. a tile opens its page
+function CandidateTiles({ progress, bridge }: { progress: Record<string, SearchStage>; bridge: Bridge }) {
+  const pages = progress.compare?.pages
+  if (!pages?.length) return null
+  const scores = progress.rerank?.scores ?? {}
+  const done = progress.rerank?.status === 'done'
+  const top = new Set(done ? Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id) : [])
+  return (
+    <div className="lui-tiles" role="list" aria-label={bridge.t('{n} candidate pages', { n: pages.length })}>
+      {pages.map(p => {
+        const s = scores[p.id]
+        return (
+          <button key={p.id} type="button" role="listitem" className={'lui-tile' + (top.has(p.id) ? ' top' : '') + (s == null ? ' wait' : '')}
+                  title={p.label + (s != null ? ` · ${Math.round(s * 100)} %` : '')}
+                  onClick={() => window.dispatchEvent(new CustomEvent('jr-open-page', { detail: { id: p.id } }))}>
+            <span className="lbl">{p.label}</span>
+            <span className="bar"><i style={{ width: `${Math.round((s ?? 0) * 100)}%` }} /></span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function ThoughtBody({ text }: { text: string }) {
   // Gemini's summaries start with a **heading**; the trigger shows it, the body the rest
   const body = text.replace(/^\s*\*\*(.+?)\*\*\s*/, '').replace(/\*\*(.+?)\*\*/g, '$1').trim()
@@ -158,6 +183,7 @@ function StepItem({ step, bridge }: { step: Step; bridge: Bridge }) {
         {step.kind === 'search' && (
           <div className="flex flex-col gap-2.5">
             {step.progress && <SearchStages progress={step.progress} bridge={bridge} />}
+            {step.progress && <CandidateTiles progress={step.progress} bridge={bridge} />}
             <CodeBlock size="sm" className="bg-muted/40">
               <CodeBlockContent wrap className="max-h-28 text-[11.5px]">
                 {JSON.stringify({ query: step.args?.query, ...(step.args?.guideline ? { guideline: step.args.guideline } : {}) }, null, 1)}

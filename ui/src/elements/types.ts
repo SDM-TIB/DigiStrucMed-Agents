@@ -21,6 +21,8 @@ export type SearchStage = {
   candidates?: number
   judged?: number
   of?: number
+  pages?: Array<{ id: string; label: string }> // the candidate pages, in the order the vectors ranked them
+  scores?: Record<string, number> // clef-flash's relevance per candidate page so far
 }
 
 export type StepKind = 'thought' | 'search' | 'read' | 'view' | 'catalogue' | 'tool'

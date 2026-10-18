@@ -93,3 +93,16 @@
 /* the answer keeps the chat's own typography (app.css .answer); Streamdown's wrapper adds no spacing of its own */
 .lui-answer > :first-child { margin-top: 0; }
 .lui-answer > :last-child { margin-bottom: 0; }
+
+/* a search's candidate pages, filling with clef-flash's relevance while it reads them */
+.lui-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 4px; max-height: 172px;
+  overflow: auto; padding-right: 2px; }
+.lui-tile { display: flex; flex-direction: column; gap: 3px; padding: 4px 6px; border-radius: 6px; text-align: left;
+  background: var(--lui-muted); border: 1px solid transparent; transition: border-color .2s, background .2s, opacity .3s; }
+.lui-tile:hover { border-color: var(--primary); }
+.lui-tile.wait { opacity: .55; }
+.lui-tile.top { border-color: var(--primary); background: var(--lui-accent); }
+.lui-tile .lbl { font-size: 10.5px; line-height: 13px; color: var(--foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lui-tile .bar { height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.lui-tile .bar i { display: block; height: 100%; background: var(--primary); transition: width .45s cubic-bezier(.2,.75,.25,1); }
+@media (max-width: 640px) { .lui-tiles { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); max-height: 140px; } }

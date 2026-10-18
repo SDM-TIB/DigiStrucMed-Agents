@@ -103,8 +103,12 @@ def warm():
     if _state['index'] is None and not _state['loading'] and _state['error'] is None:
       _state['loading'] = True
       threading.Thread(target=_load, daemon=True).start()
-  if config.EMBED_URL:
-    threading.Thread(target=lambda: _get(config.EMBED_URL.rstrip('/') + '/health', 30), daemon=True).start()
+  # the embedding service scales to zero and takes about 50 s to start (Cloud Run instance plus 10 to 14 s model load).
+  # the app pings it when someone opens the app or focuses the chat input, so it is up before the first search;
+  # at most one ping per two minutes
+  if config.EMBED_URL and time.time() - _state.get('pinged', 0) > 120:
+    _state['pinged'] = time.time()
+    threading.Thread(target=lambda: _get(config.EMBED_URL.rstrip('/') + '/health', 90), daemon=True).start()
 
 
 def status():
@@ -226,8 +230,10 @@ def search(query, question=None, k=5, docs=None, progress=None):
     fused[~allowed] = -1.0
   cand = [int(i) for i in np.argsort(-fused, kind='stable')[:min(CANDIDATES, len(corpus.PAGES) if allowed is None else int(allowed.sum()))]]
   t_compare = round((time.time() - t0) * 1000)
+  label = lambda i: f"{corpus.PAGES[i].get('ref') or pageunits.doc_title(corpus.PAGES[i]['title'])[:28]}, p. {corpus.PAGES[i]['page']}"
   report({'stage': 'compare', 'status': 'done', 'ms': t_compare, 'vectors': int(sum(len(v['vec']) for v in idx['views'].values())),
-          'views': len(idx['views']), 'keyword': True, 'candidates': len(cand)})
+          'views': len(idx['views']), 'keyword': True, 'candidates': len(cand),
+          'pages': [{'id': corpus.PAGES[i]['id'], 'label': label(i)} for i in cand]})  # in fused order, for the live view
 
   mode = 'embeddinggemma2'
   rel = {}
@@ -238,11 +244,13 @@ def search(query, question=None, k=5, docs=None, progress=None):
     futures = {_pool.submit(_judge, question, query, i): i for i in cand}
     for n, f in enumerate(concurrent.futures.as_completed(futures), 1):
       rel[futures[f]] = f.result()
-      if n % 8 == 0 and n < len(cand):
-        report({'stage': 'rerank', 'status': 'running', 'model': 'clef-flash', 'judged': n, 'of': len(cand)})
+      if n % 4 == 0 and n < len(cand):  # the scores so far, so the live view fills page by page
+        report({'stage': 'rerank', 'status': 'running', 'model': 'clef-flash', 'judged': n, 'of': len(cand),
+                'scores': {corpus.PAGES[i]['id']: round(v, 2) for i, v in rel.items() if v is not None}})
     t_rerank = round((time.time() - t0) * 1000)
     report({'stage': 'rerank', 'status': 'done', 'ms': t_rerank, 'model': 'clef-flash',
-            'judged': sum(v is not None for v in rel.values()), 'of': len(cand)})
+            'judged': sum(v is not None for v in rel.values()), 'of': len(cand),
+            'scores': {corpus.PAGES[i]['id']: round(v, 2) for i, v in rel.items() if v is not None}})
     if sum(v is not None for v in rel.values()) >= CANDIDATES // 2:
       mode = 'embeddinggemma2+clef-flash'
       cand.sort(key=lambda i: -(rel[i] if rel[i] is not None else -1.0))  # stable: ties keep the fused order

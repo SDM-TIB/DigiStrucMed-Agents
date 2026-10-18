@@ -435,7 +435,8 @@
     "Compared with {vectors} passage vectors and the keyword index: {n} candidate pages": "Mit {vectors} Abschnittsvektoren und dem Stichwortindex verglichen: {n} Kandidatenseiten",
     "Keyword search only: {n} pages": "Nur Stichwortsuche: {n} Seiten",
     "{model} reads each candidate page: {judged} of {of}": "{model} liest jede Kandidatenseite: {judged} von {of}",
-    "{model} judged {judged} of {of} pages": "{model} hat {judged} von {of} Seiten bewertet"
+    "{model} judged {judged} of {of} pages": "{model} hat {judged} von {of} Seiten bewertet",
+    "{n} candidate pages": "{n} Kandidatenseiten"
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -872,7 +873,8 @@
     "Compared with {vectors} passage vectors and the keyword index: {n} candidate pages": "Comparado con {vectors} vectores de fragmentos y el índice de palabras clave: {n} páginas candidatas",
     "Keyword search only: {n} pages": "Solo búsqueda por palabras clave: {n} páginas",
     "{model} reads each candidate page: {judged} of {of}": "{model} lee cada página candidata: {judged} de {of}",
-    "{model} judged {judged} of {of} pages": "{model} evaluó {judged} de {of} páginas"
+    "{model} judged {judged} of {of} pages": "{model} evaluó {judged} de {of} páginas",
+    "{n} candidate pages": "{n} páginas candidatas"
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1309,7 +1311,8 @@
     "Compared with {vectors} passage vectors and the keyword index: {n} candidate pages": "Сравнено с {vectors} векторами фрагментов и индексом ключевых слов: {n} страниц-кандидатов",
     "Keyword search only: {n} pages": "Только поиск по ключевым словам: {n} страниц",
     "{model} reads each candidate page: {judged} of {of}": "{model} читает каждую страницу-кандидат: {judged} из {of}",
-    "{model} judged {judged} of {of} pages": "{model} оценил {judged} из {of} страниц"
+    "{model} judged {judged} of {of} pages": "{model} оценил {judged} из {of} страниц",
+    "{n} candidate pages": "страниц-кандидатов: {n}"
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -1746,6 +1749,7 @@
     "Compared with {vectors} passage vectors and the keyword index: {n} candidate pages": "{vectors} अंश-वेक्टरों और कीवर्ड इंडेक्स से तुलना: {n} संभावित पृष्ठ",
     "Keyword search only: {n} pages": "केवल कीवर्ड खोज: {n} पृष्ठ",
     "{model} reads each candidate page: {judged} of {of}": "{model} हर संभावित पृष्ठ पढ़ रहा है: {of} में से {judged}",
-    "{model} judged {judged} of {of} pages": "{model} ने {of} में से {judged} पृष्ठ आँके"
+    "{model} judged {judged} of {of} pages": "{model} ने {of} में से {judged} पृष्ठ आँके",
+    "{n} candidate pages": "{n} संभावित पृष्ठ"
   }
 }

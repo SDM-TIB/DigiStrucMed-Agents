@@ -19,7 +19,9 @@ const status = m => { $('#status').textContent = m || ''; };
 
 /* auth */
 function showLogin() { $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#password').focus(); }
-function showApp() { $('#login').classList.add('hidden'); $('#boot').classList.add('hidden'); clearTimeout(bootPoll); $('#app').classList.remove('hidden'); loadData(); pollGpu(); updateFsHint(); }
+function showApp() { $('#login').classList.add('hidden'); $('#boot').classList.add('hidden'); clearTimeout(bootPoll); $('#app').classList.remove('hidden'); loadData(); pollGpu(); updateFsHint(); warmSearch(); }
+// wake the search's embedding service before the first question (it scales to zero; the server pings at most every 2 minutes)
+const warmSearch = () => fetch('/api/search/status', {headers: HEADERS}).catch(() => {});
 
 /* start screen: choose how long the GPU stays awake, start it, explain the agents while it boots */
 let bootHold = 3600, bootPoll = 0, bootEntered = false;
@@ -1503,6 +1505,7 @@ async function sendChat(text) {
 }
 $('#send').onclick = () => sendChat($('#msg').value);
 $('#msg').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat($('#msg').value); } });
+$('#msg').addEventListener('focus', warmSearch);
 $('#clear-chat').onclick = () => { if (chatBusy) return; agent.history.length = 0; $(agent.thread).innerHTML = ''; if (agent === AGENTS.guido) kgReset(); $('#msg').focus(); };
 
 /* ---------------- full-screen video call ---------------- */
