@@ -515,8 +515,10 @@ function srchAround(text, terms, n = 160) {
   const t = text.replace(/\s+/g, ' '), i = terms.length ? t.toLowerCase().indexOf(terms[0]) : 0;
   const a = Math.max(0, i - 50); return (a ? '… ' : '') + t.slice(a, a + n) + (t.length > a + n ? ' …' : '');
 }
-// semantic mode: the query goes to EmbeddingGemma 2 alone (no keywords), pages ranked by cosine similarity of their
-// best 400-character passage; the result shows the similarity and the query vector, so you can see what happens
+// semantic mode: the query goes to EmbeddingGemma 2 (no keyword index, no reranker); every page is compared as
+// 400-character passages, as a whole and as its rendered image, and ranked by DigUp's hybrid (app/search.py digup):
+// the best segment on its modality's scale, the share of your words on the page, and the kind of page you ask for.
+// each hit shows why it was found
 let srchVec = false;
 $('#srch-vec').onclick = () => {
   srchVec = !srchVec;
@@ -532,10 +534,17 @@ async function runSemantic(q, seq) {
   if (seq !== srchSeq) return;
   if (!x.available) { res.innerHTML = '<p class="srch-empty">' + esc(uiText('Semantic search is warming up. Try again in a moment.')) + '</p>'; return; }
   const cells = x.query_vector.map(v => `<i style="--v:${v}"></i>`).join('');
-  const top = Math.max(...x.hits.map(h => h.similarity), 0.0001);
-  const hits = x.hits.map((h, i) => `<button class="sem-it" data-i="${i}" style="animation-delay:${i * 35}ms"><span class="sem-score"><b>${h.similarity.toFixed(2)}</b><span class="sem-bar"><i style="width:${Math.max(4, 100 * h.similarity / top)}%"></i></span></span><span class="tx"><b>${esc(h.title)}</b><p>${esc(h.passage)}</p><small>${h.ref ? esc(h.ref) + ' · ' : ''}${esc(uiText('page {p}', {p: h.page}))}</small></span></button>`).join('');
+  const val = h => h.score ?? h.similarity, top = Math.max(...x.hits.map(val), 0.0001);
+  const MATCH = {passage: 'a passage', page: 'the whole page', image: 'the page image'};
+  const why = h => h.match ? `<span class="sem-why"><span class="sem-chip m-${h.match}" title="${esc(uiText('cosine {c}, {z} standard deviations above the mean', {c: h.similarity.toFixed(2), z: h.z.toFixed(1)}))}">${esc(uiText('matched by ' + MATCH[h.match]))} · z ${h.z.toFixed(1)}</span>${h.words ? `<span class="sem-chip">${esc(uiText('{p}% of your words', {p: Math.round(100 * h.words)}))}</span>` : ''}${(h.kinds || []).map(k => `<span class="sem-chip k">${esc(uiText(k))}</span>`).join('')}</span>` : '';
+  const hits = x.hits.map((h, i) => `<button class="sem-it" data-i="${i}" style="animation-delay:${i * 35}ms"><span class="sem-score"><b>${val(h).toFixed(2)}</b><span class="sem-bar"><i style="width:${Math.max(4, 100 * val(h) / top)}%"></i></span></span><span class="tx"><b>${esc(h.title)}</b>${why(h)}<p>${esc(h.passage)}</p><small>${h.ref ? esc(h.ref) + ' · ' : ''}${esc(uiText('page {p}', {p: h.page}))}</small></span></button>`).join('');
+  const seg = x.segments || {};
+  const how = x.method === 'digup'
+    ? uiText('Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors: {a} passages, {b} whole pages and {c} page images. Each kind of vector is put on its own scale, a page counts with its best match, the share of your words on the page adds to it', {d: x.dims, m: x.model, s: x.ms.score, n: x.vectors.toLocaleString(), a: (seg.passage || 0).toLocaleString(), b: (seg.page || 0).toLocaleString(), c: (seg.image || 0).toLocaleString()})
+      + (x.asked && x.asked.length ? uiText(', and pages of the kind you asked for get a bonus: {k}.', {k: x.asked.map(k => uiText(k) + ' (' + (x.kind_pages[k] || 0) + ')').join(', ')}) : '.')
+    : uiText('Your question became a vector of {d} numbers ({m}). It was compared with {n} passage vectors by cosine similarity in {s} ms; each page is ranked by its closest passage.', {d: x.dims, m: x.model, n: x.vectors.toLocaleString(), s: x.ms.score});
   res.innerHTML = `<section class="sem-how"><div class="sem-vec" title="${esc(uiText('Your question as a vector: {d} numbers, shown as 48 averaged cells', {d: x.dims}))}">${cells}</div>
-    <p>${esc(uiText('Your question became a vector of {d} numbers ({m}). It was compared with {n} passage vectors by cosine similarity in {s} ms; each page is ranked by its closest passage.', {d: x.dims, m: x.model, n: x.vectors.toLocaleString(), s: x.ms.score}))}</p></section>
+    <p>${esc(how)}</p></section>
     <section class="srch-grp"><h3>${esc(uiText('Closest guideline pages'))}<span>${x.hits.length}</span></h3>${hits}</section>`;
   res.querySelectorAll('.sem-it').forEach(b => b.onclick = () => { const p = x.hits[b.dataset.i]; const d = LIB.find(d => d.pages.some(([id]) => id === p.page_id)); if (!d) return; openDocument(d); srcIdx = Math.max(0, d.pages.findIndex(([id]) => id === p.page_id)); renderSource(); });
 }

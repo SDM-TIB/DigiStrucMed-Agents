@@ -436,7 +436,18 @@
     "Keyword search only: {n} pages": "Nur Stichwortsuche: {n} Seiten",
     "{model} reads each candidate page: {judged} of {of}": "{model} liest jede Kandidatenseite: {judged} von {of}",
     "{model} judged {judged} of {of} pages": "{model} hat {judged} von {of} Seiten bewertet",
-    "{n} candidate pages": "{n} Kandidatenseiten"
+    "{n} candidate pages": "{n} Kandidatenseiten",
+    "matched by a passage": "über einen Abschnitt gefunden",
+    "matched by the whole page": "über die ganze Seite gefunden",
+    "matched by the page image": "über das Seitenbild gefunden",
+    "cosine {c}, {z} standard deviations above the mean": "Kosinus {c}, {z} Standardabweichungen über dem Mittel",
+    "{p}% of your words": "{p} % Ihrer Wörter",
+    "table": "Tabelle",
+    "recommendation table": "Empfehlungstabelle",
+    "reference list": "Literaturverzeichnis",
+    "abbreviations": "Abkürzungen",
+    "Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors: {a} passages, {b} whole pages and {c} page images. Each kind of vector is put on its own scale, a page counts with its best match, the share of your words on the page adds to it": "Ihre Frage wurde ein Vektor aus {d} Zahlen ({m}) und in {s} ms mit {n} Vektoren verglichen: {a} Abschnitte, {b} ganze Seiten und {c} Seitenbilder. Jede Art von Vektor bekommt ihre eigene Skala, eine Seite zählt mit ihrem besten Treffer, der Anteil Ihrer Wörter auf der Seite kommt hinzu",
+    ", and pages of the kind you asked for get a bonus: {k}.": ", und Seiten der gesuchten Art bekommen einen Bonus: {k}."
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -874,7 +885,18 @@
     "Keyword search only: {n} pages": "Solo búsqueda por palabras clave: {n} páginas",
     "{model} reads each candidate page: {judged} of {of}": "{model} lee cada página candidata: {judged} de {of}",
     "{model} judged {judged} of {of} pages": "{model} evaluó {judged} de {of} páginas",
-    "{n} candidate pages": "{n} páginas candidatas"
+    "{n} candidate pages": "{n} páginas candidatas",
+    "matched by a passage": "encontrada por un pasaje",
+    "matched by the whole page": "encontrada por la página entera",
+    "matched by the page image": "encontrada por la imagen de la página",
+    "cosine {c}, {z} standard deviations above the mean": "coseno {c}, {z} desviaciones típicas sobre la media",
+    "{p}% of your words": "{p} % de sus palabras",
+    "table": "tabla",
+    "recommendation table": "tabla de recomendaciones",
+    "reference list": "lista de referencias",
+    "abbreviations": "abreviaturas",
+    "Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors: {a} passages, {b} whole pages and {c} page images. Each kind of vector is put on its own scale, a page counts with its best match, the share of your words on the page adds to it": "Su pregunta se convirtió en un vector de {d} números ({m}) y se comparó en {s} ms con {n} vectores: {a} pasajes, {b} páginas enteras y {c} imágenes de página. Cada tipo de vector tiene su propia escala, una página cuenta con su mejor coincidencia y se suma la proporción de sus palabras en la página",
+    ", and pages of the kind you asked for get a bonus: {k}.": ", y las páginas del tipo que busca reciben un extra: {k}."
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1312,7 +1334,18 @@
     "Keyword search only: {n} pages": "Только поиск по ключевым словам: {n} страниц",
     "{model} reads each candidate page: {judged} of {of}": "{model} читает каждую страницу-кандидат: {judged} из {of}",
     "{model} judged {judged} of {of} pages": "{model} оценил {judged} из {of} страниц",
-    "{n} candidate pages": "страниц-кандидатов: {n}"
+    "{n} candidate pages": "страниц-кандидатов: {n}",
+    "matched by a passage": "найдено по фрагменту",
+    "matched by the whole page": "найдено по всей странице",
+    "matched by the page image": "найдено по изображению страницы",
+    "cosine {c}, {z} standard deviations above the mean": "косинус {c}, на {z} стандартных отклонений выше среднего",
+    "{p}% of your words": "{p} % ваших слов",
+    "table": "таблица",
+    "recommendation table": "таблица рекомендаций",
+    "reference list": "список литературы",
+    "abbreviations": "сокращения",
+    "Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors: {a} passages, {b} whole pages and {c} page images. Each kind of vector is put on its own scale, a page counts with its best match, the share of your words on the page adds to it": "Ваш вопрос стал вектором из {d} чисел ({m}) и за {s} мс сравнён с {n} векторами: {a} фрагментов, {b} целых страниц и {c} изображений страниц. Каждый вид вектора имеет свою шкалу, страница считается по лучшему совпадению, к нему добавляется доля ваших слов на странице",
+    ", and pages of the kind you asked for get a bonus: {k}.": ", а страницы запрошенного вида получают бонус: {k}."
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -1750,6 +1783,17 @@
     "Keyword search only: {n} pages": "केवल कीवर्ड खोज: {n} पृष्ठ",
     "{model} reads each candidate page: {judged} of {of}": "{model} हर संभावित पृष्ठ पढ़ रहा है: {of} में से {judged}",
     "{model} judged {judged} of {of} pages": "{model} ने {of} में से {judged} पृष्ठ आँके",
-    "{n} candidate pages": "{n} संभावित पृष्ठ"
+    "{n} candidate pages": "{n} संभावित पृष्ठ",
+    "matched by a passage": "एक अंश से मिला",
+    "matched by the whole page": "पूरे पृष्ठ से मिला",
+    "matched by the page image": "पृष्ठ की छवि से मिला",
+    "cosine {c}, {z} standard deviations above the mean": "कोसाइन {c}, औसत से {z} मानक विचलन ऊपर",
+    "{p}% of your words": "आपके {p}% शब्द",
+    "table": "तालिका",
+    "recommendation table": "सिफ़ारिश तालिका",
+    "reference list": "संदर्भ सूची",
+    "abbreviations": "संक्षिप्त रूप",
+    "Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors: {a} passages, {b} whole pages and {c} page images. Each kind of vector is put on its own scale, a page counts with its best match, the share of your words on the page adds to it": "आपका प्रश्न {d} संख्याओं का वेक्टर ({m}) बना और {s} ms में {n} वेक्टरों से तुलना हुई: {a} अंश, {b} पूरे पृष्ठ और {c} पृष्ठ छवियाँ। हर तरह के वेक्टर का अपना पैमाना है, पृष्ठ अपने सबसे अच्छे मेल से गिना जाता है, और पृष्ठ पर आपके शब्दों का हिस्सा जुड़ता है",
+    ", and pages of the kind you asked for get a bonus: {k}.": ", और आपके माँगे प्रकार के पृष्ठों को बोनस मिलता है: {k}।"
   }
 }

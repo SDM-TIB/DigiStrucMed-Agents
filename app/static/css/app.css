@@ -1076,6 +1076,11 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .sem-it:hover{background:var(--accent-softer)}
 .sem-it .tx p{margin:4px 0;font-size:13px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .sem-it .tx small{color:var(--muted);font-size:12px}
+.sem-why{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 1px}
+.sem-chip{font-size:11px;line-height:17px;padding:0 7px;border-radius:9px;background:var(--side);color:var(--muted);white-space:nowrap}
+.sem-chip.m-image{background:color-mix(in srgb,#d97706 16%,transparent);color:#b45309}
+.sem-chip.m-page{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink)}
+.sem-chip.k{background:color-mix(in srgb,#16a34a 15%,transparent);color:#15803d}
 .sem-score{flex:none;width:58px;display:flex;flex-direction:column;gap:5px;padding-top:2px}
 .sem-score b{font:650 14px/1 var(--font, inherit);color:var(--ink)}
 .sem-bar{height:5px;border-radius:3px;background:var(--side);overflow:hidden}.sem-bar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
