@@ -20,9 +20,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 import config
 
-DS, M, F = 'http://digistrucmed.org/', 'urn:mhh:integration:20261011:', 'urn:mhh:final:20261016:'
+DS, M, F, X = 'http://digistrucmed.org/', 'urn:mhh:integration:20261011:', 'urn:mhh:final:20261016:', 'urn:mhh:final:20261018:'
 RDF_TYPE, RDFS_LABEL = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#label'
-PREFIXES = (f'PREFIX ds: <{DS}>\nPREFIX m: <{M}>\nPREFIX f: <{F}>\nPREFIX ql: <http://qlever.cs.uni-freiburg.de/builtin-functions/>\n'
+PREFIXES = (f'PREFIX ds: <{DS}>\nPREFIX m: <{M}>\nPREFIX f: <{F}>\nPREFIX x: <{X}>\nPREFIX ql: <http://qlever.cs.uni-freiburg.de/builtin-functions/>\n'
             'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n')
 SOURCES = ('umls', 'snomed', 'mesh', 'rxnorm', 'loinc', 'wikidata')
 
@@ -46,6 +46,7 @@ KINDS = {
   'relation': (M + 'factual-relation:', 'Factual relation', '#8b5e34', None, '?n a ds:FactualRelation'),
   'linkset': (F + 'link-set:', 'Link set (concept linking)', '#64748b', None, '?n a f:EffectiveConceptLinkSet'),
   'code': (M + 'catalogue-entry:', 'Terminology code', '#0ea5e9', 'rdfs:label', '?n a f:CatalogueEntry'),
+  'pagelink': (X + 'page-concept:', 'Page-concept link', '#d97706', None, '?n a x:PageConceptLink'),
 }
 _ORDER = sorted(KINDS.items(), key=lambda kv: -len(kv[1][0]))
 
@@ -135,13 +136,12 @@ def agent_view():
     'links': 'SELECT ?e ?src ?status ?method ?rec ?eff ?name WHERE { ?ls f:anchor ?e ; f:terminologySource ?src ; f:linkStatus ?status ; '
              'f:method ?method ; f:decisionRecord ?rec . OPTIONAL { ?ls f:effectiveConcept ?eff . OPTIONAL { ?eff rdfs:label ?name } } '
              'FILTER STRSTARTS(STR(?e), "http://digistrucmed.org/entity/") }',
-    # the guideline pages as part of the walk: a page names a concept when one of its detected mentions is linked to
-    # the same UMLS concept as the concept itself (both as the selected Top1 of their link sets); ?n counts the
-    # mentions, so a walk can prefer the pages that are about a concept over those that only name it once
-    'pagecon': 'SELECT ?page ?e (COUNT(?occ) AS ?n) WHERE { ?els f:anchor ?e ; f:terminologySource "umls" ; '
-               'f:linkStatus "selected_top1" ; f:effectiveConcept ?code . FILTER STRSTARTS(STR(?e), "http://digistrucmed.org/entity/") '
-               '?ls f:effectiveConcept ?code ; f:terminologySource "umls" ; f:linkStatus "selected_top1" ; f:anchor ?q . '
-               '?q a m:RetrievalQuery . ?occ m:ofQuery ?q . ?page m:hasOccurrence ?occ } GROUP BY ?page ?e',
+    # the guideline pages as part of the walk (graph layer x:graph:page-concepts, 18 October): a page names a concept
+    # when one of its detected mentions and the concept are linked to the same UMLS concept, both as the selected Top1;
+    # ?n counts those mentions on the page, so a walk prefers pages about a concept over pages that name it once
+    'pagecon': 'SELECT ?page ?e ?n WHERE { ?l a x:PageConceptLink ; x:page ?page ; x:concept ?e ; x:mentionCount ?n }',
+    # the page of each recommendation's semantic unit (x:graph:unit-pages)
+    'unitpage': 'SELECT ?tu ?page WHERE { ?su ds:hasTextUnit ?tu ; x:onPage ?page . ?tu ds:hasNormativeAssertion ?na }',
   }
   with ThreadPoolExecutor(6) as pool:
     rows = dict(zip(q, pool.map(lambda s: sparql(s, timeout=300), q.values())))
@@ -212,8 +212,11 @@ def agent_view():
   for r in rows['pagecon']:
     if r['e'] in concepts and concepts[r['e']]['id'] in used:
       pages[local(r['page'])].append((concepts[r['e']]['id'], int(r['n'])))
+  page_of = collections.defaultdict(set)
+  for r in rows['unitpage']:
+    page_of[r['tu']].add(local(r['page']))
   for rec in recs.values():
-    rec['page_id'] = next((pb[3:].rsplit('_g', 1)[0] for pb in rec['src']), None)
+    rec['page_id'] = min(page_of[rec['iri']]) if page_of.get(rec['iri']) else None
   return {'concepts': [c | {'iri': e} for e, c in concepts.items() if c['id'] in used], 'recs': list(recs.values()),
           'guides': [g for g in guides.values() if g['id'] in used], 'edges': sorted(edges), 'pages': dict(pages)}
 

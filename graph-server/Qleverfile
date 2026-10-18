@@ -9,7 +9,7 @@
 [data]
 NAME        = mhh-kg
 FORMAT      = nq
-DESCRIPTION = Final MHH guideline knowledge graph, 16 October 2026 (guidelineKG_final_16_10.nq.gz): the colleague graph, 2,780 pages, Level-4, and every concept link set (UMLS, SNOMED CT, MeSH, RxNorm, LOINC, Wikidata)
+DESCRIPTION = Final MHH guideline knowledge graph, 18 October 2026 (guidelineKG_final_18_10.nq.gz): the colleague graph, 2,780 pages, Level-4, every concept link set (UMLS, SNOMED CT, MeSH, RxNorm, LOINC, Wikidata), and the page layer (pages to concepts and semantic units)
 
 [index]
 INPUT_FILES     = graph.nq.gz

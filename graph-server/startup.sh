@@ -2,12 +2,16 @@
 # Startup script of the QLever graph server (runs as root on every boot, idempotent).
 #   1. mount the data disk (formatted once)
 #   2. docker and the QLever CLI (pinned version)
-#   3. the graph version named in the instance metadata: download, check its sha256, build the index once
+#   3. the graph version named in the instance metadata: download, check its sha256, build the index once; while a new
+#      version is indexed, the previous one keeps serving
 #   4. start the SPARQL server and the QLever UI (containers restart on their own after a reboot)
+# one run at a time: a boot and an explicit re-run (publish_graph.py --apply) never build the same index twice
 # memory figures follow the machine's RAM, so the same script serves a large build VM and a small serving VM.
 set -euo pipefail
 exec > >(tee -a /var/log/qlever-startup.log | logger -t qlever-startup) 2>&1
 echo "startup $(date -Is)"
+exec 9>/var/lock/qlever-startup
+if ! flock -n 9; then echo "another startup run is active: nothing to do"; exit 0; fi
 
 meta() { curl -sf -H 'Metadata-Flavor: Google' "http://metadata.google.internal/computeMetadata/v1/instance/attributes/$1"; }
 
@@ -44,6 +48,14 @@ mkdir -p "$DIR"
 cd "$DIR"
 meta qleverfile > Qleverfile
 RAM_MB="$(awk '/MemTotal/ {print int($2 / 1024)}' /proc/meminfo)"
+if [ ! -f INDEX_COMPLETE ] && [ -f "$DATA/current/INDEX_COMPLETE" ] && [ "$(readlink -f "$DATA/current")" != "$DIR" ]; then
+  # a new version: the previous index serves until the new one is built (step 4 then replaces it on the same port).
+  # memory: the build takes 45 % of the RAM, the interim server 20 % for queries and 10 % for its cache
+  echo "serving the previous version $(readlink -f "$DATA/current") while $SHA is indexed"
+  (cd "$DATA/current" && "$QLEVER" start --image "$IMAGE" --kill-existing-with-same-port \
+    --memory-for-queries "$((RAM_MB * 20 / 100))M" --cache-max-size "$((RAM_MB * 10 / 100))M" \
+    --access-token "$(cat "$DATA/access-token")") || echo "previous version could not be started"
+fi
 if [ ! -f INDEX_COMPLETE ]; then
   if [ ! -f graph.nq.gz ] || [ "$(sha256sum graph.nq.gz | cut -d' ' -f1)" != "$SHA" ]; then
     gcloud storage cp "$URI" graph.nq.gz
