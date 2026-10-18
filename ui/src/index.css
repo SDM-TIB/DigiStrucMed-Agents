@@ -5,7 +5,11 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "streamdown/styles.css";
+@import "katex/dist/katex.min.css";
 @source "./";
+@source "../node_modules/streamdown/dist/*.js";
+@source "../node_modules/@streamdown/math/dist/*.js";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -16,10 +20,11 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
+  /* the app defines --accent and --muted itself (app.css); the island's versions carry their own names */
+  --color-accent-foreground: var(--lui-accent-foreground);
+  --color-accent: var(--lui-accent);
+  --color-muted-foreground: var(--lui-muted-foreground);
+  --color-muted: var(--lui-muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -37,7 +42,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* literal values: the app itself uses --accent and --muted for other things */
+/* shadcn's tokens inside the island, from the app's palette. --lui-accent and --lui-muted: the app's own --accent and
+   --muted keep their meaning everywhere, also for app styles inside the island (the [n] chips) */
 .lui, [data-slot=hover-card-content] {
   --background: oklch(0.993 0.003 264);
   --foreground: oklch(0.24 0.015 264);
@@ -49,10 +55,10 @@
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.94 0.035 264);
   --secondary-foreground: oklch(0.47 0.18 264);
-  --muted: oklch(0.958 0.006 264);
-  --muted-foreground: oklch(0.55 0.015 264);
-  --accent: oklch(0.97 0.018 264);
-  --accent-foreground: oklch(0.47 0.18 264);
+  --lui-muted: oklch(0.958 0.006 264);
+  --lui-muted-foreground: oklch(0.55 0.015 264);
+  --lui-accent: oklch(0.97 0.018 264);
+  --lui-accent-foreground: oklch(0.47 0.18 264);
   --destructive: oklch(0.56 0.19 25);
   --border: oklch(0.91 0.008 264);
   --input: oklch(0.91 0.008 264);
@@ -75,7 +81,14 @@
 /* app-specific touches */
 .lui-cot { margin-bottom: 2px; }
 .lui-sources { margin-top: 14px; }
-.lui-rel { flex: none; width: 34px; height: 4px; border-radius: 2px; background: var(--muted); overflow: hidden; }
+.lui-rel { flex: none; width: 34px; height: 4px; border-radius: 2px; background: var(--lui-muted); overflow: hidden; }
 .lui-rel i { display: block; height: 100%; border-radius: 2px; background: var(--primary); opacity: .7; }
 .cite-host { display: inline; }
 @media (prefers-reduced-motion: reduce) { .lui * { transition: none !important; } }
+
+/* the chat's blur-in (app.css .blur-in) as a Streamdown animation: each new word comes out of a blur */
+@keyframes sd-lunaBlur { from { opacity: 0; filter: blur(8px); } to { opacity: 1; filter: blur(0); } }
+.cite-in { animation: sd-lunaBlur .65s cubic-bezier(.2,.75,.25,1) both; }
+/* the answer keeps the chat's own typography (app.css .answer); Streamdown's wrapper adds no spacing of its own */
+.lui-answer > :first-child { margin-top: 0; }
+.lui-answer > :last-child { margin-bottom: 0; }

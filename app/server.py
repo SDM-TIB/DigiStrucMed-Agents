@@ -45,7 +45,7 @@ ACTION_HEADER = 'X-TIB-Chat'
 _secret = (config.TAVUS_API_KEY or 'tib-chat').encode()
 SESSION_TOKEN = hmac.new(_secret, b'session:' + config.DEMO_PASSWORD.encode(), hashlib.sha256).hexdigest()
 ADMIN_TOKEN = hmac.new(_secret, b'admin:' + config.ADMIN_PASSWORD.encode(), hashlib.sha256).hexdigest() if config.ADMIN_PASSWORD else ''
-STATIC_TYPES = {'.html', '.css', '.js', '.json', '.jpg', '.png', '.svg', '.mp4'}
+STATIC_TYPES = {'.html', '.css', '.js', '.json', '.jpg', '.png', '.svg', '.mp4', '.woff2', '.woff', '.ttf'}  # fonts: KaTeX in static/ui
 CHATS = {'luna': luna.run, 'lino': lino.chat, 'guido': guido.run}
 
 
@@ -347,6 +347,8 @@ GET_ROUTES = {
 
 if __name__ == '__main__':
   mimetypes.add_type('image/svg+xml', '.svg')
+  for ext in ('woff2', 'woff', 'ttf'):
+    mimetypes.add_type('font/' + ext, '.' + ext)
   llm.warm()  # before listening: cloud run only routes to a new revision once it accepts connections
   page_search.load()  # luna's page index, before listening (full cpu at startup); without it the search uses bm25
   page_search.warm()  # wakes the embedding service

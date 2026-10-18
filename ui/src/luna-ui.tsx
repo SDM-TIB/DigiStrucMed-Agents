@@ -4,9 +4,10 @@
 // the answer, Inline Citation hover cards on its [n] marks.
 import './index.css'
 
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 
+import { Answer } from './elements/answer'
 import { ChainOfThought } from './elements/chain-of-thought'
 import { InlineCitation } from './elements/inline-citation'
 import { Sources } from './elements/sources'
@@ -115,6 +116,33 @@ class MessageUI {
     this.settle()
     for (const s of this.steps) if (s.kind === 'search' && !s.hits) s.hits = []
     this.render()
+  }
+
+  private answerRoot?: Root
+  private sources_: Record<number, Source> = {}
+
+  /** the answer text with Streamdown, into the app's .answer box. while streaming it renders each update; when final,
+   * it keeps the blur running until the last words are sharp, then renders the plain text and resolves */
+  answer(el: HTMLElement, raw: string, sources: Record<number, Source>, final = false): Promise<void> {
+    if (!this.answerRoot) this.answerRoot = island(el)
+    this.sources_ = sources
+    const draw = (streaming: boolean) => this.answerRoot!.render(
+      <Answer raw={raw} streaming={streaming} sources={this.sources_} bridge={this.bridge} />)
+    if (!final) {
+      draw(true)
+      return Promise.resolve()
+    }
+    flushSync(() => draw(true))
+    return new Promise(resolve => setTimeout(() => {
+      flushSync(() => draw(false))
+      resolve()
+    }, 700))
+  }
+
+  /** an error replaces the answer: the app writes it into the box itself */
+  releaseAnswer() {
+    this.answerRoot?.unmount()
+    this.answerRoot = undefined
   }
 
   /** Sources under the answer, into the app's .refs box */

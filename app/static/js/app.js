@@ -1011,7 +1011,8 @@ setTimeout(() => { $('#dq-label').textContent = care.t('myQuestions'); renderDoc
 // parts of a cited answer without any citation get a quiet marker: the patient sees what is not backed by a source
 function markUncited(st) {
   if (!st.answer.querySelector('.cite')) return;
-  st.answer.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li').forEach(n => {
+  const root = st.answer.querySelector(':scope > .lui-answer') || st.answer;  // Streamdown wraps the blocks in one div
+  root.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li').forEach(n => {
     if (!n.querySelector('.cite') && n.textContent.trim().length > 80) { n.classList.add('uncited'); n.title = care.t('uncited', langOf(st.raw)); }
   });
 }
@@ -1024,6 +1025,9 @@ function addAssistant() {
   // the agent's work as shadcn AI Elements (chain of thought, tools, sources, citations): ui/src/luna-ui.tsx. without it
   // (not loaded yet, or failed) the plain step lines below still show it
   if (window.LunaUI && agent !== AGENTS.guido) st.ui = window.LunaUI.message(st.steps, {t: uiText, openSource: (n, quote) => showSource(st, n, quote || '')});
+  // Luna's answer text streams through Streamdown in the island (incomplete markdown closed, words blur in, math,
+  // live citation cards); Lino and Guido keep marked and revealNew below
+  st.sd = !!(st.ui && st.ui.answer && agent === AGENTS.luna);
   el.addEventListener('click', e => {
     const c = e.target.closest('.cite, .ref'); if (!c) return;
     const block = c.classList.contains('cite') ? c.closest('p, li') : null;  // the sentence that cites it, without its [n] buttons
@@ -1068,6 +1072,7 @@ document.addEventListener('click', e => {
 });
 function render(st, final) {
   st.frame = 0;
+  if (st.sd) { st.ui.answer(st.answer, st.raw, st.sources); scrollFeed(); return; }
   const html = DOMPurify.sanitize(citeify(marked.parse(st.lino ? fenceJson(st.raw) : st.raw)), {ADD_ATTR: ['data-n']});
   st.answer.innerHTML = html;
   revealNew(st.answer, st);
@@ -1345,7 +1350,7 @@ function finishRefs(st) {
   settle(st);
   const cited = [...new Set([...st.raw.matchAll(/\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\]/g)].flatMap(m => m[1].match(/\d+/g).map(Number)))].filter(n => st.sources[n]);
   cited.sort((a, b) => a - b); st.cited = cited;
-  if (st.ui) { st.ui.done(); st.ui.sources(st.refs, cited.map(n => st.sources[n])); st.ui.citations(st.answer, st.sources); return; }
+  if (st.ui) { st.ui.done(); st.ui.sources(st.refs, cited.map(n => st.sources[n])); if (!st.sd) st.ui.citations(st.answer, st.sources); return; }
   cited.forEach((n, i) => {
     const s = st.sources[n];
     const b = document.createElement('button'); b.className = 'ref'; b.dataset.n = n; b.style.animationDelay = (i * 60) + 'ms';
@@ -1487,7 +1492,8 @@ async function sendChat(text) {
       }
     }
     if (tl) await tl.end();
-    render(st, true); finishRefs(st);
+    if (st.sd) await st.ui.answer(st.answer, st.raw, st.sources, true); else render(st, true);
+    finishRefs(st);
     st.el.lang = langOf(st.raw); care.setLang(st.el.lang);  // the answer is longer than the question, so its language is the safer guess
     if (st.raw.trim()) st.el.querySelector('.refs').insertAdjacentHTML('afterend', `<p class="care-note">${esc(care.t(a === AGENTS.lino ? 'noteLino' : 'note'))}</p>`);
     announce(`${a.name}: ${st.answer.textContent.slice(0, 900)}`);
@@ -1499,7 +1505,7 @@ async function sendChat(text) {
     chatHistory.push({role: 'assistant', text: st.raw});
     $(a.preview).textContent = st.raw.replace(/\[\d+\]|[*#_]/g, '').slice(0, 80);
   } catch (e) {
-    st.ui?.done();
+    st.ui?.done(); if (st.sd) { cancelAnimationFrame(st.frame); st.ui.releaseAnswer(); }
     st.answer.innerHTML = `<span class="err">${esc(e.message)}</span>`;
     chatHistory.pop();
   } finally {

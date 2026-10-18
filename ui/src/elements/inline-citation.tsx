@@ -22,7 +22,7 @@ function PageImage({ id, alt }: { id: string; alt: string }) {
 
 export function InlineCitation({ n, source, bridge }: { n: number; source?: Source; bridge: Bridge }) {
   const { t } = bridge
-  const trigger = <button type="button" className="cite" data-n={n} aria-label={t('Source {n}', { n })} />
+  const trigger = <button type="button" className="cite cite-in" data-n={n} aria-label={t('Source {n}', { n })} />
   if (!source) return React.cloneElement(trigger, {}, n)
   const where = [source.ref, source.page != null ? t('p. {p}', { p: String(source.page) }) : ''].filter(Boolean).join(' · ')
   return (

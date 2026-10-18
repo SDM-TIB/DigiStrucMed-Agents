@@ -15,7 +15,7 @@ export default defineConfig({
     cssCodeSplit: false,
     rollupOptions: {
       input: path.resolve(import.meta.dirname, 'src/luna-ui.tsx'),
-      output: { entryFileNames: 'luna-ui.js', chunkFileNames: 'chunks/[name]-[hash].js', assetFileNames: 'luna-ui[extname]' },
+      output: { entryFileNames: 'luna-ui.js', chunkFileNames: 'chunks/[name]-[hash].js', assetFileNames: a => a.names?.[0]?.endsWith('.css') ? 'luna-ui.css' : 'assets/[name]-[hash][extname]' },
     },
   },
 })
