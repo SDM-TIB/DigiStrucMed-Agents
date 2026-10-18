@@ -1,7 +1,9 @@
 // The answer text, streamed with Streamdown (https://streamdown.ai): incomplete Markdown is closed while it streams,
 // so no stray ** or half links flash up; each new word blurs in with the chat's own animation (sd-lunaBlur in
 // index.css, the same curve as the old .blur-in); math through @streamdown/math (KaTeX); every [n] becomes an
-// Inline Citation that works while the answer is still streaming.
+// Inline Citation that works while the answer is still streaming; code blocks (Lino's storyboard JSON) through
+// @streamdown/code with highlighting and a copy button.
+import { code } from '@streamdown/code'
 import { createMathPlugin } from '@streamdown/math'
 import * as React from 'react'
 import { defaultComponents, Streamdown } from 'streamdown'
@@ -44,7 +46,7 @@ export function Answer({ raw, streaming, sources, bridge }: { raw: string; strea
   return (
     <Streamdown
       className="lui-answer"
-      plugins={{ math }}
+      plugins={{ math, code }}
       components={components}
       animated={{ animation: 'lunaBlur', duration: 650, easing: 'cubic-bezier(.2,.75,.25,1)' }}
       isAnimating={streaming}

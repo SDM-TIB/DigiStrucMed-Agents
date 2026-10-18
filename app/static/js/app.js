@@ -597,6 +597,7 @@ function renderStoryboard(st) {
   if (a < 0 || b <= a) return;
   let j; try { j = JSON.parse(raw.slice(a, b + 1)); } catch { return; }
   if (!j || !Array.isArray(j.scenes) || !j.scenes.length) return;
+  if (st.sd) st.ui.releaseAnswer();  // the storyboard replaces the streamed text
   st.answer.innerHTML = `<div class="sb"><div class="sb-head"><span>${esc(uiText('Storyboard'))}</span><h4>${esc(String(j.title || uiText('Untitled')))}</h4></div>` + j.scenes.map((sc, i) =>
     `<div class="sb-scene"><span class="sb-n">${esc(String(sc.scene_number || i + 1))}</span><div>`
     + (sc.on_screen_text ? `<b class="sb-ost">${esc(String(sc.on_screen_text))}</b>` : '')
@@ -1024,10 +1025,11 @@ function addAssistant() {
   if (st.lino) st.steps.insertAdjacentHTML('beforebegin', `<span class="unv">${esc(care.t('unverified'))}</span>`);
   // the agent's work as shadcn AI Elements (chain of thought, tools, sources, citations): ui/src/luna-ui.tsx. without it
   // (not loaded yet, or failed) the plain step lines below still show it
-  if (window.LunaUI && agent !== AGENTS.guido) st.ui = window.LunaUI.message(st.steps, {t: uiText, openSource: (n, quote) => showSource(st, n, quote || '')});
-  // Luna's answer text streams through Streamdown in the island (incomplete markdown closed, words blur in, math,
-  // live citation cards); Lino and Guido keep marked and revealNew below
-  st.sd = !!(st.ui && st.ui.answer && agent === AGENTS.luna);
+  if (window.LunaUI) st.ui = window.LunaUI.message(st.steps, {t: uiText, openSource: (n, quote) => showSource(st, n, quote || '')});
+  // every agent's answer text streams through Streamdown in the island (incomplete markdown closed, words blur in,
+  // math, code, live citation cards). Guido's steps stay his graph timeline. marked and revealNew remain the
+  // fallback when the island has not loaded
+  st.sd = !!(st.ui && st.ui.answer);
   el.addEventListener('click', e => {
     const c = e.target.closest('.cite, .ref'); if (!c) return;
     const block = c.classList.contains('cite') ? c.closest('p, li') : null;  // the sentence that cites it, without its [n] buttons
@@ -1072,7 +1074,7 @@ document.addEventListener('click', e => {
 });
 function render(st, final) {
   st.frame = 0;
-  if (st.sd) { st.ui.answer(st.answer, st.raw, st.sources); scrollFeed(); return; }
+  if (st.sd) { st.ui.answer(st.answer, st.lino ? fenceJson(st.raw) : st.raw, st.sources); scrollFeed(); return; }
   const html = DOMPurify.sanitize(citeify(marked.parse(st.lino ? fenceJson(st.raw) : st.raw)), {ADD_ATTR: ['data-n']});
   st.answer.innerHTML = html;
   revealNew(st.answer, st);
@@ -1492,7 +1494,7 @@ async function sendChat(text) {
       }
     }
     if (tl) await tl.end();
-    if (st.sd) await st.ui.answer(st.answer, st.raw, st.sources, true); else render(st, true);
+    if (st.sd) await st.ui.answer(st.answer, st.lino ? fenceJson(st.raw) : st.raw, st.sources, true); else render(st, true);
     finishRefs(st);
     st.el.lang = langOf(st.raw); care.setLang(st.el.lang);  // the answer is longer than the question, so its language is the safer guess
     if (st.raw.trim()) st.el.querySelector('.refs').insertAdjacentHTML('afterend', `<p class="care-note">${esc(care.t(a === AGENTS.lino ? 'noteLino' : 'note'))}</p>`);
