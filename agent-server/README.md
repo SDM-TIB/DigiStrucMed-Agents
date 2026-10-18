@@ -1,6 +1,6 @@
-# Agent server (Luna)
+# Agent server (Luna, Guido v2)
 
-Luna's agent loop runs on [Mastra](https://mastra.ai), which builds on the [Vercel AI SDK](https://ai-sdk.dev). It is
+The agent loops of Luna and of Guido v2 run on [Mastra](https://mastra.ai), which builds on the [Vercel AI SDK](https://ai-sdk.dev). It is
 a private Cloud Run service (`luna-agent`). The model is Gemini 3.8 Flash on Vertex AI (`@ai-sdk/google-vertex`,
 location `global`).
 
@@ -20,6 +20,7 @@ browser ── /api/chat/luna ──> app (Python, luna.run)
 | `src/mastra/index.ts` | the Mastra instance and the route `POST /luna/chat`, which streams the app's chat events (text, tool_call, sources, read, done, error) |
 | `src/mastra/agents/luna.ts` | the `Agent`: instructions come with each request (one prompt source, `app/luna.py` `SYSTEM`), the model via `createVertex` |
 | `src/mastra/tools.ts` | three `createTool()` tools with zod schemas. Each calls the app; `toModelOutput` gives the model only the `model` part, and the ui events go to the browser |
+| `src/mastra/agents/guido.ts` | Guido v2: the same model and loop, instructions from `app/guido.py` `SYSTEM_V2`, route `POST /guido/chat` |
 | `Dockerfile` | `mastra build` in Node 24, then the self-contained `.mastra/output` server |
 
 ## Loop control
@@ -52,3 +53,18 @@ APP_URL=http://localhost:8080 AGENT_TOKEN=<any> GOOGLE_VERTEX_PROJECT=<project> 
 ```
 
 Then run the app with the same `AGENT_TOKEN` and `AGENT_URL=http://localhost:4111`.
+
+## Guido v2
+
+Guido walks the guideline knowledge graph (app/guido.py `Walk`); in v2 the guideline pages are part of that graph.
+
+- **Page nodes.** `p:<page id>` for the 2,743 pages with linked mentions. A page names a concept when one of its detected
+  mentions is linked to the concept's UMLS concept, both as the selected Top1 of their link sets (172,332 links, loaded
+  at startup by `graph.agent_view`, query `pagecon`). A recommendation knows its page from its source block. Walk
+  weights are tf-idf, so generic concepts ("patient") do not pull the walk to random pages.
+- **Tools** (app endpoints `guido_*`, one walk per run in `app/agent_tools.py`): `explore` (concepts, the recommendations
+  closest to them by personalized PageRank, and the pages where the concepts meet, ranked by how well the page text fits
+  the question), `expand` (a concept, recommendation or page node; from a page to its concepts and recommendations),
+  `search_pages` (Luna's two-stage page search; the pages join the graph) and `read_page` (the original OCR page).
+- **Selection.** `GUIDO_HARNESS` (app setting): `local` is the evaluated 3-round loop in `guido.py`, `mastra` is v2.
+  A request may choose with `harness`.
