@@ -511,16 +511,18 @@ svg:not(:where(.lui *,[data-slot=hover-card-content] *)){width:20px;height:20px;
 .ab-agents span{color:var(--muted);font-size:13.5px;line-height:20px}
 .ab-agents .orb{flex:none}
 .ab-h{font:600 18px/24px var(--display);margin:0 0 14px}
-.ab-team{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.ab-team{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px;align-items:stretch}
 .ab-person{display:flex;flex-direction:column;align-items:center;gap:6px;padding:20px 12px;border:1px solid var(--line);border-radius:16px;background:var(--win);color:inherit;text-decoration:none;text-align:center;animation:rise .4s var(--ease) both;transition:border-color .2s,transform .2s var(--ease)}
 a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .ab-pic{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;margin-bottom:6px;background:var(--accent) center/cover;color:#fff;font:600 28px/1 var(--display)}
 .ab-person b{font-size:14.5px}
 .ab-txt{display:flex;flex-direction:column;gap:3px}
-.ab-person.wide{grid-column:span 2;flex-direction:row;align-items:center;gap:18px;padding:20px;text-align:left}
-.ab-person.wide .ab-pic{margin:0;flex:none}
+/* a card with a description: photo left, text right, both from the top, so every card in a row lines up */
+.ab-person.wide{flex-direction:row;align-items:flex-start;gap:18px;padding:20px;text-align:left}
+.ab-person.wide .ab-pic{margin:0;flex:none;width:84px;height:84px}
+.ab-person.wide .ab-txt{min-width:0;padding-top:2px}
 .ab-txt p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:19px}
-@media (max-width:760px){.ab-person.wide{grid-column:auto;flex-direction:column;text-align:center}}
+@media (max-width:760px){.ab-person.wide{flex-direction:column;align-items:center;text-align:center}}
 .ab-person small{color:var(--muted);font-size:12.5px;line-height:17px}
 .ab-logos{margin:34px 0 8px}
 .ab-logos .logos{display:flex;align-items:center;flex-wrap:wrap;gap:22px 28px}
