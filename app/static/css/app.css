@@ -524,9 +524,14 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .ab-txt p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:19px}
 @media (max-width:760px){.ab-person.wide{flex-direction:column;align-items:center;text-align:center}}
 .ab-person small{color:var(--muted);font-size:12.5px;line-height:17px}
-.ab-logos{margin:34px 0 8px}
-.ab-logos .logos{display:flex;align-items:center;flex-wrap:wrap;gap:22px 28px}
-.ab-logos img{display:block;width:auto}.ab-logos .l-luh,.ab-logos .l-l3s{height:40px}.ab-logos .l-caimed{height:26px}.ab-logos .l-tib{height:30px}.ab-logos .l-sdm{height:46px}
+/* the institutions: one panel like the cards above, each logo on its own tile of equal size */
+.ab-logos{margin:30px 0 8px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--win);animation:rise .4s var(--ease) .2s both}
+.ab-logos .ab-h{margin:0 0 14px}
+.ab-logos .logos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.logo-tile{display:grid;place-items:center;height:92px;padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:#fff;transition:border-color .2s,transform .2s var(--ease),box-shadow .2s}
+.logo-tile:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 20px -12px oklch(0.3 0.08 255 / .35)}
+.ab-logos img{display:block;width:auto;max-width:100%;object-fit:contain}
+.ab-logos .l-luh,.ab-logos .l-l3s{height:44px}.ab-logos .l-caimed{height:30px}.ab-logos .l-tib{height:34px}.ab-logos .l-sdm{height:52px}
 .set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:20px;max-width:1000px}
 .set-card{display:flex;align-items:center;gap:24px;padding:24px;border:1px solid var(--line);border-radius:16px;background:var(--win);animation:rise .4s var(--ease) both}
 .set-kicker{font-size:12px;font-weight:600;color:var(--accent)}
@@ -1002,6 +1007,7 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
   .srch-head{padding:20px 16px 14px}
   .lib-body,.srch-body{padding:16px 16px 24px}
   .ab-agents,.ab-team,.set-grid{grid-template-columns:minmax(0,1fr)}
+  .ab-logos{padding:16px}.ab-logos .logos{grid-template-columns:repeat(2,minmax(0,1fr))}.logo-tile{height:80px}.logo-tile:last-child:nth-child(odd){grid-column:1/-1}
   .set-card{gap:16px;padding:18px}
   .set-card .gauge,.set-card .gauge svg{width:88px;height:88px}
   .set-card .gauge-n b{font-size:20px;line-height:24px}
