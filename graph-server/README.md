@@ -1,7 +1,7 @@
 # Graph server
 
-The final MHH guideline knowledge graph (`guidelineKG_final_16_10.nq.gz`, one N-Quads file, every statement in the
-named graph it comes from) is the only graph source of TIB Chat. This folder runs it as a SPARQL endpoint with
+The final MHH guideline knowledge graph (`guidelineKG_final_18_10.nq.gz` since 18 October 2026: the 16 October graph plus
+the page layer; one N-Quads file, every statement in the named graph it comes from) is the only graph source of TIB Chat. This folder runs it as a SPARQL endpoint with
 [QLever](https://github.com/ad-freiburg/qlever) (University of Freiburg) on one small Compute Engine VM, as code.
 
 ```
@@ -66,6 +66,11 @@ uploads the file under its sha256 (nothing is overwritten), updates `graph.lock.
 metadata) and re-runs `startup.sh` on the VM. The VM verifies the sha256, builds the new index next to the old one,
 and replaces the server. Commit `graph.lock.json` with the app change that needs the new version. For a large graph,
 apply `-var machine_type=e2-standard-4` first, as in the first setup.
+
+While the new index is built, the previous version keeps serving (`startup.sh` starts it first, with less memory, and
+replaces it on the same port when the new index is complete); only the machine-type changes restart the VM for a
+minute. A lock lets one `startup.sh` run at a time. Terraform authenticates like the other client libraries:
+`GOOGLE_APPLICATION_CREDENTIALS` = the service-account key named in the credentials folder's README.
 
 ## The QLever UI
 
