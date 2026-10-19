@@ -1,4 +1,9 @@
-# Checks every push and pull request. Pushes to main that touch the app deploy it to Cloud Run.
+# Checks every push and pull request. Pushes to main deploy what they touch to Cloud Run:
+#   app/, ui/, deploy/          -> the app (luna-demo)
+#   agent-server/               -> Luna's and Guido's agent server (luna-agent, Mastra)
+#   agent-server-aisdk/         -> the second harness (luna-agent-aisdk, AI SDK 7)
+#   embed-server/               -> the embedding service (tib-embed)
+# A manual run (Actions > check and deploy > Run workflow) deploys the part chosen there.
 # No keys in GitHub: Actions signs in to Google Cloud through Workload Identity Federation, and only this
 # repository may do that. App secrets stay in Secret Manager; the service keeps its references to them.
 # Settings are repository variables (Settings > Secrets and variables > Actions > Variables).
@@ -9,6 +14,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      what:
+        description: what to deploy
+        type: choice
+        options: [app, agents, embed, all]
+        default: app
 
 permissions:
   contents: read
@@ -37,6 +48,11 @@ jobs:
     permissions:
       contents: read
       id-token: write  # for the Workload Identity Federation token
+    env:
+      GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+      MANUAL: ${{ github.event_name == 'workflow_dispatch' && inputs.what || '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -47,23 +63,51 @@ jobs:
               - 'app/**'
               - 'deploy/**'
               - 'ui/**'
-      - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+            agent:
+              - 'agent-server/**'
+            aisdk:
+              - 'agent-server-aisdk/**'
+            embed:
+              - 'embed-server/**'
+      - id: plan  # what this run deploys
+        run: |
+          any() { for x in "$@"; do [ "$x" = true ] && return 0; done; return 1; }
+          m="$MANUAL"
+          app=false; agent=false; aisdk=false; embed=false
+          if [ -n "$m" ]; then
+            case "$m" in app) app=true;; agents) agent=true; aisdk=true;; embed) embed=true;; all) app=true; agent=true; aisdk=true; embed=true;; esac
+          else
+            app=${{ steps.changed.outputs.app }}; agent=${{ steps.changed.outputs.agent }}
+            aisdk=${{ steps.changed.outputs.aisdk }}; embed=${{ steps.changed.outputs.embed }}
+          fi
+          echo "app=$app" >> "$GITHUB_OUTPUT"; echo "agent=$agent" >> "$GITHUB_OUTPUT"
+          echo "aisdk=$aisdk" >> "$GITHUB_OUTPUT"; echo "embed=$embed" >> "$GITHUB_OUTPUT"
+          if any $app $agent $aisdk $embed; then echo "any=true" >> "$GITHUB_OUTPUT"; fi
+          echo "deploy: app=$app agent=$agent agent-aisdk=$aisdk embed=$embed"
+      - if: steps.plan.outputs.any == 'true'
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
-      - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+      - if: steps.plan.outputs.any == 'true'
         uses: google-github-actions/setup-gcloud@v3
-      - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+      - if: steps.plan.outputs.app == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - if: steps.changed.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+      - if: steps.plan.outputs.embed == 'true'
+        run: python deploy/deploy.py embed --code-only
+      - if: steps.plan.outputs.agent == 'true'
+        run: python deploy/deploy.py agent --code-only
+        env:
+          LUNA_MODEL: ${{ vars.LUNA_MODEL }}
+      - if: steps.plan.outputs.aisdk == 'true'
+        run: python deploy/deploy.py agent-aisdk --code-only
+        env:
+          LUNA_MODEL: ${{ vars.LUNA_MODEL }}
+      - if: steps.plan.outputs.app == 'true'
         run: python deploy/deploy.py app --code-only
         env:
-          GCP_PROJECT: ${{ vars.GCP_PROJECT }}
-          GCP_REGION: ${{ vars.GCP_REGION }}
-          CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
           PAGE_BUCKET: ${{ vars.PAGE_BUCKET }}
           LANGUAGES: ${{ vars.LANGUAGES }}
           LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}

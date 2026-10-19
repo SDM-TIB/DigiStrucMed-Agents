@@ -7,6 +7,9 @@
   python deploy/deploy.py embed    # EmbeddingGemma 2 service for Luna's search (embed-server/), private; prints EMBED_URL
   python deploy/deploy.py agent    # Luna's agent server (agent-server/, Mastra), private; prints AGENT_URL
   python deploy/deploy.py agent-aisdk   # the second harness (agent-server-aisdk/, AI SDK 7); prints AGENT_AISDK_URL
+  python deploy/deploy.py embed|agent|agent-aisdk --code-only   # what GitHub Actions runs: a new revision of the
+                                   # existing service from the source, same settings; no IAM changes (the deploy
+                                   # account needs no admin role), the runtime account is read from the service
   python deploy/deploy.py gpu      # Lino's vLLM server in every Modal workspace of the pool (deploy_new_modal.py --all)
   python deploy/deploy.py assets push|pull   # videos and the LoRA adapter, kept in the bucket, not in git
 
@@ -115,13 +118,22 @@ def source_deploy(env, project, region, service, bucket, secrets_flag):
   print(run('gcloud', 'run', 'services', 'describe', service, f'--region={region}', f'--project={project}', '--format=value(status.url)', quiet=True))
 
 
-def deploy_embed(env):
+def runtime_of(service, region, project):
+  """the account an existing service runs as (CI: the deploy account may read services, not the project)"""
+  return run('gcloud', 'run', 'services', 'describe', service, f'--region={region}', f'--project={project}',
+             '--format=value(spec.template.spec.serviceAccountName)', quiet=True).strip()
+
+
+def deploy_embed(env, code_only=False):
   """the embedding service: private (no unauthenticated access), scales to zero, the app's runtime account may invoke
   it. 4 GiB holds the model with torch; the app wakes it when it starts and falls back to bm25 while it is cold"""
   project, region = env['GCP_PROJECT'], env.get('GCP_REGION', 'europe-west3')
   run('gcloud', 'run', 'deploy', 'tib-embed', '--source', str(ROOT / 'embed-server'), f'--region={region}', f'--project={project}',
-      '--no-allow-unauthenticated', '--memory=4Gi', '--cpu=2', '--min-instances=0', '--max-instances=4', '--cpu-boost',
-      '--timeout=120', '--concurrency=2', '--quiet', quiet=True)
+      *([] if code_only else ['--no-allow-unauthenticated']), '--memory=4Gi', '--cpu=2', '--min-instances=0',
+      '--max-instances=4', '--cpu-boost', '--timeout=120', '--concurrency=2', '--quiet', quiet=True)
+  if code_only:  # the service keeps who may invoke it
+    print('tib-embed deployed')
+    return
   number = run('gcloud', 'projects', 'describe', project, '--format=value(projectNumber)', quiet=True).strip()
   run('gcloud', 'run', 'services', 'add-iam-policy-binding', 'tib-embed', f'--region={region}', f'--project={project}',
       f'--member=serviceAccount:{number}-compute@developer.gserviceaccount.com', '--role=roles/run.invoker', quiet=True)
@@ -130,21 +142,27 @@ def deploy_embed(env):
   print(f'EMBED_URL={url}  (put it in .env and in the repository variable EMBED_URL, then deploy the app)')
 
 
-def deploy_agent(env, service_name='luna-agent', folder='agent-server', setting='AGENT_URL'):
+def deploy_agent(env, service_name='luna-agent', folder='agent-server', setting='AGENT_URL', code_only=False):
   """Luna's agent loop (Mastra on the Vercel AI SDK, Gemini on Vertex AI): private, scales to zero, the app's runtime
   account may invoke it. It runs as that same account and calls the app's tool endpoints back with an identity token
   of it, which the app accepts; no shared secret"""
   project, region, service = env['GCP_PROJECT'], env.get('GCP_REGION', 'europe-west3'), env['CLOUD_RUN_SERVICE']
-  number = run('gcloud', 'projects', 'describe', project, '--format=value(projectNumber)', quiet=True).strip()
-  runtime = f'serviceAccount:{number}-compute@developer.gserviceaccount.com'
+  if code_only:
+    runtime = 'serviceAccount:' + runtime_of(service_name, region, project)
+  else:
+    number = run('gcloud', 'projects', 'describe', project, '--format=value(projectNumber)', quiet=True).strip()
+    runtime = f'serviceAccount:{number}-compute@developer.gserviceaccount.com'
   app_url = run('gcloud', 'run', 'services', 'describe', service, f'--region={region}', f'--project={project}',
                 '--format=value(status.url)', quiet=True).strip()
   settings = {'APP_URL': app_url, 'GOOGLE_VERTEX_PROJECT': project, 'GOOGLE_VERTEX_LOCATION': 'global',
-              'LUNA_MODEL': env.get('LUNA_MODEL', 'gemini-3.8-flash')}
+              'LUNA_MODEL': env.get('LUNA_MODEL') or 'gemini-3.8-flash'}  # ci passes an unset variable as ''
   run('gcloud', 'run', 'deploy', service_name, '--source', str(ROOT / folder), f'--region={region}', f'--project={project}',
-      '--no-allow-unauthenticated', '--memory=1Gi', '--cpu=1', '--min-instances=0', '--max-instances=3', '--cpu-boost',
+      *([] if code_only else ['--no-allow-unauthenticated']), '--memory=1Gi', '--cpu=1', '--min-instances=0', '--max-instances=3', '--cpu-boost',
       '--timeout=600', '--concurrency=20', f'--service-account={runtime.split(":", 1)[1]}',
       '--set-env-vars=' + ','.join(f'{k}={v}' for k, v in settings.items()), '--quiet', quiet=True)
+  if code_only:  # the service keeps who may invoke it
+    print(f'{service_name} deployed')
+    return
   run('gcloud', 'run', 'services', 'add-iam-policy-binding', service_name, f'--region={region}', f'--project={project}',
       f'--member={runtime}', '--role=roles/run.invoker', quiet=True)
   url = run('gcloud', 'run', 'services', 'describe', service_name, f'--region={region}', f'--project={project}',
@@ -170,11 +188,11 @@ if __name__ == '__main__':
   if what == 'app':
     deploy_app(env, code_only='--code-only' in sys.argv)
   elif what == 'agent':
-    deploy_agent(env)
+    deploy_agent(env, code_only='--code-only' in sys.argv)
   elif what == 'agent-aisdk':
-    deploy_agent(env, 'luna-agent-aisdk', 'agent-server-aisdk', 'AGENT_AISDK_URL')
+    deploy_agent(env, 'luna-agent-aisdk', 'agent-server-aisdk', 'AGENT_AISDK_URL', code_only='--code-only' in sys.argv)
   elif what == 'embed':
-    deploy_embed(env)
+    deploy_embed(env, code_only='--code-only' in sys.argv)
   elif what == 'gpu':
     deploy_gpu(env)
   elif what == 'assets' and sys.argv[2:] in (['push'], ['pull']):

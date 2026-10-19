@@ -97,7 +97,23 @@ Cloudflare is optional. Without `CF_ACCOUNT_ID` the screen share keeps its defau
 
 ## Deploy from GitHub
 
-Every push and pull request is checked (Python lint, JavaScript syntax). A push to `main` that changes `app/` or `deploy/` then deploys itself with `python deploy/deploy.py app --code-only` (`.github/workflows/deploy.yml`). You can also start it by hand under Actions.
+Every push and pull request is checked (Python lint, JavaScript syntax, the chat UI build). A push to `main` then
+deploys what it changed, through `.github/workflows/deploy.yml`:
+
+| A push that changes | deploys | with |
+|---|---|---|
+| `app/`, `ui/`, `deploy/` | the app (`luna-demo`) | `python deploy/deploy.py app --code-only` |
+| `agent-server/` | Luna's and Guido's agent server (`luna-agent`) | `python deploy/deploy.py agent --code-only` |
+| `agent-server-aisdk/` | the AI SDK 7 harness (`luna-agent-aisdk`) | `python deploy/deploy.py agent-aisdk --code-only` |
+| `embed-server/` | the embedding service (`tib-embed`) | `python deploy/deploy.py embed --code-only` |
+
+To deploy without a change, open Actions > check and deploy > Run workflow and pick `app`, `agents`, `embed` or `all`.
+
+**For team members.** You need write access to the GitHub repository, nothing else: no Google Cloud account, no keys,
+no `.env`. Push to `main` (or merge a pull request) and the workflow deploys within a few minutes; the Actions tab shows
+each step. Check the live app afterwards. A failed deploy changes nothing: the running revision keeps serving. What
+stays with the project owner: the secrets (passwords, Tavus, Modal and Cloudflare keys) in Secret Manager, the graph
+server (`graph-server/`, terraform) and the Modal GPU (`deploy.py gpu`).
 
 GitHub holds no keys. Actions signs in to Google Cloud through Workload Identity Federation: the pool `github` with the provider `digistrucmed-agents` accepts only tokens from this repository, and lets it act as the service account `github-deployer`, which has just the roles a source deploy needs (`run.sourceDeveloper`, `serviceusage.serviceUsageConsumer`, and `iam.serviceAccountUser` on the runtime account). The app's secrets stay in Secret Manager and the service keeps its references to them. The settings are repository variables under Settings, Secrets and variables, Actions.
 
