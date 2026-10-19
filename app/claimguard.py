@@ -16,8 +16,9 @@ and is then
   kept      when it is no claim, when it follows from what came before (a conclusion from cited statements), or when
             the evidence is uncertain (best page between REMOVE_BELOW and CITE_MIN);
   cited     when a retrieved page clearly supports it (CITE_MIN): that page's number is added, as part of the text;
-  removed   when it is a claim that no retrieved page supports (all below REMOVE_BELOW) and that does not follow
-            from the answer so far.
+  removed   when it is a claim that no retrieved page supports (all below REMOVE_BELOW), that does not follow
+            from the answer so far, and that does not report an absence (the guideline does not say X; a wrong
+            premise), which no page could back.
 
 Thresholds were chosen on human labels (experiments/2026-10-19_claim_guard in the MASTERTHESIS repository). A unit
 whose checks fail (clef-flash unreachable) is kept unchanged: the guard never blocks an answer.
@@ -54,6 +55,16 @@ SUPPORT_Q = {'type': 'noul',
                                   '`authoritative_context`.',
                           'false': '`candidate_claim` asserts something `authoritative_context` does not state or '
                                    'contradicts.'}}
+
+# asked only before a removal: a statement that the sources lack something, or that corrects the question's premise,
+# cannot be backed by a page (absence has no page) and must stay (found on the test set: a premise correction was cut)
+ABSENCE_Q = {'type': 'noul',
+             'instructions': 'Does `sentence` say that the guidelines or sources do not state, cover, recommend or '
+                             'support something, or that the premise of the question is wrong?',
+             'criteria': {'true': 'The sentence reports an absence or a disagreement: the guideline does not say X, there '
+                                  'is no recommendation on X, the question assumes something the guideline does not '
+                                  'state, or the evidence is insufficient.',
+                          'false': 'The sentence asserts a positive fact, value, effect or recommendation.'}}
 
 _pool = concurrent.futures.ThreadPoolExecutor(64)
 
@@ -96,10 +107,11 @@ def needs_check(unit):
   return len(plain(s).split()) >= 5
 
 
-def check(unit, question, prior, sources):
-  """decide one unit. sources: {n: (label, text)} retrieved in this run; prior: the answer so far as shown.
-  returns {'action': keep|cite|remove, 'n', 'claim', 'support', 'deduced'}"""
-  claim_text = plain(unit)
+def check(unit, question, prior, sources, lead=''):
+  """decide one unit. sources: {n: (label, text)} retrieved in this run; prior: the answer so far as shown;
+  lead: for a bullet, the line that introduces the list ("The guidelines recommend:"), which a bullet needs to be
+  a statement at all. returns {'action': keep|cite|remove, 'n', 'claim', 'support', 'deduced'}"""
+  claim_text = plain(f'{lead} {unit}' if lead else unit)
   jobs = {'claim': _pool.submit(clef, {'question': question, 'sentence': claim_text}, CLAIM_Q)}
   for n, (label, text) in sources.items():
     jobs[n] = _pool.submit(clef, {'query': question, 'authoritative_context': f'{label}\n{text[:PAGE_CHARS]}',
@@ -125,6 +137,10 @@ def check(unit, question, prior, sources):
   if failed:  # a check could not be asked: never remove on missing evidence about the evidence
     return {**out, 'action': 'keep', 'why': 'unchecked'}
   if best < REMOVE_BELOW:
+    absence = clef({'question': question, 'sentence': claim_text}, ABSENCE_Q)
+    out['absence'] = absence
+    if absence is None or absence >= 0.5:
+      return {**out, 'action': 'keep', 'why': 'states an absence' if absence is not None else 'unchecked'}
     return {**out, 'action': 'remove', 'why': 'unsupported claim'}
   return {**out, 'action': 'keep', 'why': 'uncertain'}
 
@@ -214,11 +230,17 @@ def guard(events, question, sources_of):
   def progress(status):
     return {'type': 'verify', 'status': status, **stats, 'items': items[-12:]}
 
+  lead = ['']  # the line introducing the current list
+
   def take(units):
     for text, checkable in units:
+      line = text.strip()
+      bullet = re.match(r'([-*+]|\d+\.)\s', line) is not None
+      if line and not bullet:
+        lead[0] = line if line.rstrip('*_ ').endswith(':') else ''
       fut = None
       if checkable:
-        fut = _pool.submit(check, text, question, ''.join(said), sources_of())
+        fut = _pool.submit(check, text, question, ''.join(said), sources_of(), lead[0] if bullet else '')
       said.append(text)
       pending.append(('unit', text, fut))
 
