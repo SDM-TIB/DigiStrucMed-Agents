@@ -109,7 +109,7 @@ deploys what it changed, through `.github/workflows/deploy.yml`:
 
 To deploy without a change, open Actions > check and deploy > Run workflow and pick `app`, `agents`, `embed` or `all`.
 
-**For team members.** You need write access to the GitHub repository, nothing else: no Google Cloud account, no keys,
+**For team members** (step by step, also for coding agents: `.agents/skills/deploy-tib-chat/SKILL.md`). You need write access to the GitHub repository, nothing else: no Google Cloud account, no keys,
 no `.env`. Push to `main` (or merge a pull request) and the workflow deploys within a few minutes; the Actions tab shows
 each step. Check the live app afterwards. A failed deploy changes nothing: the running revision keeps serving. What
 stays with the project owner: the secrets (passwords, Tavus, Modal and Cloudflare keys) in Secret Manager, the graph
