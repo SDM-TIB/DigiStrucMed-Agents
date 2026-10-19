@@ -20,6 +20,8 @@ import urllib.request
 
 import config
 import live
+import pageunits
+import corpus
 import luna
 
 RUN_TTL = 3600
@@ -71,6 +73,20 @@ def _sources(run):
     entry = _runs.setdefault(str(run)[:80], {'t': now, 'sources': []})
     entry['t'] = now
     return entry['sources']
+
+
+def source_texts(run):
+  """{n: (label, page text)} of the pages this run has retrieved so far, numbered as the agent cites them
+  (claimguard checks uncited statements against them)"""
+  with _lock:
+    entry = _runs.get(str(run)[:80])
+    pages = list(entry['sources']) if entry else []
+  out = {}
+  for n, i in enumerate(pages, 1):
+    if isinstance(i, int):
+      p = corpus.PAGES[i]
+      out[n] = (f"{pageunits.doc_title(p['title'])}, page {p['page']}", pageunits.table_text(p['text']))
+  return out
 
 
 def _drive(gen):

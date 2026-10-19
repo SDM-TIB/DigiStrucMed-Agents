@@ -89,6 +89,7 @@ AGENT_URL = env('AGENT_URL')
 # the agent server, free loop, the guideline pages part of his graph, page search and reading. a request may choose
 GUIDO_HARNESS = env('GUIDO_HARNESS', 'local')
 AGENT_AISDK_URL = env('AGENT_AISDK_URL')
+CLAIM_GUARD = env('CLAIM_GUARD') == '1'  # check uncited statements of luna's answers with clef-flash (claimguard.py)
 SEARCH_CANDIDATES = env('SEARCH_CANDIDATES') or 'rrf'  # how luna's search finds the pages its reranker reads: rrf | digup (search.candidates)
 LUNA_IMAGE_TOOL = env('LUNA_IMAGE_TOOL') == '1'  # view_page for luna's agent: the rendered PDF page as an image  # the second harness (agent-server-aisdk/, AI SDK 7), chosen per request with 'harness'
 AGENT_TOKEN = env('AGENT_TOKEN')

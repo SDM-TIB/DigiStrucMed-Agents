@@ -301,7 +301,7 @@ class Handler(BaseHTTPRequestHandler):
     if agent == 'luna':  # optional step bound and agent harness ('mastra' or 'aisdk'), for evaluations
       candidates = body.get('candidates') if body.get('candidates') in page_search.CANDIDATE_METHODS else None
       return self.stream(luna.run(messages, rounds=body.get('rounds'), harness=body.get('harness'), image_tool=body.get('image_tool'),
-                                  candidates=candidates))
+                                  candidates=candidates, guard=body.get('guard')))
     if agent == 'guido':  # optional round/step bound and harness ('local' or 'mastra' = guido v2), for evaluations
       return self.stream(guido.run(messages, rounds=body.get('rounds'), harness=body.get('harness')))
     return self.stream(CHATS[agent](messages))

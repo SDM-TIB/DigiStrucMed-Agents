@@ -466,7 +466,19 @@
     "{n} page images": "{n} Seitenbilder",
     "Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors ({u}). Each kind of vector is put on its own scale and a page counts with its best match": "Ihre Frage wurde ein Vektor aus {d} Zahlen ({m}) und in {s} ms mit {n} Vektoren verglichen ({u}). Jede Vektorart bekommt ihre eigene Skala, eine Seite zählt mit ihrem besten Treffer",
     "; the share of your words on the page adds to it": "; der Anteil Ihrer Wörter auf der Seite kommt hinzu",
-    "; pages of the kind you asked for get a bonus: {k}": "; Seiten der gesuchten Art bekommen einen Bonus: {k}"
+    "; pages of the kind you asked for get a bonus: {k}": "; Seiten der gesuchten Art bekommen einen Bonus: {k}",
+    "Checking each statement against the sources": "Jede Aussage wird mit den Quellen abgeglichen",
+    "{n} statements checked against the sources": "{n} Aussagen mit den Quellen abgeglichen",
+    "{n} cited": "{n} belegt",
+    "{n} removed": "{n} gestrichen",
+    "{n} kept": "{n} belassen",
+    "removed": "gestrichen",
+    "kept": "belassen",
+    "no claim": "keine Behauptung",
+    "follows from the cited statements": "folgt aus den belegten Aussagen",
+    "evidence uncertain, left as written": "Beleglage unklar, unverändert gelassen",
+    "not checked": "nicht geprüft",
+    "no retrieved page supports it": "keine gefundene Seite stützt sie"
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -934,7 +946,19 @@
     "{n} page images": "{n} imágenes de página",
     "Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors ({u}). Each kind of vector is put on its own scale and a page counts with its best match": "Su pregunta se convirtió en un vector de {d} números ({m}) y se comparó en {s} ms con {n} vectores ({u}). Cada tipo de vector tiene su propia escala y una página cuenta con su mejor coincidencia",
     "; the share of your words on the page adds to it": "; se suma la proporción de sus palabras en la página",
-    "; pages of the kind you asked for get a bonus: {k}": "; las páginas del tipo que busca reciben un extra: {k}"
+    "; pages of the kind you asked for get a bonus: {k}": "; las páginas del tipo que busca reciben un extra: {k}",
+    "Checking each statement against the sources": "Cada afirmación se contrasta con las fuentes",
+    "{n} statements checked against the sources": "{n} afirmaciones contrastadas con las fuentes",
+    "{n} cited": "{n} citadas",
+    "{n} removed": "{n} eliminadas",
+    "{n} kept": "{n} conservadas",
+    "removed": "eliminada",
+    "kept": "conservada",
+    "no claim": "no es una afirmación",
+    "follows from the cited statements": "se deduce de las afirmaciones citadas",
+    "evidence uncertain, left as written": "evidencia incierta, se deja como está",
+    "not checked": "no comprobada",
+    "no retrieved page supports it": "ninguna página encontrada lo respalda"
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1402,7 +1426,19 @@
     "{n} page images": "изображений страниц: {n}",
     "Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors ({u}). Each kind of vector is put on its own scale and a page counts with its best match": "Ваш вопрос стал вектором из {d} чисел ({m}) и за {s} мс сравнён с {n} векторами ({u}). Каждый вид вектора имеет свою шкалу, страница считается по лучшему совпадению",
     "; the share of your words on the page adds to it": "; добавляется доля ваших слов на странице",
-    "; pages of the kind you asked for get a bonus: {k}": "; страницы запрошенного вида получают бонус: {k}"
+    "; pages of the kind you asked for get a bonus: {k}": "; страницы запрошенного вида получают бонус: {k}",
+    "Checking each statement against the sources": "Каждое утверждение сверяется с источниками",
+    "{n} statements checked against the sources": "Утверждений сверено с источниками: {n}",
+    "{n} cited": "с источником: {n}",
+    "{n} removed": "удалено: {n}",
+    "{n} kept": "оставлено: {n}",
+    "removed": "удалено",
+    "kept": "оставлено",
+    "no claim": "не утверждение",
+    "follows from the cited statements": "следует из подтверждённых утверждений",
+    "evidence uncertain, left as written": "доказательства неясны, оставлено как есть",
+    "not checked": "не проверено",
+    "no retrieved page supports it": "ни одна найденная страница это не подтверждает"
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -1870,6 +1906,18 @@
     "{n} page images": "{n} पृष्ठ छवियाँ",
     "Your question became a vector of {d} numbers ({m}) and was compared in {s} ms with {n} vectors ({u}). Each kind of vector is put on its own scale and a page counts with its best match": "आपका प्रश्न {d} संख्याओं का वेक्टर ({m}) बना और {s} ms में {n} वेक्टरों ({u}) से तुलना हुई। हर प्रकार के वेक्टर का अपना पैमाना है और पृष्ठ अपने सबसे अच्छे मेल से गिना जाता है",
     "; the share of your words on the page adds to it": "; पृष्ठ पर आपके शब्दों का हिस्सा जुड़ता है",
-    "; pages of the kind you asked for get a bonus: {k}": "; आपके माँगे प्रकार के पृष्ठों को बोनस मिलता है: {k}"
+    "; pages of the kind you asked for get a bonus: {k}": "; आपके माँगे प्रकार के पृष्ठों को बोनस मिलता है: {k}",
+    "Checking each statement against the sources": "हर कथन को स्रोतों से मिलाया जा रहा है",
+    "{n} statements checked against the sources": "{n} कथन स्रोतों से मिलाए गए",
+    "{n} cited": "{n} स्रोत जोड़े",
+    "{n} removed": "{n} हटाए",
+    "{n} kept": "{n} रखे",
+    "removed": "हटाया",
+    "kept": "रखा",
+    "no claim": "कोई दावा नहीं",
+    "follows from the cited statements": "प्रमाणित कथनों से निकलता है",
+    "evidence uncertain, left as written": "साक्ष्य अनिश्चित, जैसा लिखा था वैसा रखा",
+    "not checked": "जाँचा नहीं गया",
+    "no retrieved page supports it": "कोई मिला पृष्ठ इसका समर्थन नहीं करता"
   }
 }

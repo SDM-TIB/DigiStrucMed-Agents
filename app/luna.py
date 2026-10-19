@@ -19,6 +19,7 @@ import threading
 import urllib.request
 import uuid
 
+import claimguard
 import config
 import corpus
 import live
@@ -89,16 +90,23 @@ TOOLS = [
 HARNESSES = {'mastra': lambda: config.AGENT_URL, 'aisdk': lambda: config.AGENT_AISDK_URL}
 
 
-def run(messages, rounds=None, harness=None, image_tool=None, candidates=None):
+def run(messages, rounds=None, harness=None, image_tool=None, candidates=None, guard=None):
   """the agent server runs the loop when AGENT_URL is set (agent-server/, Mastra; harness 'aisdk' picks the AI SDK 7
   server, agent-server-aisdk/); otherwise, or when it cannot be reached before it answers, the loop below runs here
   with the same prompt and tools"""
   url = HARNESSES.get(harness or 'mastra', HARNESSES['mastra'])()
   if url:
     started = False
+    run_id = uuid.uuid4().hex
+    events = _via_agent(messages, rounds, url, config.LUNA_IMAGE_TOOL if image_tool is None else bool(image_tool),
+                        run=run_id, candidates=candidates)
+    if (config.CLAIM_GUARD if guard is None else bool(guard)) and claimguard.available():
+      # every statement without a source number is checked against this run's sources before it is shown
+      import agent_tools
+      question = next((m.get('text') for m in reversed(messages) if m.get('role') == 'user' and m.get('text')), '')
+      events = claimguard.guard(events, question[:2000], lambda: agent_tools.source_texts(run_id))
     try:
-      for ev in _via_agent(messages, rounds, url, config.LUNA_IMAGE_TOOL if image_tool is None else bool(image_tool),
-                           candidates=candidates):
+      for ev in events:
         started = True
         yield ev
       return

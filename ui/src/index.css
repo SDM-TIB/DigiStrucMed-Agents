@@ -106,3 +106,14 @@
 .lui-tile .bar { height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; }
 .lui-tile .bar i { display: block; height: 100%; background: var(--primary); transition: width .45s cubic-bezier(.2,.75,.25,1); }
 @media (max-width: 640px) { .lui-tiles { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); max-height: 140px; } }
+
+/* the claim guard's line between the steps and the answer */
+.lui-verify { margin-top: 2px; }
+.lui-verify-items { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 2px; padding: 0; list-style: none; }
+.lui-verify-items li { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; font-size: 12.5px; line-height: 1.45; }
+.lui-verify-items .v-tag { grid-row: span 2; align-self: start; font-size: 11px; padding: 0 6px; border-radius: 6px;
+  background: var(--lui-muted); color: var(--foreground); white-space: nowrap; }
+.lui-verify-items .v-cite .v-tag { background: color-mix(in srgb, #16a34a 16%, transparent); color: #15803d; }
+.lui-verify-items .v-remove .v-tag { background: color-mix(in srgb, #dc2626 14%, transparent); color: #b91c1c; }
+.lui-verify-items .v-remove .v-text { text-decoration: line-through; opacity: .7; }
+.lui-verify-items .v-why { color: var(--muted-foreground); font-size: 11.5px; }

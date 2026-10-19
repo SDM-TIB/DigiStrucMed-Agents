@@ -121,3 +121,4 @@ jobs:
           AGENT_AISDK_URL: ${{ vars.AGENT_AISDK_URL }}
           LUNA_IMAGE_TOOL: ${{ vars.LUNA_IMAGE_TOOL }}
           GUIDO_HARNESS: ${{ vars.GUIDO_HARNESS }}
+          CLAIM_GUARD: ${{ vars.CLAIM_GUARD }}

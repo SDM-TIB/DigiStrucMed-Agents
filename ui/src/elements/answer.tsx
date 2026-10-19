@@ -48,7 +48,7 @@ export function Answer({ raw, streaming, sources, bridge }: { raw: string; strea
       className="lui-answer"
       plugins={{ math, code }}
       components={components}
-      animated={{ animation: 'lunaBlur', duration: 650, easing: 'cubic-bezier(.2,.75,.25,1)' }}
+      animated={{ animation: 'lunaBlur', duration: 850, easing: 'cubic-bezier(.2,.75,.25,1)' }}
       isAnimating={streaming}
     >
       {md}

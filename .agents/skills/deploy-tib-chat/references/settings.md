@@ -20,6 +20,7 @@ Values as of 19 October 2026.
 | `AGENT_URL`, `AGENT_AISDK_URL` | app | the two agent servers |
 | `GUIDO_HARNESS` | app | `mastra` (Guido v2) or `local` |
 | `LUNA_IMAGE_TOOL` | app | `1` gives Luna the page-image tool (measured, off) |
+| `CLAIM_GUARD` | app | `1` checks every uncited statement of Luna's answers with clef-flash (`app/claimguard.py`) |
 | `LUNA_MODEL` | agent servers | Gemini model of the agent loop; empty means `gemini-3.8-flash` |
 | `TAVUS_PERIOD_START`, `TAVUS_PLAN_MINUTES`, `TAVUS_USED_OFFSET_MIN` | app | video-call minute budget display |
 

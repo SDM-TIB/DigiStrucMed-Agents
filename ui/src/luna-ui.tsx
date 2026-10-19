@@ -9,9 +9,10 @@ import { createRoot, type Root } from 'react-dom/client'
 
 import { Answer } from './elements/answer'
 import { ChainOfThought } from './elements/chain-of-thought'
+import { VerifyLine } from './elements/verify'
 import { InlineCitation } from './elements/inline-citation'
 import { Sources } from './elements/sources'
-import type { Bridge, SearchStage, Source, Step, StepKind } from './elements/types'
+import type { Bridge, SearchStage, Source, Step, StepKind, Verify } from './elements/types'
 
 type ChatEvent = {
   type: string
@@ -23,6 +24,11 @@ type ChatEvent = {
   item?: Source
   delta?: string
   stage?: SearchStage['stage']
+  status?: string
+  checked?: number
+  kept?: number
+  cited?: number
+  removed?: number
 }
 
 const KIND: Record<string, StepKind> = { search_guidelines: 'search', read_page: 'read', view_page: 'view', list_guidelines: 'catalogue' }
@@ -37,6 +43,7 @@ class MessageUI {
   private nextId = 1
   private running = true
   private answering = false
+  private verify?: Verify
   private root: Root
   private sourcesRoot?: Root
   private citeRoot?: Root
@@ -49,7 +56,10 @@ class MessageUI {
 
   private render() {
     this.root.render(
-      <ChainOfThought steps={this.steps.map(s => ({ ...s }))} running={this.running} answering={this.answering} bridge={this.bridge} />,
+      <>
+        <ChainOfThought steps={this.steps.map(s => ({ ...s }))} running={this.running} answering={this.answering} bridge={this.bridge} />
+        {this.verify && <VerifyLine v={{ ...this.verify, items: [...this.verify.items] }} bridge={this.bridge} />}
+      </>,
     )
   }
 
@@ -107,6 +117,13 @@ class MessageUI {
         if (s) Object.assign(s, { status: 'error', t1: now })
         break
       }
+      case 'verify':
+        this.verify = {
+          status: ev.status === 'done' ? 'done' : 'running',
+          checked: ev.checked ?? 0, kept: ev.kept ?? 0, cited: ev.cited ?? 0, removed: ev.removed ?? 0,
+          items: (ev as unknown as { items?: Verify['items'] }).items ?? [],
+        }
+        break
       case 'text':
         if (this.answering) return true
         this.answering = true
@@ -122,6 +139,7 @@ class MessageUI {
   /** the answer is complete (or failed) */
   done() {
     this.running = false
+    if (this.verify) this.verify.status = 'done'
     this.settle()
     for (const s of this.steps) if (s.kind === 'search' && !s.hits) s.hits = []
     this.render()

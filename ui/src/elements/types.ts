@@ -42,6 +42,16 @@ export type Step = {
   t1?: number
 }
 
+// the claim guard's progress (app/claimguard.py guard: 'verify' events)
+export type Verify = {
+  status: 'running' | 'done'
+  checked: number
+  kept: number
+  cited: number
+  removed: number
+  items: Array<{ action: 'keep' | 'cite' | 'remove'; why: string; n?: number | null; text: string }>
+}
+
 // the english text is the key; the app translates it (static/js/i18n.json) and fills {placeholders}
 export type Translate = (en: string, vars?: Record<string, string | number>) => string
 
