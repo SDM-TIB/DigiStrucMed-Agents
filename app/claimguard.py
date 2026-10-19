@@ -10,7 +10,7 @@ stands in a table or a code block. Every other unit gets three clef-flash questi
   sources   for each source the agent retrieved in this run: does this page support it? (the grounding question of
             RAGTruth-style claim verification, as in MaziyarPanahi/Jev-RAG-Claim-Verification-130K: the page as
             authoritative_context, the unit as candidate_claim, the user's question as query)
-  deduced   does it follow from what the answer said before (the units already shown, with their sources)?
+  deduced   does it follow from what the answer said before, counting only the statements that carry a source?
 
 and is then
   kept      when it is no claim, when it follows from what came before (a conclusion from cited statements), or when
@@ -240,7 +240,10 @@ def guard(events, question, sources_of):
         lead[0] = line if line.rstrip('*_ ').endswith(':') else ''
       fut = None
       if checkable:
-        fut = _pool.submit(check, text, question, ''.join(said), sources_of(), lead[0] if bullet else '')
+        # a conclusion may rest only on statements that carry a source: the uncited ones are no basis (else an
+        # unsupported claim could "follow" from another; found on the test set, items N-012 and N-035)
+        fut = _pool.submit(check, text, question, ''.join(u for u in said if CITE.search(u)), sources_of(),
+                           lead[0] if bullet else '')
       said.append(text)
       pending.append(('unit', text, fut))
 
