@@ -34,7 +34,7 @@ Cloud Run (TIB Chat) ── Direct VPC egress ──> 10.156.x.x:7001      you �
 ## First setup (done on 16 October 2026)
 
 ```
-gcloud storage buckets create gs://tib-chat-1011-13273-tfstate --location=EUROPE-WEST3 --uniform-bucket-level-access
+gcloud storage buckets create gs://tib-chat-20261019-tfstate --location=EUROPE-WEST3 --uniform-bucket-level-access
 cd graph-server/terraform && terraform init -backend-config=backend.hcl
 python graph-server/publish_graph.py <final_graph_16_10>/guidelineKG_final_16_10.nq.gz
 terraform apply -var machine_type=e2-standard-4   # index build: 16 GB for the build (graph about 10 min, text index about 25 min)
@@ -46,11 +46,11 @@ Once, as project owner (terraform's service account holds no IAM admin role):
 
 ```
 # the VM may write its logs to Cloud Logging
-gcloud projects add-iam-policy-binding tib-chat-1011-13273 --role=roles/logging.logWriter \
-  --member=serviceAccount:qlever-graph-server@tib-chat-1011-13273.iam.gserviceaccount.com
+gcloud projects add-iam-policy-binding tib-chat-20261019 --role=roles/logging.logWriter \
+  --member=serviceAccount:qlever-graph-server@tib-chat-20261019.iam.gserviceaccount.com
 # the GitHub deploy account may attach Cloud Run to the subnet (Direct VPC egress)
 gcloud compute networks subnets add-iam-policy-binding default --region=europe-west3 --role=roles/compute.networkUser \
-  --member=serviceAccount:github-deployer@tib-chat-1011-13273.iam.gserviceaccount.com
+  --member=serviceAccount:github-deployer@tib-chat-20261019.iam.gserviceaccount.com
 ```
 
 Then point the app at it: GitHub repository variable `GRAPH_ENDPOINT` = terraform output `sparql_endpoint`

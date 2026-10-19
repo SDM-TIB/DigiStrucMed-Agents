@@ -4,9 +4,9 @@
 
 **Three ways to answer a heart failure question from clinical guidelines, side by side, in chat and in video calls.**
 
-<a href="https://luna-demo-gowp4c46da-ey.a.run.app"><img src="docs/hero.webp" alt="TIB Chat start screen: Luna, Lino and Guido, five languages. Click to open the live demo." width="100%"></a>
+<a href="https://luna-demo-4kh6ub6nmq-ey.a.run.app"><img src="docs/hero.webp" alt="TIB Chat start screen: Luna, Lino and Guido, five languages. Click to open the live demo." width="100%"></a>
 
-<a href="https://luna-demo-gowp4c46da-ey.a.run.app"><img src="https://img.shields.io/badge/Live_demo-Open_TIB_Chat-2563eb?style=for-the-badge" alt="Open the live demo"></a>
+<a href="https://luna-demo-4kh6ub6nmq-ey.a.run.app"><img src="https://img.shields.io/badge/Live_demo-Open_TIB_Chat-2563eb?style=for-the-badge" alt="Open the live demo"></a>
 
 [![check and deploy](https://github.com/SDM-TIB/DigiStrucMed-Agents/actions/workflows/deploy.yml/badge.svg)](https://github.com/SDM-TIB/DigiStrucMed-Agents/actions/workflows/deploy.yml)
 ![Languages](https://img.shields.io/badge/languages-EN_·_DE_·_ES_·_RU_·_HI-0ea5e9)
@@ -102,6 +102,12 @@ Every push and pull request is checked (Python lint, JavaScript syntax). A push 
 GitHub holds no keys. Actions signs in to Google Cloud through Workload Identity Federation: the pool `github` with the provider `digistrucmed-agents` accepts only tokens from this repository, and lets it act as the service account `github-deployer`, which has just the roles a source deploy needs (`run.sourceDeveloper`, `serviceusage.serviceUsageConsumer`, and `iam.serviceAccountUser` on the runtime account). The app's secrets stay in Secret Manager and the service keeps its references to them. The settings are repository variables under Settings, Secrets and variables, Actions.
 
 To change a secret, put it in your `.env` and run `python deploy/deploy.py app` once locally.
+
+Hosting since 19 October 2026: Google Cloud project `tib-chat-20261019` (app, agent servers, embedding service, graph
+server, buckets, secrets, Workload Identity for Actions). The services of the former project `tib-chat-1011-13273`
+were rebuilt there from this repository; buckets were copied server to server and checked object by object, and the
+secrets carry the same values. The former app address answers with a permanent redirect (`deploy/redirect/`), so old
+links keep working.
 
 ## Change the LLM
 
