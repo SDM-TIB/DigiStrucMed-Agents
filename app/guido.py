@@ -59,9 +59,12 @@ SYSTEM_V2 = SYSTEM.replace(
   "for anything the recommendation texts do not state, call search_pages (semantic search over all guideline pages, the "
   "pages join the graph) and read_page to read a page as it was printed, tables included. Check every number you give "
   "on a page you read.\n").replace(
-  "Answer only from the explored graph. Cite recommendations inline as [n]",
-  "Answer only from the explored graph and the pages you read. Cite recommendations and pages inline as [n]")
-assert SYSTEM_V2 != SYSTEM
+  "Answer only from the explored graph. Cite recommendations inline as [n], one number per bracket.",
+  "Answer only from the explored graph and the pages you read. Cite recommendations and pages inline as [n], one number "
+  "per bracket. Every sentence or bullet that states a medical fact, value or recommendation carries the number of the "
+  "recommendation or page it comes from, also a short answer, a summary or a point that draws on several of them; "
+  "sentences without a claim (a greeting, a transition, the advice to see a doctor) need no number.")
+assert SYSTEM_V2 != SYSTEM and 'carries the number' in SYSTEM_V2
 
 TOOLS = [
   llm.tool('explore', 'Link medical terms to the guideline knowledge graph (concepts and recommendation texts) and return the '
