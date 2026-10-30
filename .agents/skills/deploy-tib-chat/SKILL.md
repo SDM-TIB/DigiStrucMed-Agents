@@ -3,13 +3,13 @@ name: deploy-tib-chat
 description: How TIB Chat is built and deployed (GitHub Actions to Google Cloud Run, no keys), which component a change deploys, how to deploy one component or all of them, and how to check the result. Use it when someone wants to deploy, asks how the CI/CD works, changed the app, an agent server or the embedding service, or a deploy failed.
 license: MIT
 metadata:
-  project: tib-chat-20261019
-  updated: "2026-10-19"
+  project: project-14b5b564-b173-4118-937
+  updated: "2026-10-30"
 ---
 
 # Deploying TIB Chat
 
-TIB Chat runs on Google Cloud Run in project `tib-chat-20261019` (region `europe-west3`). Deploys go through
+TIB Chat runs on Google Cloud Run in project `project-14b5b564-b173-4118-937` (region `europe-west3`). Deploys go through
 GitHub Actions (`.github/workflows/deploy.yml`). A team member needs **write access to this GitHub repository and
 nothing else**: no Google Cloud account, no keys, no `.env`.
 
@@ -23,7 +23,7 @@ nothing else**: no Google Cloud account, no keys, no `.env`.
 | Embedding service | `embed-server/` | `tib-embed` | EmbeddingGemma 2 for the page search |
 | Graph server | `graph-server/` | VM `qlever-graph-server` | QLever SPARQL server for the knowledge graph (owner only) |
 
-Live app: https://luna-demo-4kh6ub6nmq-ey.a.run.app (the former address redirects there).
+Live app: https://luna-demo-601538198682.europe-west3.run.app (both former addresses redirect there).
 
 ## How a deploy happens
 
@@ -40,7 +40,7 @@ Live app: https://luna-demo-4kh6ub6nmq-ey.a.run.app (the former address redirect
 
 3. The job signs in to Google Cloud **without a key**: Workload Identity Federation (pool `github`, provider
    `digistrucmed-agents`, which accepts tokens of this repository only) lets it act as
-   `github-deployer@tib-chat-20261019.iam.gserviceaccount.com`. That account may only deploy from source.
+   `github-deployer@project-14b5b564-b173-4118-937.iam.gserviceaccount.com`. That account may only deploy from source.
 4. Cloud Build builds the image from the folder, Cloud Run starts a new revision and moves traffic to it once it is
    healthy. **A failed build or a revision that does not start changes nothing**: the old revision keeps serving.
 5. Settings (URLs, model names, bucket) come from the repository variables (Settings > Secrets and variables >

@@ -1,6 +1,6 @@
 variable "project" {
   type    = string
-  default = "tib-chat-20261019"
+  default = "project-14b5b564-b173-4118-937"
 }
 
 variable "region" {

@@ -1,2 +1,2 @@
-bucket = "tib-chat-20261019-tfstate"
+bucket = "tib-chat-nb-tfstate"
 prefix = "graph-server"

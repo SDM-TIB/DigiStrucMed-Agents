@@ -1,17 +1,18 @@
 # Repository variables (settings, not secrets)
 
 GitHub > Settings > Secrets and variables > Actions > Variables. The deploy job passes them to `deploy/deploy.py`.
-Values as of 19 October 2026.
+Values since 30 October 2026, after the move to the institute's Google Cloud project. Until the repository variables
+are changed to these values, Actions still deploys to the previous project.
 
 | Variable | Used by | Meaning |
 |---|---|---|
-| `GCP_PROJECT` | all | Google Cloud project, `tib-chat-20261019` |
+| `GCP_PROJECT` | all | Google Cloud project, `project-14b5b564-b173-4118-937` |
 | `GCP_REGION` | all | `europe-west3` |
 | `CLOUD_RUN_SERVICE` | all | the app's service name, `luna-demo` |
-| `WIF_PROVIDER` | sign-in | Workload Identity provider of the project (pool `github`, provider `digistrucmed-agents`) |
-| `DEPLOY_SERVICE_ACCOUNT` | sign-in | `github-deployer@tib-chat-20261019.iam.gserviceaccount.com` |
-| `PAGE_BUCKET` | app | bucket with page images and the search index, `luna-pages-tib-chat-20261019` |
-| `LLM_BASE_URL` | app | Vertex AI OpenAI-compatible endpoint of the project |
+| `WIF_PROVIDER` | sign-in | Workload Identity provider of the project (pool `github`, provider `digistrucmed-agents`): `projects/601538198682/locations/global/workloadIdentityPools/github/providers/digistrucmed-agents` |
+| `DEPLOY_SERVICE_ACCOUNT` | sign-in | `github-deployer@project-14b5b564-b173-4118-937.iam.gserviceaccount.com` |
+| `PAGE_BUCKET` | app | bucket with page images and the search index, `luna-pages-tib-chat-nb` |
+| `LLM_BASE_URL` | app | Vertex AI OpenAI-compatible endpoint of the project: `https://aiplatform.googleapis.com/v1/projects/project-14b5b564-b173-4118-937/locations/global/endpoints/openapi` |
 | `LLM_MODEL`, `LLM_FALLBACK_MODEL`, `LLM_REASONING_EFFORT` | app | answer model, fallback, reasoning effort |
 | `LANGUAGES` | app | UI languages, `en,de,es,ru,hi` |
 | `MAX_CALL_SECONDS` | app | maximum length of a video call |

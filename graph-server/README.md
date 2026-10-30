@@ -31,6 +31,13 @@ Cloud Run (TIB Chat) ── Direct VPC egress ──> 10.156.x.x:7001      you �
   Google Cloud pricing calculator before changing the machine type. The one-off index build on `e2-standard-4` takes
   well under an hour.
 
+## Where it runs since 30 October 2026
+
+Project `project-14b5b564-b173-4118-937`, same region and internal address (`http://10.156.0.2:7001`). Terraform state:
+bucket `tib-chat-nb-tfstate`, prefix `graph-server` (new state, nothing carried over from the previous project). The graph
+files were copied from the previous graph bucket into `project-14b5b564-b173-4118-937-graph`, where Terraform creates the
+bucket. The commands below are the first setup of 16 October 2026; apply them with these names.
+
 ## First setup (done on 16 October 2026)
 
 ```

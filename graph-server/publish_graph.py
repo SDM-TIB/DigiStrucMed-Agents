@@ -18,7 +18,7 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 LOCK = HERE / 'graph.lock.json'
-PROJECT = 'tib-chat-20261019'
+PROJECT = 'project-14b5b564-b173-4118-937'
 ZONE = 'europe-west3-a'
 BUCKET = f'gs://{PROJECT}-graph'
 

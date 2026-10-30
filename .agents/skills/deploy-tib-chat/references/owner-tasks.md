@@ -1,6 +1,6 @@
 # Owner tasks (need Google Cloud credentials of the project owner)
 
-These are not run by GitHub Actions. They need gcloud signed in as an owner of `tib-chat-20261019` (the owner's
+These are not run by GitHub Actions. They need gcloud signed in as an owner of `project-14b5b564-b173-4118-937` (the owner's
 service-account key lives outside every repository) and, where noted, the local `.env` (copy of `.env.example`).
 
 ## Change a secret

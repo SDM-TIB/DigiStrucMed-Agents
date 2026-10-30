@@ -4,9 +4,9 @@
 
 **Three ways to answer a heart failure question from clinical guidelines, side by side, in chat and in video calls.**
 
-<a href="https://luna-demo-4kh6ub6nmq-ey.a.run.app"><img src="docs/hero.webp" alt="TIB Chat start screen: Luna, Lino and Guido, five languages. Click to open the live demo." width="100%"></a>
+<a href="https://luna-demo-601538198682.europe-west3.run.app"><img src="docs/hero.webp" alt="TIB Chat start screen: Luna, Lino and Guido, five languages. Click to open the live demo." width="100%"></a>
 
-<a href="https://luna-demo-4kh6ub6nmq-ey.a.run.app"><img src="https://img.shields.io/badge/Live_demo-Open_TIB_Chat-2563eb?style=for-the-badge" alt="Open the live demo"></a>
+<a href="https://luna-demo-601538198682.europe-west3.run.app"><img src="https://img.shields.io/badge/Live_demo-Open_TIB_Chat-2563eb?style=for-the-badge" alt="Open the live demo"></a>
 
 [![check and deploy](https://github.com/SDM-TIB/DigiStrucMed-Agents/actions/workflows/deploy.yml/badge.svg)](https://github.com/SDM-TIB/DigiStrucMed-Agents/actions/workflows/deploy.yml)
 ![Languages](https://img.shields.io/badge/languages-EN_·_DE_·_ES_·_RU_·_HI-0ea5e9)
@@ -119,11 +119,13 @@ GitHub holds no keys. Actions signs in to Google Cloud through Workload Identity
 
 To change a secret, put it in your `.env` and run `python deploy/deploy.py app` once locally.
 
-Hosting since 19 October 2026: Google Cloud project `tib-chat-20261019` (app, agent servers, embedding service, graph
-server, buckets, secrets, Workload Identity for Actions). The services of the former project `tib-chat-1011-13273`
-were rebuilt there from this repository; buckets were copied server to server and checked object by object, and the
-secrets carry the same values. The former app address answers with a permanent redirect (`deploy/redirect/`), so old
-links keep working.
+Hosting since 30 October 2026: the institute's Google Cloud project `project-14b5b564-b173-4118-937` (app, agent
+servers, embedding service, graph server, buckets, secrets, Workload Identity for Actions). The services of the
+previous project `tib-chat-20261019` were moved there with the same container images (same digests); buckets were
+copied server to server and checked by size and object count, the graph server was rebuilt from the same graph file
+(sha256 `2152f227…`) with the code in `graph-server/`, and the secrets carry the same values. The services run as the
+service account `tib-chat-no-benchmark`, which holds only the Vertex AI, bucket and secret access the app needs. The
+former app addresses answer with a permanent redirect (`deploy/redirect/`), so old links keep working.
 
 ## Change the LLM
 
