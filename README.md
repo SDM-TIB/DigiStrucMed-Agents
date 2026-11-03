@@ -1,6 +1,16 @@
 <div align="center">
 
+<img src="app/static/img/logo-digistrucmed.png" alt="DigiStrucMed" height="120">
+
 # TIB Chat
+
+A DigiStrucMed research demo
+
+<a href="https://www.uni-hannover.de/"><img src="app/static/img/logo-luh.svg" alt="Leibniz Universität Hannover" height="40"></a>&nbsp;&nbsp;
+<a href="https://www.tib.eu/"><img src="app/static/img/logo-tib.png" alt="TIB – Leibniz Information Centre for Science and Technology" height="34"></a>&nbsp;&nbsp;
+<a href="https://www.tib.eu/en/research-development/research-groups-and-labs/scientific-data-management"><img src="app/static/img/logo-sdm.png" alt="Scientific Data Management, TIB" height="46"></a>&nbsp;&nbsp;
+<a href="https://www.l3s.de/"><img src="app/static/img/logo-l3s.png" alt="L3S Research Center" height="40"></a>&nbsp;&nbsp;
+<a href="https://caimed.de/"><img src="app/static/img/logo-caimed.png" alt="CAIMed" height="30"></a>
 
 **Three ways to answer a heart failure question from clinical guidelines, side by side, in chat and in video calls.**
 
@@ -17,10 +27,12 @@ The demo asks for the team password. Ask the DigiStrucMed team for it.
 </div>
 
 
+**DigiStrucMed** turns clinical guidelines on heart failure into structured, source-linked knowledge: reconstructed tables, graded recommendations and medical concepts mapped to standard terminologies. **TIB Chat** is the project's demo: three agents answer patients' questions from that knowledge, each answer explainable and traceable to the guideline page it comes from.
+
 | Agent | How it answers | Runs on |
 | --- | --- | --- |
 | **Luna** | Searches 2,780 guideline pages (BM25) and cites the pages she read. | Any OpenAI compatible LLM. Gemini 3.5 Flash-Lite by default |
-| **Lino** | Answers from memory. Llama 3.2 1B, fine-tuned with NeSyCoT rules mined from the guideline knowledge graph. No retrieval, no guardrails. | vLLM on a Modal L4 that sleeps when unused, from a pool of Modal workspaces |
+| **Lino** | Answers from memory. Llama 3.2 1B, fine-tuned with NeSyCoT rules mined from the guideline knowledge graph. No retrieval, no guardrails. | vLLM on a Modal L4 that sleeps when unused (the next cheapest free GPU when no L4 is free, `GPUS` in `gpu/serve.py`), from a pool of Modal workspaces |
 | **Guido** | Walks the guideline knowledge graph (Think-on-Graph), shows every hop live and cites each recommendation with class and level of evidence. | Same LLM as Luna |
 
 All three speak English, German, Spanish, Russian and Hindi. They answer in the language you use and switch when you switch, in chat and in calls (`LANGUAGES`).
@@ -43,8 +55,8 @@ browser ─── Cloud Run (app/, one python process, stdlib http server)
               └── storage.py  ─── private GCS bucket             page renders, usage log
 ```
 
-The knowledge graph has exactly one source: the final MHH guideline graph (`guidelineKG_final_16_10.nq.gz`, one
-N-Quads file; built and documented in the thesis repository, `final_graph_16_10`). `graph-server/` serves it with
+The knowledge graph has exactly one source: the final MHH guideline graph (`guidelineKG_final_28_10.nq.gz`, one
+N-Quads file, pinned by sha256 in `graph-server/graph.lock.json`; built and documented in the thesis repository, `final_graph_28_10`). `graph-server/` serves it with
 QLever as a SPARQL endpoint inside the VPC; the app keeps no copy of it. At startup `kg.py` loads Guido's working view
 from it (recommendations, the concepts they name, concept relations, and each concept's link set per terminology), and
 the Graph tab under Sources explores the complete graph live: search, every node with all its properties and edges,
@@ -138,7 +150,7 @@ python pipeline/build_corpus.py <clean_ready_07_10>/pages <guidelineKG.nt>
 ```
 
 ```bash
-python graph-server/publish_graph.py --apply <final_graph_16_10>/guidelineKG_final_16_10.nq.gz
+python graph-server/publish_graph.py --apply <final_graph_28_10>/guidelineKG_final_28_10.nq.gz
 ```
 
 A new graph version goes to the graph server; the app needs no rebuild (see `graph-server/README.md`).
@@ -204,6 +216,29 @@ The keys and tokens themselves live only in `.env` and Secret Manager. The json 
 - **Where a recommendation comes from.** The knowledge graph records for every semantic unit the physical blocks it was extracted from (`physicalBlockId`, `pb_<document sha256>_p<page>_g<group>`), and those page ids are the corpus page ids. `graph.agent_view()` keeps them on each recommendation (`src`, plus `doc`, the document's sha256), and the "look, here" card opens that page and the table on it that holds the text (`corpus.source`). Verbatim text alone does not place a recommendation: guidelines repeat them in summaries and tables of contents, and several documents have no author-year reference. `python tests/provenance_eval.py` measures it over all 3,977 recommendations (2026-10-16): 3,695 have source blocks; their page holds the text verbatim for 3,364 and holds at least 60 % of its words for 3,612 (the graph writes LaTeX like `\leq` where the page has ≤, and joins table cells differently); a table on it holds the text for 3,449. A search for the first page with the text would land on a different page for 987 of the 3,449 it finds. 278 recommendations, all from four supplementary units, have only their document: the page of that document that holds the text, and when several do, the one that holds most of the other texts of the same semantic unit. The card then says "page found by text search". 4 are not found.
 - **Terminology codes.** Every concept of the final graph has, per UMLS, SNOMED CT, MeSH, RxNorm, LOINC and Wikidata, a link set of its own (graph `entity-links`), decided by the same rule as each detected mention: the mentions whose surface form equals the concept's label or alias vote (for UMLS first the Level-4 mentions bridged to the concept's own source mentions); a selection gives the Top1 with its support and runners-up, otherwise the unconfirmed Top3. The mention selections themselves are our LaSER UMLS retrieval with the native CLEF selector first and a Luna/Gemini choice among the Top10 otherwise, and the native CLEF selector for the other five. The card and Guido say which it is (`selected …, n/m mentions` or `unconfirmed`); Guido's tool results carry a `Codes:` line per concept. Where a UMLS CUI or Wikidata QID was selected it replaces the colleague graph's value in the final graph. Unconfirmed Wikidata candidates are never used: spot checks found wrong items.
 - **Lino makes things up.** He invents references and is often wrong. That's the point of the comparison, so don't add guardrails to him.
+
+## Project and team
+
+The institutions behind DigiStrucMed, as on the About page of the app:
+
+- [Leibniz Universität Hannover](https://www.uni-hannover.de/)
+- [TIB – Leibniz Information Centre for Science and Technology](https://www.tib.eu/), group [Scientific Data Management](https://www.tib.eu/en/research-development/research-groups-and-labs/scientific-data-management)
+- [L3S Research Center](https://www.l3s.de/)
+- [CAIMed](https://caimed.de/)
+
+| Team | |
+| --- | --- |
+| Steffan Wolter | Leibniz University Hannover |
+| Mahsa Forghani | TIB and Leibniz University Hannover |
+| Prof. Dr. Maria-Esther Vidal | Head of Scientific Data Management, TIB; Professor, Leibniz University Hannover; Member, L3S Research Center |
+| Dr. Disha Purohit | Postdoctoral Researcher, Scientific Data Management, TIB |
+| Yashrajsinh Chudasama, M.Sc. | Research Assistant, Scientific Data Management, TIB; PhD candidate, Leibniz University Hannover |
+
+The same list is on the About page of the app (`app/static/team.json`).
+
+**Contact.** Open an issue in this repository.
+
+**License.** MIT, see [LICENSE](LICENSE). The clinical guidelines themselves are not part of this repository and keep their publishers' terms.
 
 ## Credits
 
