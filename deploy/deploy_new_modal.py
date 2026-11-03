@@ -3,6 +3,7 @@
   python deploy/deploy_new_modal.py <token-id> <token-secret>           # the pair from `modal token new` or the dashboard
   python deploy/deploy_new_modal.py <token-id> <token-secret> --deploy  # then also push the secrets and deploy the app
   python deploy/deploy_new_modal.py --all                               # redeploy lino in every workspace of the pool
+  python deploy/deploy_new_modal.py --all --no-wait                     # the same, without the test cold start (no gpu time)
 
 what it does, in that workspace:
   1. checks the token and reads the workspace name
@@ -84,12 +85,16 @@ def deploy_lino(token, env):
   out = modal(token, 'deploy', 'gpu/serve.py')
   found = re.findall(r'https://[\w.-]+\.modal\.(?:direct|run)', out)
   url = found[-1] if found else f'https://{name}--lino-server.eu-west.modal.direct'
+  entry = {'name': name, 'token_sha256': fingerprint(token[0]), 'url': url, 'plan_usd': 30.0}
+  if '--no-wait' in sys.argv:
+    print(f'{name}: deployed, not started. the next wake from the app boots it', flush=True)
+    return entry
   print(f'{name}: waiting for {url}/health (cold start)', flush=True)
   took = healthy(url)
   if took is None:
     raise SystemExit(f'{name}: lino did not come up within 15 minutes. look at the app logs in the modal dashboard')
   print(f'{name}: lino is up after {took} s. modal stops the container after 5 idle minutes', flush=True)
-  return {'name': name, 'token_sha256': fingerprint(token[0]), 'url': url, 'plan_usd': 30.0}
+  return entry
 
 
 def record(entry):

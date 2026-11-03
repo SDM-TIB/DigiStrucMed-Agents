@@ -1,4 +1,4 @@
-"""Lino on Modal: Llama 3.2 1B Instruct + Mahsa's NeSyCoT LoRA, merged, served by vLLM on one L4.
+"""Lino on Modal: Llama 3.2 1B Instruct + Mahsa's NeSyCoT LoRA, merged, served by vLLM on one L4 (the next cheapest free GPU when no L4 is free, see GPUS).
 
   modal run gpu/serve.py::prepare   # once: base from ModelScope + gpu/adapter -> merged bf16 weights in a Volume
   modal deploy gpu/serve.py         # serve. scales to zero, the TIB Chat backend wakes it
@@ -17,6 +17,11 @@ MINUTES = 60
 PORT = 8000
 BASE = 'LLM-Research/Llama-3.2-1B-Instruct'  # ModelScope mirror, Llama 3.2 community license
 DRAFTER = 'rasyosef/Llama-3.2-1B-Instruct-DSpark'
+# Modal tries these in order, cheapest first (modal.com/pricing, 2026-11-03, per hour: L4 0.80, A10G 1.10, L40S 1.95,
+# A100-40GB 2.10, A100-80GB 2.50, H100 3.95 USD). L4 is the measured setup; on 2026-11-03 Modal had no L4 free and
+# the container waited for one without starting. Ada and Hopper (L40S, H100) run fp8 natively; Ampere (A10G, A100)
+# runs it as weight-only Marlin kernels, slower and not measured. T4 is left out: no bf16 and no fp8 in vLLM
+GPUS = ['L4', 'A10G', 'L40S', 'A100-40GB', 'A100-80GB', 'H100']
 
 vllm_image = (
   modal.Image.from_registry('nvidia/cuda:12.9.0-devel-ubuntu22.04', add_python='3.12')
@@ -58,7 +63,7 @@ def prepare():
 
 @app.server(
   image=vllm_image,
-  gpu='L4',
+  gpu=GPUS,
   scaledown_window=5 * MINUTES,  # the backend pings /health while lino should stay awake
   startup_timeout=15 * MINUTES,
   volumes={'/models': model_vol, '/root/.cache/vllm': vllm_cache, '/root/.cache/huggingface': hf_cache},

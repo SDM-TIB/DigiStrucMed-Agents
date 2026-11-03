@@ -1,4 +1,4 @@
-"""Lino's GPU. A Modal L4 that scales to zero, shared by every visitor, drawn from a pool of Modal workspaces.
+"""Lino's GPU. A Modal L4 (or the next cheapest free GPU, gpu/serve.py GPUS) that scales to zero, shared by every visitor, drawn from a pool of Modal workspaces.
 
 state machine:  offline --wake--> waking --/health ok--> online --idle--> offline
 while online a thread pings /health so Modal keeps the container. it stops pinging once no session
@@ -28,7 +28,7 @@ AWAKE_SECONDS = 10 * 60
 HOLD_CHOICES = (5 * 60, 30 * 60, 60 * 60, 2 * 60 * 60, 3 * 60 * 60)  # 5 min is for testing
 WAKE_TIMEOUT = 10 * 60  # per workspace. a cold start takes about 4 minutes
 MODAL_APP = 'lino'
-ENOUGH_USD = 3.0  # an L4 costs about $0.80 an hour, so $3 covers the longest hold on the start screen
+ENOUGH_USD = 3.0  # an L4 costs about $0.80 an hour, so $3 covers the longest hold on the start screen (a fallback GPU costs more)
 
 
 def _pool():
