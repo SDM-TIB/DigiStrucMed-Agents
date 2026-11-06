@@ -16,3 +16,6 @@ pipeline/out/
 app/data/search_index.npz
 # the AI Elements island, built from ui/ (npm run build) by deploy/deploy.py
 app/static/ui/
+
+# Graph Walker: the proposition graph pack (layout, propositions, topics) is built from the thesis repo (export_app_pack.py)
+app/data/walker/

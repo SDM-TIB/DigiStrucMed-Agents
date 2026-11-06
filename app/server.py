@@ -36,6 +36,7 @@ import triage
 import luna
 import storage
 import tavus
+import walkerchat
 import wikidata
 
 SESSION_COOKIE, ADMIN_COOKIE = 'tib_session', 'tib_admin'
@@ -46,7 +47,7 @@ _secret = (config.TAVUS_API_KEY or 'tib-chat').encode()
 SESSION_TOKEN = hmac.new(_secret, b'session:' + config.DEMO_PASSWORD.encode(), hashlib.sha256).hexdigest()
 ADMIN_TOKEN = hmac.new(_secret, b'admin:' + config.ADMIN_PASSWORD.encode(), hashlib.sha256).hexdigest() if config.ADMIN_PASSWORD else ''
 STATIC_TYPES = {'.html', '.css', '.js', '.json', '.jpg', '.png', '.svg', '.mp4', '.woff2', '.woff', '.ttf'}  # fonts: KaTeX in static/ui
-CHATS = {'luna': luna.run, 'lino': lino.chat, 'guido': guido.run}
+CHATS = {'luna': luna.run, 'lino': lino.chat, 'guido': guido.run, 'walker': walkerchat.run}
 
 
 def same(given, expected):
@@ -83,7 +84,7 @@ class Handler(BaseHTTPRequestHandler):
     secure = '; Secure' if self.headers.get('X-Forwarded-Proto') == 'https' else ''
     return f'{name}={value}; Path=/; Max-Age={max_age}; HttpOnly; SameSite=Strict{secure}'
 
-  def send(self, code, data, content_type='application/json', cookie=None, cache='no-store'):
+  def send(self, code, data, content_type='application/json', cookie=None, cache='no-store', headers=None):
     raw = data if isinstance(data, bytes) else json.dumps(data, ensure_ascii=False).encode()
     self.send_response(code)
     self.send_header('Content-Type', content_type)
@@ -91,6 +92,8 @@ class Handler(BaseHTTPRequestHandler):
     self.send_header('Referrer-Policy', 'no-referrer')
     if cookie:
       self.send_header('Set-Cookie', cookie)
+    for k, v in (headers or {}).items():
+      self.send_header(k, v)
     self.send_header('Content-Length', str(len(raw)))
     self.end_headers()
     self.wfile.write(raw)
@@ -164,6 +167,8 @@ class Handler(BaseHTTPRequestHandler):
       return self.static('index.html')
     if path == '/dashboard':
       return self.static('dashboard.html')
+    if path in ('/graph-walker', '/graph-walker/'):  # the page checks the session itself and sends visitors to the login
+      return self.static('walker.html')
     if path.startswith('/static/') and not path.startswith('/static/videos/'):
       return self.static(path[len('/static/'):])
     if path == '/api/session':
@@ -180,6 +185,11 @@ class Handler(BaseHTTPRequestHandler):
     if path.startswith('/api/page/'):
       p = corpus.PAGE_BY_ID.get(path.rsplit('/', 1)[-1])
       return self.send(200, {k: p.get(k) for k in ('id', 'title', 'ref', 'page', 'plain')}) if p else self.send(404, {'error': 'Unknown page'})
+    if path == '/api/walker/layout':  # the picture of the proposition graph, gzipped once
+      if not walkerchat.available():
+        return self.send(404, {'error': 'Graph Walker data not installed'})
+      walkerchat.warm()
+      return self.send(200, walkerchat.layout_gz(), 'application/json', cache='no-cache', headers={'Content-Encoding': 'gzip'})
     if path == '/api/gpu':
       return self.send(200, gpu.status(self.session()))
     if path == '/api/board-schema':
@@ -354,4 +364,6 @@ if __name__ == '__main__':
   llm.warm()  # before listening: cloud run only routes to a new revision once it accepts connections
   page_search.load()  # luna's page index, before listening (full cpu at startup); without it the search uses bm25
   page_search.warm()  # wakes the embedding service
+  if walkerchat.available():
+    walkerchat.warm()  # the Graph Walker loads its graph and index in the background
   ThreadingHTTPServer(('0.0.0.0', config.PORT), Handler).serve_forever()

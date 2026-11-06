@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/png" href="/static/img/favicon-digistrucmed.png">
+<title>Graph Walker · TIB Chat</title>
+<link rel="stylesheet" href="/static/css/walker.css">
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <!-- left: the question and the walk, explained step by step -->
+  <section class="chat" aria-label="Verlauf">
+    <header class="chat-head">
+      <a class="icon-btn" href="/" title="Zurück zu TIB Chat" aria-label="Zurück zu TIB Chat"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></a>
+      <img class="logo" src="/static/img/logo-digistrucmed.png" alt="DigiStrucMed">
+      <div class="title"><h1>Graph Walker</h1><small>Leitlinien-Antworten mit Beleg für jeden Satz</small></div>
+      <button class="icon-btn" id="tempo" title="Wiedergabe: Präsentationstempo" aria-label="Wiedergabetempo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span id="tempo-t">Präsentation</span></button>
+      <button class="icon-btn" id="fs" title="Vollbild (F)" aria-label="Vollbild"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Vollbild</span></button>
+    </header>
+
+    <div class="feed" id="feed" aria-live="polite">
+      <div class="intro" id="intro">
+        <span class="kicker">So arbeitet der Graph Walker</span>
+        <h2>Erst lesen und belegen, dann formulieren</h2>
+        <p>Ein üblicher Chatbot formuliert sofort aus dem Gedächtnis eines Sprachmodells. Der Graph Walker sucht zuerst im Wissensgraphen der Leitlinien die Stellen, die die Frage beantworten. Erst danach formuliert ein Sprachmodell die Antwort, und zwar nur aus diesen Stellen.</p>
+        <dl class="facts">
+          <div><dt>Auswählen statt erfinden</dt><dd>Bis zur Antwort entscheiden nur Bewertungsmodelle über „passt“ oder „passt nicht“. Sie erzeugen keinen Text.</dd></div>
+          <div><dt>Jeder Satz mit Quelle</dt><dd>Leitlinie, Seite und Originalzitat sind bei jeder Aussage der Antwort hinterlegt.</dd></div>
+          <div><dt>Keine Antwort ohne Beleg</dt><dd>Findet der Walker keine passende Stelle, sagt er das, statt zu raten.</dd></div>
+        </dl>
+        <span class="kicker">Beispielfragen</span>
+        <div class="examples" id="examples"></div>
+      </div>
+    </div>
+
+    <form class="composer" id="composer" autocomplete="off">
+      <textarea id="q" rows="1" placeholder="Frage zu den Herz-Leitlinien eingeben …" aria-label="Frage"></textarea>
+      <button class="send" id="send" type="submit" aria-label="Frage senden"><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </form>
+  </section>
+
+  <!-- right: the path through the knowledge graph -->
+  <section class="graph" aria-label="Pfad durch den Wissensgraphen">
+    <header class="g-head">
+      <div class="g-cap">
+        <span class="kicker" id="g-kicker">Wissensgraph der Leitlinien</span>
+        <b id="g-title">Bereit für eine Frage</b>
+        <span id="g-sub">Der Walker geht Stufe für Stufe vom Ganzen zum Detail. Jede Stufe wird hier sichtbar.</span>
+      </div>
+      <dl class="g-lib" id="g-lib"></dl>
+    </header>
+
+    <div class="cols" id="cols">
+      <svg class="edges" id="edges" aria-hidden="true"></svg>
+      <div class="col" data-c="1"><div class="ch"><i>1</i><div><b>Leitlinien</b><small id="c1-n">noch nicht geprüft</small></div></div><div class="hist" id="hist"></div><div class="hist-l">alle Leitlinien, nach Passung sortiert</div><div class="cb" id="c1"></div></div>
+      <div class="col" data-c="2"><div class="ch"><i>2</i><div><b>Themen</b><small id="c2-n">–</small></div></div><div class="cb" id="c2"></div></div>
+      <div class="col" data-c="3"><div class="ch"><i>3</i><div><b>Aussagen</b><small id="c3-n">–</small></div></div><div class="cb" id="c3"></div></div>
+      <div class="col" data-c="4"><div class="ch"><i>4</i><div><b>UMLS-Konzepte</b><small id="c4-n">–</small></div></div><div class="cb" id="c4"></div></div>
+      <div class="col" data-c="5"><div class="ch"><i>5</i><div><b>Antwort</b><small id="c5-n">Sprachmodell gesperrt</small></div></div><div class="cb" id="c5"></div></div>
+    </div>
+
+    <footer class="g-foot">
+      <dl class="metrics" id="metrics">
+        <div><dt>Dauer</dt><dd id="m-time">–</dd></div>
+        <div><dt>Kosten</dt><dd id="m-usd">–</dd></div>
+        <div><dt>Bewertungen</dt><dd id="m-dec">–</dd></div>
+        <div><dt>Sprachmodell-Aufrufe</dt><dd id="m-llm">–</dd></div>
+      </dl>
+      <div class="legend"><span><i class="l-path"></i>gewählter Pfad</span><span><i class="l-ev"></i>Beleg</span><span><i class="l-um"></i>UMLS-Verknüpfung</span></div>
+    </footer>
+    <div class="loading" id="loading"><i></i><span id="loading-t">Wissensgraph wird geladen …</span></div>
+  </section>
+</div>
+<script src="/static/js/walker.js"></script>
+</body>
+</html>
