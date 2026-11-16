@@ -180,12 +180,14 @@ class WalkV5(BeamWalk):
 
     def graded_version_pages(self) -> dict[str, str]:
         """Graph edge: the fully graded version of an ungraded statement taken, on another page of the same guideline."""
+        found = [(e, g) for e in self.evidence
+                 if e["kind"] in ("recommendation", "table row", "line") and not (e.get("cor") and e.get("loe"))
+                 for g in self.graph.graded_versions(e["text"], 0.5)[:3] if g["page"] != e["page"] and g["cor"] and g["loe"]]
+        self.graph.pages(g["page"] for _, g in found)
         out = {}
-        for e in self.evidence:
-            if e["kind"] in ("recommendation", "table row", "line") and not (e.get("cor") and e.get("loe")):
-                for g in self.graph.graded_versions(e["text"], 0.5)[:3]:
-                    if g["page"] != e["page"] and g["cor"] and g["loe"] and self.graph.page(g["page"])["document"] == e["document"]:
-                        out[g["page"]] = f"graded version of a statement taken ({grade_text(g['cor'], g['loe'])})"
+        for e, g in found:
+            if self.graph.page(g["page"])["document"] == e["document"]:
+                out[g["page"]] = f"graded version of a statement taken ({grade_text(g['cor'], g['loe'])})"
         return out
 
     def pages_level(self, docs: list[str], text: str, exclude: set[str]) -> list[str]:
@@ -332,6 +334,7 @@ class WalkV5(BeamWalk):
         # the scorer's threshold can drop the one statement that answers (it rates a premise-contradicting class low):
         # the best-ranked statements always reach the writer, which judges them and marks the unfit ones
         best += [r for r in ranked if r not in best and probs[r["id"]] >= FLOOR][:max(0, MIN_STATEMENTS - len(best))]
+        self.graph.pages(r["page"] for r in best)
         for r in best:
             pg = self.graph.page(r["page"])
             about = next((x["about"] for x in pg["recommendations"] if x["id"] == r["id"]), "")

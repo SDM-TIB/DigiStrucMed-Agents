@@ -196,7 +196,12 @@ on with the page of the first one. The Graph Walker page keeps the five-stage pa
 (`/graph-walker?embed=1`, fed over `postMessage`). The embedded path is in German, like the Graph Walker page.
 
 Speed. A walk is twenty to thirty requests to decision models and one to the writer; its duration is theirs.
-`MODEL_SLOTS` (default 8) is how many run side by side. `V5_SCORER` and `V7_RERANK` choose the decision models: empty
+`MODEL_SLOTS` (default 8) is how many run side by side. The pages of the statements a walk takes are read from the
+graph side by side as well (a page is five queries; `GRAPH_PARALLEL`, default 16, is how many queries run at once), so
+a walk on questions not asked before costs one round of queries, not fifty in a row. A model call slower than
+`MODEL_SLOW_SECONDS` (default 6), every repeated model call and a graph query slower than `GRAPH_SLOW_SECONDS`
+(default 5) leave a log line (`walker model: …`, `walker graph: …`), so a slow walk can be explained from the log.
+`V5_SCORER` and `V7_RERANK` choose the decision models: empty
 is clef-flash and clef on Cloudflare (the configuration the thesis evaluated); a name without `@cf/` goes to
 OpenRouter's System One endpoint (`google/gemini-decision-1`, `liquid/d1-ultra`) and needs `OPENROUTER_API_KEY`.
 In a video call `GUIDO_CALL_WRITER=0` leaves out the writer: the tool result is the six best statements with

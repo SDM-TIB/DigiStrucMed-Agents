@@ -577,6 +577,7 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .kg-panel.wk .lg.p::before{background:#22d3ee;border-radius:50%;width:9px;height:9px}
 .kg-panel.wk .lg.g::before{background:#b794ff}
 .guido-walker .kg-hud{display:none}  /* the walker's graph stands alone, no status card over it */
+.guido-walker .callx.share-on .share-dir{display:none}  /* and no window director: the walk lays the call's screen out */
 /* the walker's graph is staged on a dark ground: glow, motion blur and the faint links beyond the walk need it */
 .conv.kg-on .kg-panel.wk,.win.graph .wbody.cine{background:radial-gradient(120% 85% at 50% 46%,#18204a 0%,#0d1228 55%,#070a17 100%)}
 .conv.kg-on .kg-panel.wk{border-left-color:#0b0f20}

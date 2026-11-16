@@ -448,7 +448,7 @@ function kgAnswerLayout() {
   if (KG.byId.has('q')) rows.push([KG.byId.get('q')]);
   pairs(seeds); recs.forEach(n => rows.push([n])); pairs(others);
   const rh = Math.max(46, Math.min(96, (H - 110) / Math.max(1, rows.length - 1)));
-  const zoom = Math.min(1, (H - 90) / ((rows.length - 1) * rh + 60), (W - 40) / (2 * dx + 280));  // shrink only if it cannot fit
+  const zoom = Math.min(KG.cine ? dirBig() : 1, (H - 90) / ((rows.length - 1) * rh + 60), (W - 40) / (2 * dx + 280));  // shrink if it cannot fit; on the walker's large canvas, grow
   const target = new Map(), y0 = -(rows.length - 1) * rh / 2 - 10;
   let zig = 0;
   rows.forEach((row, i) => row.forEach((n, j) => {
@@ -841,7 +841,7 @@ window.jrHTML = {
       h('div', null, (p.items || []).map((q, i) => h('span', {key: i, className: 'q'}, q))));
   },
   quote(h, p) {
-    return h('article', {className: 'jr-quote'}, p.claim ? h('span', {className: 'jr-kick'}, care.t('summary')) : null, p.claim ? h('b', {className: 'claim'}, p.claim) : null,
+    return h('article', {className: 'jr-quote'}, p.claim ? h('span', {className: 'jr-kick'}, p.kick || care.t('summary')) : null, p.claim ? h('b', {className: 'claim'}, p.claim) : null,
       h('span', {className: 'jr-kick verbatim'}, care.t('guideline')), h('blockquote', null, p.quote),
       p.grade ? care.grade(h, p.grade) : null,
       h('footer', null, h('span', {className: 'src'}, `${p.ref || p.title} · p. ${p.page}`),
@@ -1555,7 +1555,9 @@ function kgHint(text) {
   const e = document.createElement('div'); e.className = 'kg-hint'; e.textContent = text; host.append(e);
   setTimeout(() => e.classList.add('gone'), 6500); setTimeout(() => e.remove(), 7600);
 }
-function dirShot(ids, o = {}) { DIR.ids = ids; DIR.fix = o.fix || null; DIR.at = null; DIR.maxK = o.maxK || 1.9; DIR.tau = o.tau || 520; DIR.pad = o.pad || 70; }
+// how much larger than the chat's panel the canvas is (the call's window): shots and flights go nearer by this factor
+const dirBig = () => KG.fg ? Math.max(1, Math.min(1.7, Math.min(KG.fg.width(), KG.fg.height()) / 640)) : 1;
+function dirShot(ids, o = {}) { DIR.ids = ids; DIR.fix = o.fix || null; DIR.at = null; DIR.maxK = (o.maxK || 1.9) * dirBig(); DIR.tau = o.tau || 520; DIR.pad = (o.pad || 70) * dirBig(); }
 const dirEase = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const dirPace = () => DIR.q.length > 1 ? .5 : 1;  // the walk is ahead of the picture: everything plays at double speed
 // the runner travels from one node to the next and the camera rides along at zoom k: the visitor walks the graph with it.
@@ -1564,7 +1566,7 @@ function dirFly(aId, bId, ms, k) {
   return new Promise(done => {
     const a = KG.byId.get(aId), b = KG.byId.get(bId);
     if (!a || !b || !DIR.on || a === b) return done();
-    DIR.comet = {a, b, t0: performance.now(), dur: Math.max(160, ms * dirPace()), done, gen: DIR.gen}; DIR.flyK = k || 1.7; DIR.ids = null; DIR.fix = null;
+    DIR.comet = {a, b, t0: performance.now(), dur: Math.max(160, ms * dirPace()), done, gen: DIR.gen}; DIR.flyK = (k || 1.7) * Math.min(1.35, dirBig()); DIR.ids = null; DIR.fix = null;
   });
 }
 function dirCometAt(c, now) { const p = dirEase(Math.min(1, (now - c.t0) / c.dur)); return [c.a.x + (c.b.x - c.a.x) * p, c.a.y + (c.b.y - c.a.y) * p, p]; }
@@ -2019,6 +2021,7 @@ function startMeter() {
     loop();
   } catch {}
 }
+addEventListener('care-lang', () => syncToggles());  // 'Mute' and 'Stop Video' in the language the visitor speaks
 function syncToggles() {
   $('#pj-mic').setAttribute('aria-pressed', !micOn); $('#pj-cam').setAttribute('aria-pressed', !camOn);
   $('#d-mic').setAttribute('aria-pressed', !micOn); $('#d-cam').setAttribute('aria-pressed', !camOn);
@@ -2166,7 +2169,8 @@ function winLayout(layout) {
     if (L === 'split') {
       if (i === 0) return R(w, 0, 0, 57, 100);
       if (i === 1) return R(w, 58.5, 0, 41.5, ids.length > 2 ? 64 : 100);
-      return R(w, 58.5 + (i - 2) * 21, 66, 20.2, 34);
+      const n = ids.length - 2, ww = (41.5 - (n - 1) * 1.1) / n;  // the small windows share the width under the second one
+      return R(w, 58.5 + (i - 2) * (ww + 1.1), 66, ww, 34);
     }
     if (i === 0) return R(w, 0, 0, 69, 100);           // focus: one large window, the rest stacked on the right
     const n = ids.length - 1, h = 100 / n;
@@ -2175,6 +2179,7 @@ function winLayout(layout) {
 }
 // ask clef-flash what the shared screen should show; apply only confident decisions
 async function direct(phase, utterance) {
+  if (guidoEngine === 'walker') return;  // on the walker the call's screen is laid out by the walk itself (guidoWalkCall)
   if (!WM.on || WM.dirBusy) return; WM.dirBusy = true;
   const concepts = KG.nodes.filter(n => n.kind === 'concept' && (n.hop === 0 || KG.pathIds.has(n.id))).map(n => n.label).slice(0, 12);
   const state = {phase, speaker: 'Guido', utterance: (utterance || '').slice(0, 900), question: (KG.byId.get('q') || {}).label,
@@ -2334,36 +2339,24 @@ function langOf(text) {
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
 const SAY = {
   en: {and: 'and',
-    wDocs: n => `From your question I step into the graph of ${n} guidelines.`, wRead: n => `I follow the edges down to the statements, ${n} of them lie in reach.`,
-    wTaken: n => n > 1 ? `My path runs through ${n} statements. Each is a sentence from a guideline, with its page.` : 'My path ends at one statement, a sentence from a guideline, with its page.',
-    wNone: 'No path in the graph leads to a statement about this.',
     share: 'Let me share my screen and walk you through our knowledge graph.', again: 'Let me look at the graph again.',
     seed: x => `I'm starting from ${x}.`, recs: (n, l) => `Here's something: ${n} recommendation${n > 1 ? 's' : ''} around ${l}. Let me follow them.`,
     links: l => `Let me follow the links of ${l}.`, hop2: x => `Two steps out now, I'm at ${x}.`, expand: l => `Let me expand ${l} a bit further.`,
     match: n => `${n} recommendation texts match directly.`, rank: n => `Spreading out through the graph, ${n} recommendations come up close to your question.`,
     select: 'I found what I need. Let me pick the recommendations that answer your question.', table: 'Look, here is the recommendation in the original guideline table.'},
   de: {and: 'und',
-    wDocs: n => `Von Ihrer Frage aus gehe ich in den Graphen der ${n} Leitlinien.`, wRead: n => `Ich folge den Kanten hinunter zu den Aussagen, ${n} liegen in Reichweite.`,
-    wTaken: n => n > 1 ? `Mein Pfad führt durch ${n} Aussagen. Jede ist ein Satz aus einer Leitlinie, mit Seite.` : 'Mein Pfad endet bei einer Aussage, einem Satz aus einer Leitlinie, mit Seite.',
-    wNone: 'Im Graphen führt kein Pfad zu einer Aussage dazu.',
     share: 'Ich teile kurz meinen Bildschirm und gehe mit Ihnen durch unseren Wissensgraphen.', again: 'Ich schaue noch einmal in den Graphen.',
     seed: x => `Ich starte bei ${x}.`, recs: (n, l) => `Hier ist etwas: ${n} ${n > 1 ? 'Empfehlungen' : 'Empfehlung'} rund um ${l}. Denen folge ich jetzt.`,
     links: l => `Ich folge den Verbindungen von ${l}.`, hop2: x => `Zwei Schritte weiter bin ich jetzt bei ${x}.`, expand: l => `Ich schaue mir ${l} noch genauer an.`,
     match: n => `${n} Empfehlungstexte passen direkt.`, rank: n => `Ich breite mich im Graphen aus, ${n} Empfehlungen liegen nah an Ihrer Frage.`,
     select: 'Ich habe, was ich brauche. Jetzt wähle ich die Empfehlungen aus, die Ihre Frage beantworten.', table: 'Schauen Sie, hier ist die Empfehlung in der originalen Leitlinientabelle.'},
   es: {and: 'y',
-    wDocs: n => `Desde su pregunta entro en el grafo de las ${n} guías.`, wRead: n => `Sigo las aristas hasta las afirmaciones, ${n} quedan al alcance.`,
-    wTaken: n => n > 1 ? `Mi camino pasa por ${n} afirmaciones. Cada una es una frase de una guía, con su página.` : 'Mi camino termina en una afirmación, una frase de una guía, con su página.',
-    wNone: 'Ningún camino del grafo lleva a una afirmación sobre esto.',
     share: 'Comparto mi pantalla y le muestro nuestro grafo de conocimiento.', again: 'Vuelvo a mirar el grafo.',
     seed: x => `Empiezo por ${x}.`, recs: (n, l) => `Aquí hay algo: ${n} ${n > 1 ? 'recomendaciones' : 'recomendación'} sobre ${l}. Las sigo.`,
     links: l => `Sigo las conexiones de ${l}.`, hop2: x => `Dos pasos más allá, ahora estoy en ${x}.`, expand: l => `Miro ${l} con más detalle.`,
     match: n => `${n} textos de recomendaciones coinciden directamente.`, rank: n => `Recorriendo el grafo, ${n} recomendaciones quedan cerca de su pregunta.`,
     select: 'Ya tengo lo que necesito. Ahora elijo las recomendaciones que responden a su pregunta.', table: 'Mire, aquí está la recomendación en la tabla original de la guía.'},
   ru: {and: 'и',
-    wDocs: n => `От вашего вопроса я вхожу в граф руководств, их ${n}.`, wRead: n => `Иду по рёбрам к утверждениям, в пределах досягаемости их ${n}.`,
-    wTaken: n => n > 1 ? `Мой путь проходит через утверждения, их ${n}. Каждое — это предложение из руководства, со страницей.` : 'Мой путь заканчивается на одном утверждении, предложении из руководства, со страницей.',
-    wNone: 'В графе нет пути к утверждению об этом.',
     share: 'Сейчас я покажу свой экран и проведу вас по нашему графу знаний.', again: 'Давайте ещё раз посмотрим на граф.',
     seed: x => `Начинаю с ${x}.`, recs: (n, l) => `Вот что я нашёл: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} вокруг ${l}. Иду по ним дальше.`,
     links: l => `Иду по связям ${l}.`, hop2: x => `Два шага дальше, я сейчас у ${x}.`, expand: l => `Посмотрю на ${l} подробнее.`,
@@ -2371,9 +2364,6 @@ const SAY = {
     rank: n => `Расхожусь по графу: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} близко к вашему вопросу.`,
     select: 'Я нашёл то, что нужно. Сейчас выберу рекомендации, которые отвечают на ваш вопрос.', table: 'Смотрите, вот эта рекомендация в оригинальной таблице руководства.'},
   hi: {and: 'और',
-    wDocs: n => `आपके सवाल से मैं ${n} गाइडलाइन के ग्राफ़ में उतर रहा हूँ।`, wRead: n => `मैं किनारों के साथ कथनों तक जा रहा हूँ, ${n} पहुँच में हैं।`,
-    wTaken: n => n > 1 ? `मेरा रास्ता ${n} कथनों से होकर जाता है। हर एक किसी गाइडलाइन का वाक्य है, पेज के साथ।` : 'मेरा रास्ता एक कथन पर ख़त्म होता है, जो किसी गाइडलाइन का वाक्य है, पेज के साथ।',
-    wNone: 'ग्राफ़ में इस बारे में किसी कथन तक कोई रास्ता नहीं जाता।',
     share: 'मैं अपनी स्क्रीन शेयर करता हूँ और आपको हमारे नॉलेज ग्राफ़ से होकर ले चलता हूँ।', again: 'चलिए, ग्राफ़ को एक बार फिर देखते हैं।',
     seed: x => `मैं ${x} से शुरू कर रहा हूँ।`, recs: (n, l) => `यह मिला: ${l} से जुड़ी ${n} ${n > 1 ? 'सिफ़ारिशें' : 'सिफ़ारिश'}। मैं इन्हें आगे देखता हूँ।`,
     links: l => `मैं ${l} के कनेक्शन देख रहा हूँ।`, hop2: x => `अब दो कदम आगे, मैं ${x} पर हूँ।`, expand: l => `मैं ${l} को थोड़ा और विस्तार से देखता हूँ।`,
@@ -2500,7 +2490,7 @@ function walkEvidence(cited) {
   const said = new Set(), key = s => String(s.snippet || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   cited = cited.filter(s => !said.has(key(s)) && said.add(key(s)));  // a guideline repeats its recommendations (summary table, chapter): each statement once
   cited.slice(0, 6).forEach((s, i) => {
-    el['q' + i] = {type: 'Quote', props: {claim: s.snippet, quote: s.highlight, ref: s.ref, title: s.title, page: s.page, grade: walkGrade(s), pageId: s.page_id}, children: []};
+    el['q' + i] = {type: 'Quote', props: {kick: uiText('Statement in the knowledge graph'), claim: s.snippet, quote: s.highlight, ref: s.ref, title: s.title, page: s.page, grade: walkGrade(s), pageId: s.page_id}, children: []};
     el.b.children.push('q' + i);
   });
   jrMount(host).set({root: 'b', elements: el});
@@ -2514,7 +2504,7 @@ async function guidoWalkCall(m, p, question, asked, t0) {
   const W = {}, lang = langOf(asked), T = SAY[lang] || SAY.en, nar = narrator(lang);
   walkGraph(W, {t: 'start'}, asked);
   nar.say(firstShare ? T.share : T.again, true);
-  let raw = '', ok = true, sources = [], statements = 0, late = false, evidenceOnly = false;
+  let raw = '', ok = true, sources = [], late = false, evidenceOnly = false;
   const deadline = setTimeout(() => { late = true; nar.stop(); toolResult(m, p, WALK_LATE, true); }, Math.max(0, TOOL_DEADLINE_MS - (performance.now() - t0)));
   try {
     const r = await fetch('/api/chat/guido', {method: 'POST', headers: HEADERS, body: JSON.stringify({messages: [{role: 'user', text: question}], via: 'call'})});
@@ -2529,10 +2519,6 @@ async function guidoWalkCall(m, p, question, asked, t0) {
         const ev = JSON.parse(line.slice(5));
         if (ev.type === 'walker') {
           const w = ev.ev; if (w.t !== 'start') walkGraph(W, w, asked);
-          if (late) continue;  // the persona is speaking its holding sentence: no narration over it
-          if (w.t === 'scores' && w.level === 'guidelines') nar.say(T.wDocs(w.items.length));
-          else if (w.t === 'scores' && w.level === 'statements') { statements += w.candidates; nar.say(T.wRead(statements)); }
-          else if (w.t === 'taken') nar.say(w.items.length ? T.wTaken(w.items.length) : T.wNone);
         }
         else if (ev.type === 'sources') sources = ev.items;   // after a fallback: the other engine's sources and text
         else if (ev.type === 'text') { raw += ev.delta; evidenceOnly = !!ev.evidence_only; }  // evidence only: no writer ran, the persona phrases the answer
@@ -2548,13 +2534,12 @@ async function guidoWalkCall(m, p, question, asked, t0) {
     walkEvidence(cited);
     const s = cited.find(x => x.page_id);
     if (s) showPdf({ref: s.ref, title: s.title, page: s.page, page_id: s.page_id, text: s.highlight});
-    winLayout('split');
   }
-  direct('found', answer.slice(0, 600));
+  winFront('graph'); winLayout('split');  // the walked graph stays the large window, evidence and page to its right
   if (late) {  // the tool result went out at the deadline: speak the answer itself once the face is quiet
     await faceIdle(12000);
     // without a writer there is no answer to speak, only statements: the best one, as the guideline words it
-    echo(speakable(!ok ? uiText('The knowledge graph is not reachable right now. Please ask again in a moment.') : evidenceOnly && sources[0] ? sources[0].title + ': ' + sources[0].snippet : raw));
+    echo(speakable(!ok ? uiText('The knowledge graph is not reachable right now. Please ask again in a moment.') : evidenceOnly && sources[0] ? String(sources[0].title || '').split(':')[0] + ': ' + sources[0].snippet : raw));  // the title without its subtitle
     return;
   }
   // the walk is done: lines not spoken yet are dropped, the one being spoken ends, then the result goes out. waiting
@@ -2592,7 +2577,7 @@ async function onAppMessage(e) {
     if (pr.role === 'replica' && pr.speech && !stage.greeted) { stage.greeted = true; return; }  // greeting: no board
     if (pr.role === 'replica' && pr.speech) {
       const k = normSpeech(pr.speech).slice(0, 60);
-      if (!stage.said.some(x => x && (k.startsWith(x.slice(0, 40)) || x.startsWith(k.slice(0, 40))))) { if (callAgent === 'luna') evidenceBoard(pr.speech); else liveBoard(pr.speech, callAgent); if (WM.on) direct('answering', pr.speech); }
+      if (!stage.said.some(x => x && (k.startsWith(x.slice(0, 40)) || x.startsWith(k.slice(0, 40))))) { if (callAgent === 'luna') evidenceBoard(pr.speech); else if (!(callAgent === 'guido' && guidoEngine === 'walker')) liveBoard(pr.speech, callAgent);  /* on the walker the statements beside the graph are the board */ if (WM.on) direct('answering', pr.speech); }
     }
     return;
   }

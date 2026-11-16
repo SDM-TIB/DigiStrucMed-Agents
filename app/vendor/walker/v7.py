@@ -193,6 +193,7 @@ class WalkV7(WalkV5):
                 per_doc[p["document"]] += 1
         best = (best + [p for p in fit if p not in best])[:limit]
         best += [p for p in ranked if p not in best and probs[p["key"]] >= FLOOR][:max(0, MIN_STATEMENTS - len(best))]
+        self.graph.pages(p["page"] for p in best)
         for p in best:
             pg = self.graph.page(p["page"])
             self.evidence.append({"kind": "statement", "proposition_kind": p["kind"], "key": p["key"], "text": p["text"],

@@ -138,6 +138,13 @@ def _openrouter_key() -> str:
     return key
 
 
+SLOW_SECONDS = float(os.environ.get("MODEL_SLOW_SECONDS", 6))  # a call slower than this, and every retry, leaves a log line
+
+
+def _note(what: str) -> None:
+    print("walker model: " + what, flush=True)
+
+
 def systemone_openrouter(model: str, state: dict, questions: dict, attempts: int = 8) -> dict:
     """One System One decision request on OpenRouter (POST /api/v1/systemone: state plus typed questions, the same
     contract as the Cloudflare decision models). Returns the response: {"answers", "usage"}."""
@@ -145,16 +152,24 @@ def systemone_openrouter(model: str, state: dict, questions: dict, attempts: int
     for attempt in range(attempts):
         req = urllib.request.Request("https://openrouter.ai/api/v1/systemone", data=body, method="POST",
                                      headers={"Authorization": "Bearer " + _openrouter_key(), "Content-Type": "application/json"})
+        asked = time.time()
         try:
-            with _SLOTS, urllib.request.urlopen(req, timeout=180) as r:
-                return json.load(r)
+            with _SLOTS:
+                sent = time.time()
+                with urllib.request.urlopen(req, timeout=180) as r:
+                    out = json.load(r)
+            if time.time() - asked > SLOW_SECONDS:
+                _note(f"{model} slow: {time.time() - sent:.1f} s for the answer, {sent - asked:.1f} s waiting for a slot")
+            return out
         except urllib.error.HTTPError as e:
             if e.code in (408, 429, 500, 502, 503, 504) and attempt < attempts - 1:
+                _note(f"{model} HTTP {e.code} after {time.time() - asked:.1f} s, attempt {attempt + 1}: again in {min(30, 2 ** attempt)} s")
                 time.sleep(min(30, 2 ** attempt))
                 continue
             raise ModelError(f"OpenRouter HTTP {e.code}: {e.read()[:300]!r}")
         except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
             if attempt < attempts - 1:
+                _note(f"{model} {type(e).__name__} after {time.time() - asked:.1f} s, attempt {attempt + 1}: again in {min(30, 2 ** attempt)} s")
                 time.sleep(min(30, 2 ** attempt))
                 continue
             raise ModelError(f"OpenRouter unreachable: {e}")

@@ -1,6 +1,6 @@
 {
   "name": "ask_guideline_graph",
-  "description": "Look up the answer in TIB's clinical guideline knowledge graph. Call this for every question about guidelines, conditions, drugs, procedures, side effects, recommendations or evidence. Pass the user's question in plain English. The result is an answer traced through the graph, with classes of recommendation and levels of evidence.",
+  "description": "Look up the answer in TIB's clinical guideline knowledge graph. Call this for every question about guidelines, conditions, drugs, procedures, side effects, recommendations or evidence. Pass the user's question in plain English. The result is the numbered guideline statements the walk through the graph selected (or an answer written from them), each with its guideline, page, class of recommendation and level of evidence.",
   "parameters": {
     "type": "object",
     "required": [

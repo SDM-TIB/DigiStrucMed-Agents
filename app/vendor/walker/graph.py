@@ -8,6 +8,8 @@ import hashlib
 import json
 import os
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -22,6 +24,10 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 """
 HERE = Path(__file__).resolve().parent.parent
 DEFAULT_CACHE = HERE.parent / "2026-10-31_clef_harness" / "harness" / "cache" / "sparql"
+SLOW_SECONDS = float(os.environ.get("GRAPH_SLOW_SECONDS", 5))  # a query slower than this leaves a log line
+# a page is five queries and a walk reads a dozen pages: the queries that do not depend on one another go out together
+# (single queries only run on this pool, so it cannot wait on itself)
+_QUERIES = ThreadPoolExecutor(int(os.environ.get("GRAPH_PARALLEL", 16)), thread_name_prefix="walker-graph")
 ROLE_ORDER = ["population", "condition", "intervention", "comparator", "outcome"]
 
 
@@ -72,6 +78,7 @@ class Graph:
         self.cache = Path(cache or os.environ.get("SPARQL_CACHE", DEFAULT_CACHE))
         self._lock = threading.RLock()  # memoized loaders call one another
         self._memo: dict[str, object] = {}
+        self._gates: dict[object, threading.Lock] = {}  # one per value being loaded: other values load meanwhile
 
     # --- transport -------------------------------------------------------------------------------------------------
     def select(self, query: str) -> list[dict[str, str]]:
@@ -83,11 +90,15 @@ class Graph:
         req = urllib.request.Request(self.endpoint, data=body, method="POST", headers={
             "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/sparql-results+json"})
         for attempt in range(3):
+            asked = time.time()
             try:
                 with urllib.request.urlopen(req, timeout=300) as r:
                     bindings = json.load(r)["results"]["bindings"]
+                if time.time() - asked > SLOW_SECONDS:  # a slow query leaves a log line, like a slow model call
+                    print(f"walker graph: query slow, {time.time() - asked:.1f} s: {' '.join(query.split())[:120]}", flush=True)
                 break
             except Exception as e:  # noqa: BLE001
+                print(f"walker graph: query failed after {time.time() - asked:.1f} s, attempt {attempt + 1}: {type(e).__name__}", flush=True)
                 if attempt == 2:
                     raise GraphError(f"SPARQL failed: {e}") from None
         rows = [{k: v["value"] for k, v in b.items()} for b in bindings]
@@ -97,9 +108,33 @@ class Graph:
 
     def _once(self, key, make):
         with self._lock:
-            if key not in self._memo:
-                self._memo[key] = make()
-            return self._memo[key]
+            if key in self._memo:
+                return self._memo[key]
+            gate = self._gates.setdefault(key, threading.Lock())
+        with gate:  # the same value is loaded once; different values load side by side
+            with self._lock:
+                if key in self._memo:
+                    return self._memo[key]
+            value = make()
+            with self._lock:
+                self._memo[key] = value
+                self._gates.pop(key, None)
+            return value
+
+    def pages(self, pids) -> None:
+        """Load several pages side by side, so that page() answers from memory afterwards. A page that fails here
+        fails again, with its error, where it is read."""
+        todo = [p for p in dict.fromkeys(pids) if ("page", p) not in self._memo]
+        if len(todo) < 2:
+            return
+
+        def load(pid):
+            try:
+                self.page(pid)
+            except GraphError:
+                pass
+        with ThreadPoolExecutor(min(8, len(todo)), thread_name_prefix="walker-pages") as pool:
+            list(pool.map(load, todo))
 
     # --- library ---------------------------------------------------------------------------------------------------
     def documents(self) -> list[dict]:
@@ -145,20 +180,21 @@ GROUP BY ?d""")
     def page(self, pid: str) -> dict:
         def make():
             iri = f"<{pid}>"
-            meta = self.select(f"""SELECT ?doc (SAMPLE(?title) AS ?dt) (SAMPLE(?k) AS ?key) ?no ?t WHERE {{
+            q_meta = (f"""SELECT ?doc (SAMPLE(?title) AS ?dt) (SAMPLE(?k) AS ?key) ?no ?t WHERE {{
   ?doc a y:Document ; d:hasPage {iri} ; y:documentKey ?k . {iri} i:technicalPageNumber ?no ; i:originalOcr ?t .
   OPTIONAL {{ ?doc y:title ?title }} }} GROUP BY ?doc ?no ?t""")
-            rec_rows = self.select(f"""SELECT ?r (SAMPLE(?txt) AS ?text) (SAMPLE(?c) AS ?cor) (SAMPLE(?l) AS ?loe) (SAMPLE(?m) AS ?mod)
+            q_recs = (f"""SELECT ?r (SAMPLE(?txt) AS ?text) (SAMPLE(?c) AS ?cor) (SAMPLE(?l) AS ?loe) (SAMPLE(?m) AS ?mod)
   (SAMPLE(?p) AS ?pol) (SAMPLE(?h) AS ?head) (MIN(?s) AS ?start)
 WHERE {{ ?ps y:onPage {iri} ; y:pageCharStart ?s . ?r a y:Recommendation ; y:inPassage ?ps ; y:statementText ?txt ;
   y:modality ?m ; y:polarity ?p . OPTIONAL {{ ?ps y:headerPath ?h }}
   OPTIONAL {{ ?r y:classOfRecommendationRaw ?c }} OPTIONAL {{ ?r y:levelOfEvidenceRaw ?l }} }}
 GROUP BY ?r ORDER BY ?start""")
-            concept_rows = self.select(f"""SELECT ?c (SAMPLE(?lab) AS ?label) (SUM(?m) AS ?mentions) WHERE {{
+            q_concepts = (f"""SELECT ?c (SAMPLE(?lab) AS ?label) (SUM(?m) AS ?mentions) WHERE {{
   ?link x:page {iri} ; x:concept ?c ; x:mentionCount ?m . OPTIONAL {{ ?c rdfs:label ?lab }} }}
 GROUP BY ?c ORDER BY DESC(?mentions)""")
-            role_rows = self.select(f"""SELECT ?r ?rt ?rx WHERE {{ ?ps y:onPage {iri} . ?r a y:Recommendation ; y:inPassage ?ps ; y:role ?m .
+            q_roles = (f"""SELECT ?r ?rt ?rx WHERE {{ ?ps y:onPage {iri} . ?r a y:Recommendation ; y:inPassage ?ps ; y:role ?m .
   ?m y:roleType ?rt ; y:text ?rx }}""")
+            meta, rec_rows, concept_rows, role_rows = _QUERIES.map(self.select, [q_meta, q_recs, q_concepts, q_roles])
             if not meta:
                 raise GraphError(f"no page {pid}")
             head = meta[0]
