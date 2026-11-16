@@ -1398,11 +1398,18 @@ function walkFrame(host) {
   let f = walkFrames.get(host);
   if (f && f.el.isConnected) return f;
   const el = document.createElement('iframe'); el.className = 'walk-frame'; el.title = uiText('Path through the guideline knowledge graph');
-  el.src = '/graph-walker?embed=1&tempo=' + WALK_TEMPO; host.append(el);
+  el.src = '/graph-walker?embed=1&tempo=' + WALK_TEMPO + '&lang=' + walkLang(); host.append(el);
   f = {el, ready: false, queue: [], played: null};
   walkFrames.set(host, f); return f;
 }
-function walkSend(f, ev) { if (f.ready) f.el.contentWindow.postMessage({walker: 'event', ev}, location.origin); else f.queue.push(ev); }
+// the path is in German or English: the page's language when it is German, else English (Spanish, Russian and Hindi texts of the graph do not exist)
+const walkLang = () => care.lang === 'de' ? 'de' : 'en';
+function walkSend(f, ev) {
+  if (!f.ready) return f.queue.push(ev);
+  const win = f.el.contentWindow;
+  if (ev.t === 'start') win.postMessage({walker: 'lang', value: walkLang()}, location.origin);  // between two walks
+  win.postMessage({walker: 'event', ev}, location.origin);
+}
 // resolves when the embedded picture has shown event `t` (its director plays events one after the other), or after `ms`
 const walkShown = (f, t, ms) => new Promise(r => { const timer = setTimeout(r, ms); f.played = x => { if (x === t) { clearTimeout(timer); f.played = null; r(); } }; });
 addEventListener('message', e => {
