@@ -117,10 +117,25 @@ def warm():
   threading.Thread(target=go, daemon=True).start()
 
 
+def _concept_docs(s):
+  """UMLS concept -> the guidelines whose statements name it, built once from the layout"""
+  if 'cdocs' not in s:
+    L, out = s['layout'], {}
+    for i, cs in enumerate(L['pc']):
+      d = L['topics'][L['topic'][i]]['doc']
+      for c in cs:
+        out.setdefault(c, set()).add(d)
+    s['cdocs'] = out
+  return s['cdocs']
+
+
 def _prop_card(i, p, s):
-  """what the page shows for one statement of the proposition graph"""
+  """what the page shows for one statement of the proposition graph. each concept also names up to twelve other
+  guidelines it occurs in: links a graph can show beyond the walk"""
   L = s['layout']
-  cons = [{'ci': c, 'cui': L['concepts'][c]['cui'], 'name': L['concepts'][c]['name'], 'de': L['concepts'][c].get('de', '')} for c in L['pc'][i]]
+  own, cdocs = L['topics'][L['topic'][i]]['doc'], _concept_docs(s)
+  cons = [{'ci': c, 'cui': L['concepts'][c]['cui'], 'name': L['concepts'][c]['name'], 'de': L['concepts'][c].get('de', ''),
+           'docs': sorted(d for d in cdocs.get(c, ()) if d != own)[:12]} for c in L['pc'][i]]
   return {'i': i, 'text': p['text'], 'text_de': s.get('de', {}).get(p.get('key', ''), ''), 'kind': p['kind'], 'cls': p['cls'], 'lvl': p['lvl'], 'population': p['population'],
           'quote': p['quote'], 'page': p['number'], 'doc': L['topics'][L['topic'][i]]['doc'], 'topic': L['topic'][i], 'concepts': cons}
 
@@ -140,7 +155,7 @@ def _translate(ev, s):
         ti = s['topic_i'].get((s['doc_i'].get(doc), name))
         if ti is not None:
           items.append([ti, round(v, 3)])
-      best = sorted(items, key=lambda x: -x[1])[:4]  # the topics a page may draw, with their names
+      best = sorted(items, key=lambda x: -x[1])[:40]  # the topics a page may draw, with their names
       return {'t': 'scores', 'level': 'topics', 'scorer': ev['scorer'], 'items': items, 'doc': L['topics'][items[0][0]]['doc'] if items else None,
               'names': {str(i): [L['topics'][i].get('name') or '', L['topics'][i].get('de') or ''] for i, _ in best}}
     if level in ('pieces', 'answers'):
@@ -152,8 +167,13 @@ def _translate(ev, s):
         p = s['by_key'].get(L['keys'][i])
         if p:
           top.append({**_prop_card(i, p, s), 'p': v})
+      ghost = []  # the next candidates, read and not taken: what a closer look at the graph shows around the path
+      for i, v in (items[8:60] if level == 'pieces' else []):
+        p = s['by_key'].get(L['keys'][i])
+        if p:
+          ghost.append([i, v, L['topic'][i], L['topics'][L['topic'][i]]['doc'], p['text'][:110], s.get('de', {}).get(p.get('key', ''), '')[:110]])
       return {'t': 'scores', 'level': 'statements' if level == 'pieces' else 'rerank', 'scorer': ev['scorer'], 'candidates': len(probs),
-              'items': items[:150], 'others': len(probs) - len(items), 'top': top}
+              'items': items[:150], 'others': len(probs) - len(items), 'top': top, 'ghost': ghost}
     return None
   if t == 'guidelines':
     kept = [s['doc_i'][d] for d in ev['kept'] if d in s['doc_i']]

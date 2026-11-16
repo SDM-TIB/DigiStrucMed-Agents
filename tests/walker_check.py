@@ -32,7 +32,9 @@ p = walkerchat._translate({'t': 'scores', 'level': 'pieces', 'scorer': 's', 'pro
 check('statements: sorted by score, indices of the layout', p['level'] == 'statements' and p['items'] == [[0, .9], [1, .4]])
 k = walkerchat._translate({'t': 'taken', 'candidates': 2, 'keys': ['p#prop0'], 'scores': {'p#prop0': .9}}, S)
 card = k['items'][0]
-check('taken: card with UMLS concept, guideline and topic', card['concepts'] == [{'ci': 0, 'cui': 'C1', 'name': 'Heart failure', 'de': ''}] and card['doc'] == 0 and card['topic'] == 0)
+check('taken: card with UMLS concept (and the other guidelines naming it), guideline and topic',
+      card['concepts'] == [{'ci': 0, 'cui': 'C1', 'name': 'Heart failure', 'de': '', 'docs': []}] and card['doc'] == 0 and card['topic'] == 0)
+check('statements: the candidates beyond the best eight come as ghosts', p['ghost'] == [])
 gl = walkerchat._translate({'t': 'guidelines', 'kept': ['urn:B', 'urn:X']}, S)
 check('guidelines kept: indices and titles, unknown documents dropped', gl == {'t': 'guidelines', 'kept': [1], 'titles': ['B']})
 check('unknown event types are dropped', walkerchat._translate({'t': 'nothing'}, S) is None)

@@ -574,9 +574,17 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .lg.c::before{background:oklch(0.57 0.19 264)}.lg.r::before{background:oklch(0.72 0.15 155);border-radius:3px}.lg.g::before{background:oklch(0.62 0.02 264)}
 .kg-canvas{flex:1;min-height:0;position:relative}
 /* guido on the graph walker: the legend names the walker's nodes (guideline, statement, topic, UMLS concept) */
-.kg-panel.wk .lg.p::before{background:#0e9aa7;border-radius:50%;width:9px;height:9px}
-.kg-panel.wk .lg.g::before{background:#8b5cf6}
+.kg-panel.wk .lg.p::before{background:#22d3ee;border-radius:50%;width:9px;height:9px}
+.kg-panel.wk .lg.g::before{background:#b794ff}
 .guido-walker .kg-hud{display:none}  /* the walker's graph stands alone, no status card over it */
+/* the walker's graph is staged on a dark ground: glow, motion blur and the faint links beyond the walk need it */
+.conv.kg-on .kg-panel.wk,.win.graph .wbody.cine{background:radial-gradient(120% 85% at 50% 46%,#18204a 0%,#0d1228 55%,#070a17 100%)}
+.conv.kg-on .kg-panel.wk{border-left-color:#0b0f20}
+.kg-panel.wk .kg-head{background:linear-gradient(#0b1024 55%,transparent);position:relative;z-index:2}
+.kg-panel.wk .kg-head b{color:#f3f5ff}
+.kg-panel.wk .kg-head span,.kg-panel.wk .kg-legend{color:#a7b1da}
+.kg-panel.wk .kg-empty{color:#a7b1da}.kg-panel.wk .kg-empty svg{color:#8ea0ff;opacity:.8}
+.kg-panel.wk .lg.c::before{background:#6f86ff}.kg-panel.wk .lg.r::before{background:#3ddc97}
 .walk-cost{margin:6px 0 0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .srcx-quote .src-meta{display:block;margin:12px 0 4px;font-size:12px;color:var(--muted)}
 .srcx-quote q{display:block;font-style:italic}

@@ -525,7 +525,10 @@
     "1 statement cited": "1 Aussage zitiert",
     "{m} statements cited": "{m} Aussagen zitiert",
     "{n} guidelines · {t} topics · {s} statements checked": "{n} Leitlinien · {t} Themen · {s} Aussagen geprüft",
-    "Topic of the guideline": "Thema der Leitlinie"
+    "Topic of the guideline": "Thema der Leitlinie",
+    "zoom in for more": "hineinzoomen zeigt mehr",
+    "Read, not taken": "Gelesen, nicht gewählt",
+    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Stellen Sie Guido eine Frage. Er durchläuft hier den Wissensgraphen der Leitlinien, und beim Hineinzoomen sehen Sie, was um seinen Pfad herum liegt."
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -1052,7 +1055,10 @@
     "1 statement cited": "1 afirmación citada",
     "{m} statements cited": "{m} afirmaciones citadas",
     "{n} guidelines · {t} topics · {s} statements checked": "{n} guías · {t} temas · {s} afirmaciones comprobadas",
-    "Topic of the guideline": "Tema de la guía"
+    "Topic of the guideline": "Tema de la guía",
+    "zoom in for more": "acerque para ver más",
+    "Read, not taken": "Leída, no elegida",
+    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Haga una pregunta a Guido. Aquí recorre el grafo de conocimiento de las guías, y al acercar verá lo que hay alrededor de su camino."
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1579,7 +1585,10 @@
     "1 statement cited": "Процитировано 1 утверждение",
     "{m} statements cited": "Процитировано утверждений: {m}",
     "{n} guidelines · {t} topics · {s} statements checked": "Проверено: руководств {n} · тем {t} · утверждений {s}",
-    "Topic of the guideline": "Тема руководства"
+    "Topic of the guideline": "Тема руководства",
+    "zoom in for more": "приблизьте, чтобы увидеть больше",
+    "Read, not taken": "Прочитано, не выбрано",
+    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Задайте Гвидо вопрос. Здесь он проходит по графу знаний руководств, а при приближении видно, что лежит вокруг его пути."
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -2106,6 +2115,9 @@
     "1 statement cited": "1 कथन उद्धृत",
     "{m} statements cited": "{m} कथन उद्धृत",
     "{n} guidelines · {t} topics · {s} statements checked": "{n} गाइडलाइन · {t} विषय · {s} कथन जाँचे गए",
-    "Topic of the guideline": "गाइडलाइन का विषय"
+    "Topic of the guideline": "गाइडलाइन का विषय",
+    "zoom in for more": "और देखने के लिए ज़ूम करें",
+    "Read, not taken": "पढ़ा गया, चुना नहीं गया",
+    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "गीडो से सवाल पूछें। वह यहाँ गाइडलाइन के नॉलेज ग्राफ़ में चलता है, और ज़ूम करने पर उसके रास्ते के आसपास का हिस्सा दिखता है।"
   }
 }

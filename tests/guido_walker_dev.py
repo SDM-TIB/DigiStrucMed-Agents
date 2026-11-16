@@ -97,7 +97,8 @@ def replay(messages):
   candidates = sum(1 for i in range(len(L['keys'])) if doc_of(i) in kept)
   time.sleep(1.2)
   yield at({'t': 'scores', 'level': 'statements', 'scorer': '@cf/cloudflare/clef-flash', 'candidates': candidates,
-            'items': [[i, round(.3 + .6 * s, 3)] for s, i in scored[:150]], 'others': 0, 'top': [card(s, i) for s, i in scored[:8]]})
+            'items': [[i, round(.3 + .6 * s, 3)] for s, i in scored[:150]], 'others': 0, 'top': [card(s, i) for s, i in scored[:8]],
+            'ghost': [[i, round(.3 + .6 * s, 3), L['topic'][i], doc_of(i), S['by_key'][L['keys'][i]]['text'][:110], S['de'].get(L['keys'][i], '')[:110]] for s, i in scored[8:60]]})
   time.sleep(1.2)
   yield at({'t': 'scores', 'level': 'rerank', 'scorer': '@cf/cloudflare/clef', 'candidates': 150,
             'items': [[i, round(.35 + .6 * s, 3)] for s, i in scored[:150]], 'others': 0, 'top': [card(s, i) for s, i in best[:8]]})
