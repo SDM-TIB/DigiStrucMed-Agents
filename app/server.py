@@ -366,8 +366,8 @@ if __name__ == '__main__':
   page_search.load()  # luna's page index, before listening (full cpu at startup); without it the search uses bm25
   page_search.warm()  # wakes the embedding service
   if walkerchat.available():
-    walkerchat.warm()  # the Graph Walker loads its graph and index in the background
+    walkerchat.warm()  # the Graph Walker loads its graph and index
     if guido.engine() == 'walker':
       import guidowalker
-      guidowalker.warm()  # one routing call and one walk, their outcome and duration in the log
+      guidowalker.warm(wait=guidowalker.START_CHECK_SECONDS)  # before listening: one routing call and one walk, outcome and duration in the log
   ThreadingHTTPServer(('0.0.0.0', config.PORT), Handler).serve_forever()

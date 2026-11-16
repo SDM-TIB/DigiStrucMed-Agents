@@ -44,10 +44,15 @@ WARM_FOLLOW_UP = [{'role': 'user', 'text': 'Welche Empfehlungsklasse haben SGLT2
                   {'role': 'assistant', 'text': 'Klasse 1, Evidenzgrad A [1].'}, {'role': 'user', 'text': 'Und bei HFmrEF?'}]
 
 
-def warm(log=print):
-  """when an instance starts with Guido on the walker: one routing call and one complete walk in the background, each
-  with its outcome in the service log. the first visitor then meets loaded data, open connections and a filled
-  query cache, and the log says whether the engine works here and how long a walk takes (about two cents per start)"""
+START_CHECK_SECONDS = 150  # how long a starting instance waits for the check before it listens anyway
+
+
+def warm(log=print, wait=0):
+  """when an instance starts with Guido on the walker: one routing call and one complete walk, each with its outcome
+  in the service log. the first visitor then meets loaded data, open connections and a filled query cache, and the
+  log says whether the engine works here and how long a walk takes (about two cents per start).
+  wait: seconds the caller blocks for it. the server passes START_CHECK_SECONDS and listens afterwards: Cloud Run
+  gives a container full CPU while it starts and next to none between requests, where the same work took minutes"""
   def go():
     try:
       t0 = time.time()
@@ -66,7 +71,12 @@ def warm(log=print):
       log(f'guido walker start check: walk {status}, {sources} sources on corpus pages, {time.time() - t0:.1f} s including loading', flush=True)
     except Exception as e:
       log(f'guido walker start check: walk FAILED ({type(e).__name__}: {str(e)[:300]}); Guido answers with the fallback engine', flush=True)
-  threading.Thread(target=go, daemon=True).start()
+  t = threading.Thread(target=go, daemon=True)
+  t.start()
+  if wait:
+    t.join(wait)
+    if t.is_alive():
+      log(f'guido walker start check: not finished after {wait} s, the server listens now', flush=True)
 
 
 class Unavailable(Exception):

@@ -196,8 +196,8 @@ agent's to make, and this path is not evaluated. The chat always uses the writer
 When the walker cannot answer (data pack missing, a failed walk) the next engine takes over in the same request:
 Guido v2 on the agent server, then the local loop. `GET /api/guido` tells the page which engine is active.
 
-When an instance starts with `GUIDO_HARNESS=walker` it runs one routing call and one complete walk in the background
-and writes their outcome and duration to the service log (`guido walker start check: ...`), about two cents per start:
+When an instance starts with `GUIDO_HARNESS=walker` it runs one routing call and one complete walk before it listens
+(Cloud Run gives a starting container full CPU and a waiting one next to none) and writes their outcome and duration to the service log (`guido walker start check: ...`), about two cents per start:
 the first visitor meets a warm engine, and the log says whether the engine works in this deployment. Every answered
 question adds one line with duration, cost and path (`guido walker: ...`), never the question.
 
