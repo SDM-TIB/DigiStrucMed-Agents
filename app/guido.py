@@ -288,10 +288,37 @@ class Walk:
     return out
 
 
-def run(messages, rounds=None, harness=None):
-  """guido v2 on the agent server when the harness is 'mastra' (request, or GUIDO_HARNESS); otherwise, or when the
-  agent server cannot be reached before it answers, the evaluated local loop below"""
-  if (harness or config.GUIDO_HARNESS) == 'mastra' and config.AGENT_URL:
+def engine():
+  """the engine a chat with Guido starts on, for the page: it shows the walker's path instead of the concept graph"""
+  if config.GUIDO_HARNESS == 'walker':
+    import walkerchat
+    if walkerchat.available():
+      walkerchat.warm()
+      return 'walker'
+  return 'mastra' if config.GUIDO_HARNESS in ('walker', 'mastra') and config.AGENT_URL else 'local'
+
+
+def run(messages, rounds=None, harness=None, via=None, writer=None):
+  """three engines, chosen by the request's harness or GUIDO_HARNESS:
+  'walker'  Walker V7 on the proposition graph (guidowalker.py): statements chosen by decision models, a language
+            model writes only from them. when the walker cannot answer, the next engine takes over
+  'mastra'  guido v2 on the agent server; when it cannot be reached before it answers, the local loop
+  'local'   the evaluated 3-round loop below"""
+  mode = harness or config.GUIDO_HARNESS
+  if mode == 'walker':
+    import guidowalker
+    shown = False
+    try:
+      for ev in guidowalker.run(messages, via=via, writer=writer):
+        shown = True
+        yield ev
+      return
+    except guidowalker.Unavailable as e:
+      print('guido: walker unavailable, agent takes over:', e, flush=True)
+      if shown:  # the page drew the first steps of the walk: tell it another engine answers
+        yield {'type': 'walker', 'ev': {'t': 'fallback'}}
+    mode = 'mastra'
+  if mode == 'mastra' and config.AGENT_URL:
     started = False
     try:
       for ev in _via_agent(messages, rounds):

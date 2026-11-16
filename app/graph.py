@@ -9,6 +9,7 @@ the graph: every concept, recommendation, terminology code and source page the a
 node kinds come from the graph's IRI scheme (KINDS), so every node has exactly one kind, typed or not.
 """
 import collections
+import http.client
 import json
 import re
 import threading
@@ -62,8 +63,8 @@ def sparql(query, timeout=60):
   try:
     with urllib.request.urlopen(req, timeout=timeout) as r:
       res = json.load(r)
-  except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
-    raise GraphUnavailable(f'graph server: {e}') from None
+  except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException) as e:  # also a body cut off mid-read
+    raise GraphUnavailable(f'graph server: {type(e).__name__}: {e}'[:300]) from None
   names = res['head']['vars']
   return [{v: b[v]['value'] for v in names if v in b} for b in res['results']['bindings']]
 

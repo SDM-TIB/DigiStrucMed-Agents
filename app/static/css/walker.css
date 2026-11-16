@@ -182,3 +182,15 @@ svg{width:1.2rem;height:1.2rem;fill:none;stroke:currentColor;stroke-width:1.6;st
 @media (max-width:900px){.stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(0,1fr)}.cols{grid-template-columns:repeat(5,minmax(9rem,1fr));overflow:auto}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 .hist:not(.on),.hist:not(.on)+.hist-l{display:none}
+
+/* ---------------- embedded: only the path, sized to the frame (Guido's chat panel, his shared screen) ---------------- */
+html.embed{font-size:clamp(11px,1.45vw + 1.5px,17px)}
+.embed body{background:var(--panel)}
+.embed .stage{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);padding:0;gap:0}
+.embed .chat{display:none}
+.embed .graph{border-radius:0;box-shadow:none}
+.embed .g-head{padding:.8rem 1rem .7rem}
+.embed .g-lib,.embed .legend{display:none}
+.embed .cols{grid-template-columns:1.2fr 1.05fr 1.6fr .95fr .85fr;gap:1.1rem;padding:.8rem 1rem;overflow:hidden}
+.embed .g-foot{padding:.55rem 1rem}
+.embed .metrics{gap:1.4rem}

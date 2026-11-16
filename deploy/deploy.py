@@ -26,9 +26,11 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SECRETS = ('TAVUS_API_KEY', 'TAVUS_EXTRA_KEYS', 'DEMO_PASSWORD', 'ADMIN_PASSWORD', 'LLM_API_KEY', 'LINO_API_KEY',
-           'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'MODAL_EXTRA_TOKENS', 'CF_ACCOUNT_ID', 'CF_API_TOKEN')
+           'MODAL_TOKEN_ID', 'MODAL_TOKEN_SECRET', 'MODAL_EXTRA_TOKENS', 'CF_ACCOUNT_ID', 'CF_API_TOKEN',
+           'OPENROUTER_API_KEY')  # only for a walker scorer on OpenRouter (V5_SCORER / V7_RERANK); absent = not set
 SETTINGS = ('LANGUAGES', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_FALLBACK_MODEL', 'LLM_REASONING_EFFORT', 'MAX_CALL_SECONDS', 'GRAPH_ENDPOINT',
-            'EMBED_URL', 'AGENT_URL', 'AGENT_AISDK_URL', 'LUNA_IMAGE_TOOL', 'GUIDO_HARNESS', 'CLAIM_GUARD')
+            'EMBED_URL', 'AGENT_URL', 'AGENT_AISDK_URL', 'LUNA_IMAGE_TOOL', 'GUIDO_HARNESS', 'CLAIM_GUARD',
+            'GUIDO_CALL_WRITER', 'V5_SCORER', 'V7_RERANK', 'MODEL_SLOTS')  # the Graph Walker's engine settings (app/walkerchat.py)
 # large files that live in the bucket under assets/, not in git
 ASSETS = {'app/static/videos': 'assets/videos', 'gpu/adapter': 'assets/adapter', 'tavus/knowledge_base': 'assets/tavus-kb'}
 

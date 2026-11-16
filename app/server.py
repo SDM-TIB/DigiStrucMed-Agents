@@ -312,8 +312,8 @@ class Handler(BaseHTTPRequestHandler):
       candidates = body.get('candidates') if body.get('candidates') in page_search.CANDIDATE_METHODS else None
       return self.stream(luna.run(messages, rounds=body.get('rounds'), harness=body.get('harness'), image_tool=body.get('image_tool'),
                                   candidates=candidates, guard=body.get('guard')))
-    if agent == 'guido':  # optional round/step bound and harness ('local' or 'mastra' = guido v2), for evaluations
-      return self.stream(guido.run(messages, rounds=body.get('rounds'), harness=body.get('harness')))
+    if agent == 'guido':  # optional round/step bound and harness ('walker', 'mastra' = guido v2 or 'local'), for evaluations
+      return self.stream(guido.run(messages, rounds=body.get('rounds'), harness=body.get('harness'), via=body.get('via'), writer=body.get('writer')))
     return self.stream(CHATS[agent](messages))
 
   def end_call(self, body, via=None):
@@ -346,6 +346,7 @@ GET_ROUTES = {
   '/api/kg/search': lambda q: {'items': kg.search(q.get('q', '')[:120])},
   '/api/kg/facts': facts,
   '/api/kg/evidence': lambda q: guido.evidence(q.get('id', '')),
+  '/api/guido': lambda q: {'engine': guido.engine()},
   '/api/tavus/usage': lambda q: tavus.usage(),
   # the explorer of the complete final graph (Sources > Graph), straight from the graph server
   '/api/graph/kinds': lambda q: {'kinds': graph.kinds()},

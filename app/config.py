@@ -85,9 +85,14 @@ EMBED_URL = env('EMBED_URL')
 # in-process loop of luna.py. The agent server calls the tool endpoints back (/api/agent/tools/*) with an identity
 # token of this app's service account; AGENT_TOKEN is a shared token for local development only
 AGENT_URL = env('AGENT_URL')
-# guido's loop: 'local' = the evaluated 3-round loop in guido.py over concepts and recommendations; 'mastra' = guido v2 on
-# the agent server, free loop, the guideline pages part of his graph, page search and reading. a request may choose
+# guido's engine: 'walker' = Walker V7 on the proposition graph (guidowalker.py, needs the walker data pack), falling
+# back to 'mastra' = guido v2 on the agent server (free loop, the guideline pages part of his graph, page search and
+# reading), falling back to 'local' = the evaluated 3-round loop in guido.py. a request may choose
 GUIDO_HARNESS = env('GUIDO_HARNESS', 'local')
+# guido's video call on the walker: '1' = the walker's writer answers and the video agent rephrases it (the evaluated
+# path); '0' = no writer, the video agent answers from the selected statements itself (faster by the writer's 2-3 s;
+# no premise check, no 'not covered' decision, not evaluated)
+GUIDO_CALL_WRITER = env('GUIDO_CALL_WRITER', '1') != '0'
 AGENT_AISDK_URL = env('AGENT_AISDK_URL')
 CLAIM_GUARD = env('CLAIM_GUARD') == '1'  # check uncited statements of luna's answers with clef-flash (claimguard.py)
 SEARCH_CANDIDATES = env('SEARCH_CANDIDATES') or 'rrf'  # how luna's search finds the pages its reranker reads: rrf | digup (search.candidates)

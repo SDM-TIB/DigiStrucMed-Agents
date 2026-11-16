@@ -1,8 +1,8 @@
 # Repository variables (settings, not secrets)
 
 GitHub > Settings > Secrets and variables > Actions > Variables. The deploy job passes them to `deploy/deploy.py`.
-Values since 30 October 2026, after the move to the institute's Google Cloud project. Until the repository variables
-are changed to these values, Actions still deploys to the previous project.
+Values since 30 October 2026, after the move to the institute's Google Cloud project (repository variables set on
+30 October 2026, 22:00 UTC).
 
 | Variable | Used by | Meaning |
 |---|---|---|
@@ -19,7 +19,10 @@ are changed to these values, Actions still deploys to the previous project.
 | `GRAPH_ENDPOINT` | app | internal SPARQL address of the graph server, `http://10.156.0.2:7001` |
 | `EMBED_URL` | app | the embedding service |
 | `AGENT_URL`, `AGENT_AISDK_URL` | app | the two agent servers |
-| `GUIDO_HARNESS` | app | `mastra` (Guido v2) or `local` |
+| `GUIDO_CALL_WRITER` | app | Guido's video call on the walker: `1` (default) the walker's writer answers and the video agent rephrases it; `0` the video agent answers from the selected statements itself (faster, not evaluated) |
+| `V5_SCORER`, `V7_RERANK` | app | the Graph Walker's decision models for the first pass and the strict second pass. Empty = `@cf/cloudflare/clef-flash` and `@cf/cloudflare/clef`. A name without `@cf/` is called on OpenRouter (`google/gemini-decision-1`, `liquid/d1-ultra`) and needs the secret `openrouter-api-key` |
+| `MODEL_SLOTS` | app | model calls of one app instance at the same time for the walker (default 8) |
+| `GUIDO_HARNESS` | app | `walker` (Walker V7 on the proposition graph, needs the walker data pack in the page bucket; falls back to `mastra`), `mastra` (Guido v2) or `local` |
 | `LUNA_IMAGE_TOOL` | app | `1` gives Luna the page-image tool (measured, off) |
 | `CLAIM_GUARD` | app | `1` checks every uncited statement of Luna's answers with clef-flash (`app/claimguard.py`) |
 | `LUNA_MODEL` | agent servers | Gemini model of the agent loop; empty means `gemini-3.8-flash` |

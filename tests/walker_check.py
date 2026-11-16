@@ -33,5 +33,18 @@ check('statements: sorted by score, indices of the layout', p['level'] == 'state
 k = walkerchat._translate({'t': 'taken', 'candidates': 2, 'keys': ['p#prop0'], 'scores': {'p#prop0': .9}}, S)
 card = k['items'][0]
 check('taken: card with UMLS concept, guideline and topic', card['concepts'] == [{'ci': 0, 'cui': 'C1', 'name': 'Heart failure', 'de': ''}] and card['doc'] == 0 and card['topic'] == 0)
+gl = walkerchat._translate({'t': 'guidelines', 'kept': ['urn:B', 'urn:X']}, S)
+check('guidelines kept: indices and titles, unknown documents dropped', gl == {'t': 'guidelines', 'kept': [1], 'titles': ['B']})
 check('unknown event types are dropped', walkerchat._translate({'t': 'nothing'}, S) is None)
+
+
+class Walk:
+  usd = 0.02
+  from walker import models as _m
+  trace = [{'usage': {'model': 'google/gemini-decision-1', 'usd': .001}}, {'usage': {'model': '@cf/cloudflare/clef', 'usd': .001}},
+           {'usage': {'model': _m.WRITER, 'usd': .002, 'input_tokens': 5, 'output_tokens': 7}}, {'type': 'level'}]
+
+
+c = walkerchat._costs(Walk, 9.0, 6.0)
+check('cost: only the writer counts as a language model, every scorer as a decision', c['language_model_calls'] == 1 and c['decision_calls'] == 2)
 sys.exit(1 if failed else 0)

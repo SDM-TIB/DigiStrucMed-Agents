@@ -32,6 +32,10 @@ FILES = ['layout.json', 'work/props_all.jsonl', 'work/topics.jsonl', 'work/de_pr
 ON_RUN = bool(os.environ.get('K_SERVICE'))
 sys.path.insert(0, str(VENDOR))
 os.environ.setdefault('WRITER_EFFORT', 'none')  # the writer answers without reasoning (Walker V7 configuration)
+# model calls of this process at the same time (walker.models, read at import). a level sends up to a dozen scoring
+# requests; with the walker's default of 3 they queue, and a slow model costs the walk several times its delay. the
+# calls and their results are the same, only side by side; a throttled call (HTTP 429) is retried with a pause
+os.environ.setdefault('MODEL_SLOTS', '8')
 os.environ.setdefault('SPARQL_CACHE', '/tmp/walker_sparql' if ON_RUN else str(DATA / 'sparql_cache'))
 os.environ.setdefault('GRAPH_ENDPOINT', config.GRAPH_ENDPOINT)
 
@@ -150,7 +154,8 @@ def _translate(ev, s):
               'items': items[:150], 'others': len(probs) - len(items), 'top': top}
     return None
   if t == 'guidelines':
-    return {'t': 'guidelines', 'kept': [s['doc_i'][d] for d in ev['kept'] if d in s['doc_i']]}
+    kept = [s['doc_i'][d] for d in ev['kept'] if d in s['doc_i']]
+    return {'t': 'guidelines', 'kept': kept, 'titles': [L['docs'][i].get('title') or '' for i in kept]}
   if t == 'taken':
     cards = []
     for k in ev['keys']:
@@ -176,6 +181,7 @@ def _sources(walk, s):
   for e in walk.evidence:
     i = s['key_i'].get(e['key'])
     card = {'n': len(out) + 1, 'kind': e.get('kind'), 'title': e.get('documentTitle'), 'page': e.get('number'),
+            'page_id': str(e.get('page') or '').rsplit('/', 1)[-1],  # the page's id in the app's corpus (corpus.PAGE_BY_ID)
             'text': e.get('text'), 'quote': e.get('quote') or '', 'cor': e.get('cor'), 'loe': e.get('loe'), 'unfit': bool(e.get('unfit'))}
     if i is not None:
       card.update(i=i, doc=s['doc_i'].get(e.get('document')), topic=s['layout']['topic'][i], text_de=s.get('de', {}).get(e['key'], ''))
@@ -195,15 +201,40 @@ def _costs(walk, seconds, graph_seconds):
       m['usd'] += u.get('usd') or 0
       m['input_tokens'] += u.get('input_tokens') or 0
       m['output_tokens'] += u.get('output_tokens') or 0
-  generative = {k: v for k, v in by.items() if 'deepseek' in k or 'gpt' in k or 'gemini' in k}
+  from walker import models
+  generative = {k: v for k, v in by.items() if k == models.WRITER}  # the writer is the only model that produces text
   return {'seconds': round(seconds, 1), 'graph_seconds': round(graph_seconds, 1), 'usd': round(walk.usd, 5),
           'decision_calls': sum(v['calls'] for k, v in by.items() if k not in generative),
           'language_model_calls': sum(v['calls'] for v in generative.values()),
           'models': {k: {**v, 'usd': round(v['usd'], 6)} for k, v in by.items()}}
 
 
-def run(messages):
-  """generator of events for one question (the last user message; every question is walked on its own)"""
+EVIDENCE_PIECES, EVIDENCE_CHARS = 6, 330  # what a video agent gets instead of a written answer (its tool result holds 3,000 characters)
+
+
+def _evidence_answer(walk):
+  """the walk's outcome without the writer: the best statements it selected, numbered like the sources, as the text a
+  video agent answers from. no model reads them here, so nothing checks a premise or says 'not covered' when the
+  statements are only near the question: that is left to the agent that speaks"""
+  walk.evidence = sorted(walk.evidence, key=lambda e: -e.get('score', 0))[:EVIDENCE_PIECES]
+  if not walk.evidence:
+    return {'finish': 'not covered', 'answer': 'No guideline statement about this question was found in the knowledge graph.', 'answer_items': [], 'count': None}
+  lines = []
+  for n, e in enumerate(walk.evidence):
+    grade = ', '.join(x for x in ('class ' + str(e['cor']) if e.get('cor') else '', 'level of evidence ' + str(e['loe']) if e.get('loe') else '') if x)
+    text = ' '.join(str(e.get('text') or '').split())
+    text = text if len(text) <= EVIDENCE_CHARS else text[:EVIDENCE_CHARS - 1].rsplit(' ', 1)[0] + '…'
+    title = str(e.get('documentTitle') or 'Guideline').split(':')[0][:110]  # without the subtitle: the agent names it aloud
+    lines.append(f"[{n + 1}] {title}, page {e.get('number')}{' (' + grade + ')' if grade else ''}: {text}")
+  head = ('Guideline statements selected from the knowledge graph for this question, best first. Answer only from them, name the '
+          'guideline, and say so if they do not answer the question.')
+  return {'finish': 'evidence', 'answer': head + '\n' + '\n'.join(lines), 'answer_items': [], 'count': None}
+
+
+def run(messages, write=True):
+  """generator of events for one question (the last user message; every question is walked on its own).
+  write False: the walk ends with the selected evidence instead of a written answer (status 'evidence'), for a caller
+  that phrases the answer itself. one round only: without the writer nothing judges the evidence incomplete"""
   question = next((m.get('text', '') for m in reversed(messages or []) if m.get('role') == 'user'), '').strip()
   if not question:
     yield {'t': 'error', 'message': 'Empty question'}
@@ -225,6 +256,8 @@ def run(messages):
   q = queue.Queue()
   s = _state
   walk = s['Walk'](s['graph'], s['index'], question, concepts=s['concepts'])
+  if not write:
+    walk.write_answer = lambda final: _evidence_answer(walk)
   marks = {'writing': None}
 
   def on_event(ev):

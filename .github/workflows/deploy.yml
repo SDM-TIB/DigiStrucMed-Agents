@@ -122,3 +122,7 @@ jobs:
           LUNA_IMAGE_TOOL: ${{ vars.LUNA_IMAGE_TOOL }}
           GUIDO_HARNESS: ${{ vars.GUIDO_HARNESS }}
           CLAIM_GUARD: ${{ vars.CLAIM_GUARD }}
+          GUIDO_CALL_WRITER: ${{ vars.GUIDO_CALL_WRITER }}
+          V5_SCORER: ${{ vars.V5_SCORER }}
+          V7_RERANK: ${{ vars.V7_RERANK }}
+          MODEL_SLOTS: ${{ vars.MODEL_SLOTS }}

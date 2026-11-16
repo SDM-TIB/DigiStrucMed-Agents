@@ -66,5 +66,6 @@ Guido walks the guideline knowledge graph (app/guido.py `Walk`); in v2 the guide
   closest to them by personalized PageRank, and the pages where the concepts meet, ranked by how well the page text fits
   the question), `expand` (a concept, recommendation or page node; from a page to its concepts and recommendations),
   `search_pages` (Luna's two-stage page search; the pages join the graph) and `read_page` (the original OCR page).
-- **Selection.** `GUIDO_HARNESS` (app setting): `local` is the evaluated 3-round loop in `guido.py`, `mastra` is v2.
+- **Selection.** `GUIDO_HARNESS` (app setting): `local` is the evaluated 3-round loop in `guido.py`, `mastra` is v2,
+  `walker` answers with Walker V7 inside the app (`app/guidowalker.py`) and uses v2 only as its fallback.
   A request may choose with `harness`.

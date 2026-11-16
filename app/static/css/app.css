@@ -573,6 +573,18 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .kg-legend .lg.p::before{background:#d97706;border-radius:2px;width:7px;height:10px}
 .lg.c::before{background:oklch(0.57 0.19 264)}.lg.r::before{background:oklch(0.72 0.15 155);border-radius:3px}.lg.g::before{background:oklch(0.62 0.02 264)}
 .kg-canvas{flex:1;min-height:0;position:relative}
+/* guido on the graph walker: the panel shows the walker's path (the embedded /graph-walker page) instead of the concept graph */
+.kg-walk{display:none}
+.kg-panel.walk>:not(.kg-walk){display:none}
+.kg-panel.walk .kg-walk{display:block;flex:1;min-height:0}
+.walk-frame{display:block;width:100%;height:100%;border:0;background:var(--side)}
+@media (min-width:701px){  /* five stages need more room than the concept graph; on a phone the panel sits below the chat */
+  .conv.kg-on.walk-on .kg-panel{width:min(62%,1080px)}
+  .conv.kg-on.walk-on .feed,.conv.kg-on.walk-on .composer{margin-right:min(62%,1080px)}
+}
+.walk-cost{margin:6px 0 0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.srcx-quote .src-meta{display:block;margin:12px 0 4px;font-size:12px;color:var(--muted)}
+.srcx-quote q{display:block;font-style:italic}
 .kg-empty{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;padding:40px;color:var(--muted);pointer-events:none}
 .kg-empty svg{width:54px;height:54px;color:var(--accent);opacity:.6;margin-bottom:14px}
 .kg-empty p{max-width:38ch;margin:0;font-size:13.5px;line-height:20px}
@@ -903,6 +915,8 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .win .wbody{position:relative;flex:1;min-height:0;overflow:auto}
 .win.graph .wbody{overflow:hidden;background:radial-gradient(circle,oklch(0.86 0.01 264) 1px,transparent 1.2px) 0 0/22px 22px,oklch(0.985 0.003 264)}
 .win.graph .kg-canvas{position:absolute;inset:0}
+.win.graph .walk-frame{position:absolute;inset:0}
+.win.graph .wbody.walking>:not(.walk-frame){display:none}
 .win .wsteps{position:absolute;left:12px;bottom:12px;right:12px;z-index:2;display:flex;flex-direction:column;gap:4px;pointer-events:none}
 .win .wsteps .step{align-self:flex-start;padding:5px 10px;border-radius:9px;background:oklch(1 0 0 / .92);box-shadow:0 4px 14px oklch(0.3 0.03 264 / .12);font-size:12.5px;animation:rise .35s var(--ease) both}
 .win .wsteps .step:not(:nth-last-child(-n+3)){display:none}

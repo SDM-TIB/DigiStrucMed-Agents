@@ -1,7 +1,13 @@
 /* Graph Walker page. Left: the trace, every step of the walk in plain German with its details (evidence, UMLS links,
    sources, cost). Right: the path through the knowledge graph in five stages (guidelines, topics, statements, UMLS
    concepts, answer), connected by lines as the walker takes them. Events come from POST /api/chat/walker
-   (app/walkerchat.py); a director plays them one after the other at presentation pace. */
+   (app/walkerchat.py); a director plays them one after the other at presentation pace.
+
+   Embedded (/graph-walker?embed=1, an iframe in Guido's chat panel and in his video call's shared screen): only the path
+   is shown, and the events come from the embedding page over postMessage instead of an own request:
+     in   {walker: 'event', ev}   one event of the walk      {walker: 'tempo', value}   playback pace (1 = presentation)
+     out  {walker: 'ready'}       the graph is loaded        {walker: 'played', t}      the director finished showing event t
+   Messages are accepted from and sent to the page's own origin only. */
 'use strict';
 (() => {
 const $ = id => document.getElementById(id);
@@ -11,13 +17,16 @@ const sec = n => Number(n).toLocaleString('de-DE', {minimumFractionDigits: 1, ma
 const pct = p => Math.round(p * 100) + ' %';
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-let TEMPO = 1;  // 1: presentation pace; .3: close to real time
+const PARAMS = new URLSearchParams(location.search), EMBED = PARAMS.has('embed');
+if (EMBED) document.documentElement.classList.add('embed');
+function clampTempo(v, fallback) { v = Number(v); return v >= .1 && v <= 2 ? v : fallback; }
+let TEMPO = clampTempo(PARAMS.get('tempo'), 1);  // 1: presentation pace; .3: close to real time
 const wait = ms => sleep(ms * TEMPO);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const short = (s, n) => (s = String(s || '')).length > n ? s.slice(0, n - 1).trimEnd() + '…' : s;
 const KIND = {recommendation: 'Empfehlung', finding: 'Befund', value: 'Wert', definition: 'Definition', criterion: 'Kriterium', warning: 'Warnhinweis',
   rationale: 'Begründung', procedure: 'Vorgehen', background: 'Hintergrund', other: 'Aussage', 'table row': 'Tabellenzeile', line: 'Textstelle'};
-const MODEL = {'@cf/cloudflare/clef-flash': 'clef-flash', '@cf/cloudflare/clef': 'clef'};
+const modelName = id => String(id || '').split('/').pop();  // '@cf/cloudflare/clef-flash' -> 'clef-flash', 'google/gemini-decision-1' -> 'gemini-decision-1'
 const EXAMPLES = [
   'Wie unterscheiden sich in der AHA/ACC/HFSA-Leitlinie die Empfehlungsklassen für SGLT2-Hemmer bei symptomatischer HFrEF und bei HFmrEF?',
   'Wie unterscheiden sich AHA/ACC/HFSA 2022 und ESC 2021 bei der Empfehlung von DOAKs gegenüber Vitamin-K-Antagonisten bei Herzinsuffizienz?',
@@ -138,6 +147,8 @@ async function play(ev) {
     case 'answer': return answer(ev);
     case 'done': return done(ev);
     case 'error': (trace || feed).appendChild(el('div', 'err', esc(ev.message))); caption('Fehler', 'Der Walk wurde abgebrochen', ev.message); down(); return;
+    case 'fallback':  // embedded: the walker could not answer, the embedding page answers another way
+      reset(); placeholders(); caption('Wissensgraph der Leitlinien', 'Bereit für eine Frage', 'Der Walker geht Stufe für Stufe vom Ganzen zum Detail. Jede Stufe wird hier sichtbar.'); return;
   }
 }
 
@@ -156,7 +167,7 @@ async function scores(ev) {
     stage(1); items.forEach(([di, p]) => S.docScores[di] = p);
     const sorted = items.slice().sort((a, b) => b[1] - a[1]);
     $('c1-n').textContent = `${fmt(items.length)} geprüft`;
-    caption('Schritt 2 von 5', `${fmt(items.length)} Leitlinien werden bewertet`, `Das Bewertungsmodell ${MODEL[ev.scorer] || ''} schätzt für jede Leitlinie, ob dort die Antwort stehen kann.`);
+    caption('Schritt 2 von 5', `${fmt(items.length)} Leitlinien werden bewertet`, `Das Bewertungsmodell ${modelName(ev.scorer)} schätzt für jede Leitlinie, ob dort die Antwort stehen kann.`);
     // every guideline as one bar, sorted: the picture of "all were checked"
     const h = $('hist'); h.innerHTML = sorted.map(([di, p]) => `<i data-d="${di}" style="height:2%"></i>`).join(''); h.classList.add('on');
     requestAnimationFrame(() => requestAnimationFrame(() => [...h.children].forEach((b, k) => { b.style.height = clamp(sorted[k][1] * 100, 3, 100) + '%'; })));
@@ -199,7 +210,7 @@ async function scores(ev) {
     let keep = items.filter(x => x[1] >= .6); if (keep.length < 5) keep = keep.concat(items.filter(x => x[1] < .6 && x[1] >= .25).slice(0, 5 - keep.length));
     S.keep = keep.length;
     $('c3-n').textContent = `${fmt(S.statements)} geprüft → ${fmt(items.length)} nachgeprüft → ${fmt(keep.length)} bestehen`;
-    caption('Schritt 4 von 5', 'Strenge Zweitprüfung', `Ein stärkeres Bewertungsmodell (${MODEL[ev.scorer] || ''}) prüft die ${fmt(items.length)} besten Kandidaten erneut: Steht hier wirklich das Gefragte?`);
+    caption('Schritt 4 von 5', 'Strenge Zweitprüfung', `Das Bewertungsmodell ${modelName(ev.scorer)} prüft die ${fmt(items.length)} besten Kandidaten mit einer strengeren Frage erneut: Steht hier wirklich das Gefragte?`);
     showCandidates(ev.top || [], 'cand');
     step('', 'Zweitprüfung' + at(ev), `<div class="num"><b>${fmt(items.length)}</b><span class="arr">→</span><b>${fmt(keep.length)}</b><span>bestehen</span></div><p>Ähnliche, aber nicht zutreffende Aussagen scheiden hier aus.</p>`);
     if (!keep.length) { S.empty = true; caption('Schritt 4 von 5', 'Keine Aussage besteht die Prüfung', 'In den Leitlinien steht keine Stelle, die das Gefragte wirklich sagt. Der Walker rät nicht.'); }
@@ -335,7 +346,11 @@ function done(ev) {
 const queue = []; let playing = false;
 async function pump() {
   if (playing) return; playing = true;
-  while (queue.length) { try { await play(queue.shift()); } catch (e) { console.error(e); } }
+  while (queue.length) {
+    const ev = queue.shift();
+    try { await play(ev); } catch (e) { console.error(e); }
+    if (EMBED) parent.postMessage({walker: 'played', t: ev.t}, location.origin);
+  }
   playing = false; if (!busy) $('send').disabled = false;
 }
 async function ask(question) {
@@ -377,7 +392,7 @@ function placeholders() {  // before the first question: what each stage will do
 async function boot() {
   setup(); reset();
   const s = await fetch('/api/session').then(r => r.json()).catch(() => ({}));
-  if (!s.authenticated) { location.href = '/'; return; }
+  if (!s.authenticated) { if (EMBED) $('loading-t').textContent = 'Bitte erneut anmelden.'; else location.href = '/'; return; }
   const res = await fetch('/api/walker/layout', {cache: 'no-store'});
   if (!res.ok) { $('loading-t').textContent = 'Die Daten des Graph Walkers sind auf diesem Server nicht installiert.'; return; }
   L = await res.json();
@@ -385,8 +400,19 @@ async function boot() {
   $('g-lib').innerHTML = [[L.docs.length, 'Leitlinien'], [L.topics.length, 'Themen'], [L.keys.length, 'Aussagen'], [L.concepts.length, 'UMLS-Konzepte']]
     .map(([n, t]) => `<div><dd>${fmt(n)}</dd><dt>${t}</dt></div>`).join('');
   $('g-lib').title = `${fmt(umlsLinks)} Verknüpfungen zwischen Aussagen und UMLS-Konzepten`;
-  placeholders(); $('loading').classList.add('gone'); q.focus?.();
-  const pre = new URLSearchParams(location.search).get('q'); if (pre) ask(pre);
+  placeholders(); $('loading').classList.add('gone');
+  if (EMBED) {
+    window.addEventListener('message', e => {
+      if (e.origin !== location.origin || e.source !== parent) return;
+      const m = e.data || {};
+      if (m.walker === 'tempo') TEMPO = clampTempo(m.value, TEMPO);
+      else if (m.walker === 'event' && m.ev && typeof m.ev.t === 'string') { queue.push(m.ev); pump(); }
+    });
+    parent.postMessage({walker: 'ready'}, location.origin);
+    return;
+  }
+  q.focus?.();
+  const pre = PARAMS.get('q'); if (pre) ask(pre);
 }
 const q = $('q');
 boot();

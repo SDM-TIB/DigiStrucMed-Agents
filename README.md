@@ -173,7 +173,37 @@ Code: `app/walkerchat.py` (runs the walk in a thread and streams events through 
 
 The data is not in git (about 55 MB): `app/data/walker/` holds `layout.json`, `work/props_all.jsonl`, `work/topics.jsonl` and `work/de_props.jsonl` (German display texts of the statements; topic and guideline names are in German in `layout.json`). Build it in the thesis repo with `experiments/2026-11-05_proposition_graph/translate_de.py`, `translate_titles.py` and `export_app_pack.py`. The German texts are for display only: the walker scores the English statements and the source quotes stay verbatim. The walker also reads the 28.10 graph over SPARQL (`GRAPH_ENDPOINT`) and needs `CF_ACCOUNT_ID` and `CF_API_TOKEN`. Locally: start the tunnel, set `SPARQL_CACHE` to a folder for query results, run `python app/server.py`, open `/graph-walker` (the first question waits while the graph loads). `python tests/walker_check.py` checks the event translation without a server or model.
 
+## Guido on the Graph Walker
+
+With `GUIDO_HARNESS=walker` Guido's chat and his video call answer with Walker V7, the engine of the Graph Walker page
+above. `app/guidowalker.py` puts a conversation around the walk: one bounded call of the language model decides
+whether the message is small talk (Guido answers himself) and turns a follow-up ("and for women?") into a
+self-contained question; a first message is walked in the user's own words. The walk's steps become step lines of the
+message, the graph panel shows the walker's path (the Graph Walker page embedded as `/graph-walker?embed=1`, fed over
+`postMessage`), and every `[n]` opens the original guideline page with the verbatim quote marked. In a call, Guido
+shares the same path on his screen, narrates the stages, and shows the statements the answer rests on with the page of
+the first one. The embedded path is in German, like the Graph Walker page.
+
+Speed. A walk is twenty to thirty requests to decision models and one to the writer; its duration is theirs.
+`MODEL_SLOTS` (default 8) is how many run side by side. `V5_SCORER` and `V7_RERANK` choose the decision models: empty
+is clef-flash and clef on Cloudflare (the configuration the thesis evaluated); a name without `@cf/` goes to
+OpenRouter's System One endpoint (`google/gemini-decision-1`, `liquid/d1-ultra`) and needs `OPENROUTER_API_KEY`.
+In a video call `GUIDO_CALL_WRITER=0` leaves out the writer: the tool result is the six best statements with
+guideline, page and grade, and the video agent phrases the answer. That saves the writer's two to three seconds; the
+writer's checks (a wrong premise, "not covered", a second round when the evidence is incomplete) are then the video
+agent's to make, and this path is not evaluated. The chat always uses the writer.
+
+When the walker cannot answer (data pack missing, a failed walk) the next engine takes over in the same request:
+Guido v2 on the agent server, then the local loop. `GET /api/guido` tells the page which engine is active.
+
+Checks without the graph server and without any model: `python tests/guido_walker_check.py` (routing, source cards,
+events, fallback) and `python tests/guido_walker_dev.py`, which runs the app locally with a replayed walk built from
+the real proposition graph, to look at the pages. With `--real` the same runner uses the real walker, for a video
+call test on this computer.
+
 ## How Guido searches
+
+This is Guido's own walk, used with `GUIDO_HARNESS=mastra` or `local` and as the fallback of the walker engine.
 
 Think-on-Graph (Sun et al., ICLR 2024) walks from the concepts in the question. Its weak spot is the start: when no concept label matches, the walk finds nothing even though the answer sits in a recommendation's text. So Guido starts like HippoRAG (Gutiérrez et al., NeurIPS 2024). `app/retrieve.py` ranks concept labels and the recommendation texts (BM25) against the query, fuses the rankings with reciprocal rank fusion, and runs personalized PageRank from those seeds over the graph. The recommendations with the most PageRank mass are the evidence closest to the question, even when no label matched. Searching the passages directly is the HippoRAG 2 lesson (ICML 2025). Guido can then expand any node or search again with other words.
 

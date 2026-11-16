@@ -19,7 +19,7 @@ const status = m => { $('#status').textContent = m || ''; };
 
 /* auth */
 function showLogin() { $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#password').focus(); }
-function showApp() { $('#login').classList.add('hidden'); $('#boot').classList.add('hidden'); clearTimeout(bootPoll); $('#app').classList.remove('hidden'); loadData(); pollGpu(); updateFsHint(); warmSearch(); }
+function showApp() { $('#login').classList.add('hidden'); $('#boot').classList.add('hidden'); clearTimeout(bootPoll); $('#app').classList.remove('hidden'); loadData(); loadGuidoEngine(); pollGpu(); updateFsHint(); warmSearch(); }
 // wake the search's embedding service before the first question (it scales to zero; the server pings at most every 2 minutes)
 const warmSearch = () => fetch('/api/search/status', {headers: HEADERS}).catch(() => {});
 
@@ -801,6 +801,7 @@ function switchAgent(id) {
   $('#head-name').textContent = agent.name; $('#head-tagline').textContent = agent.tagline;
   $('#head-orb').classList.toggle('lino', agent.orb === 'lino'); $('#head-orb').classList.toggle('guido', agent.orb === 'guido');
   $('#view-chat').classList.toggle('kg-on', agent === AGENTS.guido); if (agent === AGENTS.guido) kgInit();
+  walkPanel(agent === AGENTS.guido && guidoEngine === 'walker');
   const SUG = agent === AGENTS.guido ? [care.pair('sAspirin'), care.pair('sBleeding'), care.pair('sHfref')]  // in the patient's language
     : agent === AGENTS.lino ? [[care.t('sStoryboard'), STORYBOARD_PROMPT, 'attach'], care.pair('sAce')] : [];
   $('#suggests').innerHTML = SUG.map(([lv, q, kind], i) => `<button class="sug${kind ? ' sug-att' : ''}" style="animation-delay:${i * 60}ms" data-i="${i}" title="${kind ? 'Attach Mahsa’s storyboard prompt, then describe the video' : esc(q)}">${kind ? '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9.5 5 2.5-5 2.5Z"/></svg>' : ''}${esc(lv)}</button>`).join('');
@@ -1058,11 +1059,11 @@ function addAssistant() {
 function settle(st) {
   if (st.pending) { st.pending.classList.remove('pending'); st.pending.querySelector('span').innerHTML = ICON.check; st.pending = null; }
 }
-function step(st, kind, html, pending) {
+function step(st, kind, html, pending, host = st.steps) {
   settle(st);
   const d = document.createElement('div'); d.className = 'step' + (pending ? ' pending' : '');
   d.innerHTML = `<span>${ICON[kind]}</span><span class="label">${html}</span>`;
-  st.steps.append(d); st.pending = pending ? d : null; scrollFeed();
+  host.append(d); st.pending = pending ? d : null; scrollFeed();
 }
 // Lino often answers with bare JSON (storyboards): fence it so it renders as a copy-ready code block.
 function fenceJson(raw) {
@@ -1217,6 +1218,11 @@ function renderSource() {
   } else {
     const q = (s.snippet || '').replace(/\*\*/g, '');
     $('#srcx-quote').className = ''; $('#srcx-quote').innerHTML = q ? '<mark>' + esc(q) + '</mark>' : '';
+    if (s.walker) {  // a statement of the proposition graph: the statement, its grade, and the sentence it was taken from
+      $('.srcx-quote h4').textContent = uiText('Statement in the knowledge graph');
+      $('#srcx-quote').innerHTML = `<mark>${esc(q)}</mark>` + (walkGrade(s) ? `<span class="src-meta">${esc(walkGrade(s))}</span>` : '')
+        + (s.highlight && s.highlight !== q ? `<span class="src-meta">${esc(uiText('Original wording on the page'))}</span><q>${esc(s.highlight)}</q>` : '');
+    }
   }
 }
 /* ---------- source explorer: the cited recommendation inside the full guideline graph ---------- */
@@ -1381,6 +1387,64 @@ function finishRefs(st) {
   });
 }
 
+/* ---------- Guido on the Graph Walker (app/guidowalker.py) ----------
+   the server walks the proposition graph with Walker V7 and streams every step as a `walker` event. the path itself is
+   drawn by the Graph Walker page, embedded as an iframe (/graph-walker?embed=1) in the chat's graph panel and in the
+   video call's shared screen; this page forwards the events to it and writes the steps into the message. */
+let guidoEngine = 'local';  // 'walker' | 'mastra' | 'local', from /api/guido after sign-in
+const WALK_TEMPO = 0.5;     // the embedded picture plays about as fast as a walk takes
+const walkFrames = new Map();  // host element -> {el, ready, queue, played}
+function walkFrame(host) {
+  let f = walkFrames.get(host);
+  if (f && f.el.isConnected) return f;
+  const el = document.createElement('iframe'); el.className = 'walk-frame'; el.title = uiText('Path through the guideline knowledge graph');
+  el.src = '/graph-walker?embed=1&tempo=' + WALK_TEMPO; host.append(el);
+  f = {el, ready: false, queue: [], played: null};
+  walkFrames.set(host, f); return f;
+}
+function walkSend(f, ev) { if (f.ready) f.el.contentWindow.postMessage({walker: 'event', ev}, location.origin); else f.queue.push(ev); }
+// resolves when the embedded picture has shown event `t` (its director plays events one after the other), or after `ms`
+const walkShown = (f, t, ms) => new Promise(r => { const timer = setTimeout(r, ms); f.played = x => { if (x === t) { clearTimeout(timer); f.played = null; r(); } }; });
+addEventListener('message', e => {
+  if (e.origin !== location.origin) return;
+  const f = [...walkFrames.values()].find(x => x.el.contentWindow === e.source), m = e.data || {};
+  if (!f) return;
+  if (m.walker === 'ready') { f.ready = true; f.queue.splice(0).forEach(ev => walkSend(f, ev)); }
+  else if (m.walker === 'played') f.played?.(m.t);
+});
+function walkPanel(on) {
+  $('#kg-panel').classList.toggle('walk', on); $('#view-chat').classList.toggle('walk-on', on);
+  return on ? walkFrame($('#kg-walk')) : null;
+}
+// asked once the visitor is signed in (showApp): which engine Guido runs on
+function loadGuidoEngine() {
+  fetch('/api/guido').then(r => r.ok ? r.json() : {}).then(x => { guidoEngine = x.engine || 'local'; walkPanel(guidoEngine === 'walker' && agent === AGENTS.guido); }).catch(() => {});
+}
+// class and level of a walker source in the language of the page
+const walkGrade = s => [s.cor ? uiText('Class {c}', {c: s.cor}) : '', s.loe ? uiText('Level of evidence {l}', {l: s.loe}) : ''].filter(Boolean).join(' · ');
+// one event of the walk as a step line of the message. the lines have their own box above st.steps: that one belongs to
+// the React island (ui/src/luna-ui.tsx), which redraws it when the answer starts and would drop plain lines
+function walkStep(st, ev) {
+  const w = st.walk, num = n => Number(n).toLocaleString(careLocale());
+  const line = (kind, html) => step(st, kind, html, true, w.steps);
+  const title = t => `<span class="q">${esc(t.length > 46 ? t.slice(0, 45) + '…' : t)}</span>`;
+  if (ev.t === 'loading') { if (!w.loading) { w.loading = true; line('search', uiText('Loading the knowledge graph')); } return; }
+  if (ev.t === 'start') return line('search', uiText('Reading the question'));
+  if (ev.t === 'scores' && ev.level === 'guidelines') return line('search', uiText('Scored all {n} guidelines: where can the answer be?', {n: num(ev.items.length)}));
+  if (ev.t === 'guidelines') return line('read', uiText(ev.kept.length === 1 ? '1 guideline fits: {names}' : '{n} guidelines fit: {names}',
+    {n: ev.kept.length, names: (ev.titles || []).slice(0, 3).map(title).join(', ') + (ev.kept.length > 3 ? ' +' + (ev.kept.length - 3) : '')}));
+  if (ev.t === 'scores' && ev.level === 'statements') { w.statements += ev.candidates; return line('read', uiText('Read {n} statements of these guidelines, each on its own', {n: num(w.statements)})); }
+  if (ev.t === 'scores' && ev.level === 'rerank') return line('check', uiText('Stricter second check of the best {n} statements', {n: num(ev.items.length)}));
+  if (ev.t === 'taken') return line('check', uiText(ev.items.length === 1 ? '1 statement chosen as evidence, with its page and original quote' : '{n} statements chosen as evidence, each with its page and original quote', {n: ev.items.length}));
+  if (ev.t === 'writing') return line('check', uiText('Only now a language model writes, from this evidence alone'));
+  if (ev.t === 'done') w.cost = ev;
+}
+function walkCost(st) {
+  const c = st.walk && st.walk.cost; if (!c || !st.raw.trim()) return;
+  const f = (n, d) => Number(n).toLocaleString(careLocale(), {minimumFractionDigits: d, maximumFractionDigits: d});
+  const text = uiText('Answered in {s} s for {c} $: {d} decisions by scoring models, language-model calls: {l}', {s: f(c.seconds, 1), c: f(c.usd, 4), d: f(c.decision_calls, 0), l: c.language_model_calls});
+  st.el.querySelector('.refs').insertAdjacentHTML('afterend', `<p class="walk-cost">${esc(text)}</p>`);
+}
 // Guido's traversal is computed in milliseconds; the timeline replays it at a pace the audience can follow.
 // Every narrated step is derived from the real graph events (nodes, relations, recommendations) of this answer.
 const MIN_TRAVERSAL_MS = 7000;
@@ -1472,7 +1536,8 @@ async function sendChat(text) {
   text = text.trim(); if (!text || chatBusy) return;
   chatBusy = true; $('#send').disabled = true; $('#msg').value = ''; status('');
   const a = agent, chatHistory = a.history;
-  if (a === AGENTS.guido) kgReset(text);
+  const walking = a === AGENTS.guido && guidoEngine === 'walker';
+  if (a === AGENTS.guido && !walking) kgReset(text);
   const story = attached && a === AGENTS.lino;
   care.setLang(langOf(text));
   const u = document.createElement('div'); u.className = 'msg-user'; u.lang = care.lang; u.textContent = text; $(a.thread).append(u);
@@ -1480,7 +1545,8 @@ async function sendChat(text) {
   if (story) { u.insertAdjacentHTML('afterbegin', '<span class="u-att">Storyboard prompt</span>'); setAttach(false); }
   chatHistory.push({role: 'user', text: story ? STORYBOARD_PROMPT + '\n\n' + text : text});
   const st = addAssistant();
-  const tl = a === AGENTS.guido ? makeTimeline(st) : null;
+  const tl = a === AGENTS.guido ? makeTimeline(st, walking ? {min: 1} : {}) : null;  // a walk needs no replay: its steps arrive as they happen
+  if (walking) { st.walk = {statements: 0, frame: walkPanel(true), steps: document.createElement('div')}; st.walk.steps.className = 'steps'; st.steps.before(st.walk.steps); }
   try {
     const r = await fetch(a.endpoint, {method: 'POST', headers: HEADERS, body: JSON.stringify({messages: chatHistory})});
     if (r.status === 401) { showLogin(); throw Error('Please sign in again.'); }
@@ -1495,6 +1561,11 @@ async function sendChat(text) {
         if (!line.startsWith('data:')) continue;
         const ev = JSON.parse(line.slice(5));
         if (ev.type === 'sources') ev.items.forEach(s => st.sources[s.n] = s);
+        if (ev.type === 'walker') {
+          if (ev.ev.t === 'fallback') { st.walk.steps.remove(); st.walk = null; st.pending = null; walkPanel(false); kgReset(text); }  // another engine answers: back to the concept graph
+          else if (st.walk) { walkSend(st.walk.frame, ev.ev); walkStep(st, ev.ev); }
+          continue;
+        }
         if (st.ui && !tl && ev.type !== 'text' && st.ui.event(ev)) continue;
         if (ev.type === 'text' && st.ui) st.ui.event(ev);
         if (ev.type === 'tool_call' && ev.name === 'search_guidelines') step(st, 'search', `${esc(care.t('searching'))} <span class="q">“${esc(ev.args.query || '')}”</span>`, true);
@@ -1519,12 +1590,13 @@ async function sendChat(text) {
     finishRefs(st);
     st.el.lang = langOf(st.raw); care.setLang(st.el.lang);  // the answer is longer than the question, so its language is the safer guess
     if (st.raw.trim()) st.el.querySelector('.refs').insertAdjacentHTML('afterend', `<p class="care-note">${esc(care.t(a === AGENTS.lino ? 'noteLino' : 'note'))}</p>`);
+    walkCost(st);
     announce(`${a.name}: ${st.answer.textContent.slice(0, 900)}`);
     if (a === AGENTS.lino) renderStoryboard(st);
     if (a !== AGENTS.lino) markUncited(st);
     if (a === AGENTS.lino) guidelineCheck(text, st.raw, st.el.querySelector('.care-note'));
     nextSteps(text, st.raw, st.el);
-    if (a === AGENTS.guido) chatEvidence(st);
+    if (a === AGENTS.guido && !st.walk) chatEvidence(st);
     chatHistory.push({role: 'assistant', text: st.raw});
     $(a.preview).textContent = st.raw.replace(/\[\d+\]|[*#_]/g, '').slice(0, 80);
   } catch (e) {
@@ -1544,7 +1616,7 @@ async function sendChat(text) {
 $('#send').onclick = () => sendChat($('#msg').value);
 $('#msg').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat($('#msg').value); } });
 $('#msg').addEventListener('focus', warmSearch);
-$('#clear-chat').onclick = () => { if (chatBusy) return; agent.history.length = 0; $(agent.thread).innerHTML = ''; if (agent === AGENTS.guido) kgReset(); $('#msg').focus(); };
+$('#clear-chat').onclick = () => { if (chatBusy) return; agent.history.length = 0; $(agent.thread).innerHTML = ''; if (agent === AGENTS.guido && guidoEngine !== 'walker') kgReset(); $('#msg').focus(); };
 
 /* ---------------- full-screen video call ---------------- */
 let call = null, convId = null, preview = null, tick = null, endTimer = null, micOn = true, camOn = true, audioCtx = null, meterRaf = 0;
@@ -1800,7 +1872,9 @@ function showPdf(x) {
   w.body.innerHTML = `<div class="pdf-page"><img alt="${esc(uiText('Guideline page {p}', {p: x.page}))}" src="/api/page-image/${encodeURIComponent(x.page_id)}"></div><div class="pdf-text">Loading page text…</div>`;
   fetch('/api/page/' + encodeURIComponent(x.page_id)).then(r => r.json()).then(p => {
     const t = w.body.querySelector('.pdf-text'); if (!t) return;
-    t.innerHTML = markQuote(p.plain.trim(), x.text); t.querySelector('mark')?.scrollIntoView({block: 'center'});
+    t.innerHTML = markQuote(p.plain.trim(), x.text);
+    const mark = t.querySelector('mark'), box = [t, w.body].find(el => el.scrollHeight > el.clientHeight + 4);
+    if (mark && box) box.scrollTop += mark.getBoundingClientRect().top - box.getBoundingClientRect().top - box.clientHeight / 2;
   }).catch(() => {});
 }
 function showTable(x) {
@@ -1921,28 +1995,48 @@ function langOf(text) {
 }
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
 const SAY = {
-  en: {and: 'and', share: 'Let me share my screen and walk you through our knowledge graph.', again: 'Let me look at the graph again.',
+  en: {and: 'and',
+    wDocs: n => `I'm checking all ${n} guidelines for where the answer can be.`, wRead: n => `Now I'm reading ${n} single statements in the ones that fit.`,
+    wTaken: n => n > 1 ? `${n} statements hold up. Each is a sentence from a guideline, with its page.` : 'One statement holds up. It is a sentence from a guideline, with its page.',
+    wNone: 'No statement in the guidelines holds up for this.',
+    share: 'Let me share my screen and walk you through our knowledge graph.', again: 'Let me look at the graph again.',
     seed: x => `I'm starting from ${x}.`, recs: (n, l) => `Here's something: ${n} recommendation${n > 1 ? 's' : ''} around ${l}. Let me follow them.`,
     links: l => `Let me follow the links of ${l}.`, hop2: x => `Two steps out now, I'm at ${x}.`, expand: l => `Let me expand ${l} a bit further.`,
     match: n => `${n} recommendation texts match directly.`, rank: n => `Spreading out through the graph, ${n} recommendations come up close to your question.`,
     select: 'I found what I need. Let me pick the recommendations that answer your question.', table: 'Look, here is the recommendation in the original guideline table.'},
-  de: {and: 'und', share: 'Ich teile kurz meinen Bildschirm und gehe mit Ihnen durch unseren Wissensgraphen.', again: 'Ich schaue noch einmal in den Graphen.',
+  de: {and: 'und',
+    wDocs: n => `Ich prüfe alle ${n} Leitlinien darauf, wo die Antwort stehen kann.`, wRead: n => `Jetzt lese ich ${n} einzelne Aussagen in den passenden Leitlinien.`,
+    wTaken: n => n > 1 ? `${n} Aussagen bestehen die Prüfung. Jede ist ein Satz aus einer Leitlinie, mit Seite.` : 'Eine Aussage besteht die Prüfung. Sie ist ein Satz aus einer Leitlinie, mit Seite.',
+    wNone: 'Dazu besteht keine Aussage der Leitlinien die Prüfung.',
+    share: 'Ich teile kurz meinen Bildschirm und gehe mit Ihnen durch unseren Wissensgraphen.', again: 'Ich schaue noch einmal in den Graphen.',
     seed: x => `Ich starte bei ${x}.`, recs: (n, l) => `Hier ist etwas: ${n} ${n > 1 ? 'Empfehlungen' : 'Empfehlung'} rund um ${l}. Denen folge ich jetzt.`,
     links: l => `Ich folge den Verbindungen von ${l}.`, hop2: x => `Zwei Schritte weiter bin ich jetzt bei ${x}.`, expand: l => `Ich schaue mir ${l} noch genauer an.`,
     match: n => `${n} Empfehlungstexte passen direkt.`, rank: n => `Ich breite mich im Graphen aus, ${n} Empfehlungen liegen nah an Ihrer Frage.`,
     select: 'Ich habe, was ich brauche. Jetzt wähle ich die Empfehlungen aus, die Ihre Frage beantworten.', table: 'Schauen Sie, hier ist die Empfehlung in der originalen Leitlinientabelle.'},
-  es: {and: 'y', share: 'Comparto mi pantalla y le muestro nuestro grafo de conocimiento.', again: 'Vuelvo a mirar el grafo.',
+  es: {and: 'y',
+    wDocs: n => `Reviso las ${n} guías para ver dónde puede estar la respuesta.`, wRead: n => `Ahora leo ${n} afirmaciones, una por una, en las guías que encajan.`,
+    wTaken: n => n > 1 ? `${n} afirmaciones superan la comprobación. Cada una es una frase de una guía, con su página.` : 'Una afirmación supera la comprobación. Es una frase de una guía, con su página.',
+    wNone: 'Ninguna afirmación de las guías supera la comprobación para esto.',
+    share: 'Comparto mi pantalla y le muestro nuestro grafo de conocimiento.', again: 'Vuelvo a mirar el grafo.',
     seed: x => `Empiezo por ${x}.`, recs: (n, l) => `Aquí hay algo: ${n} ${n > 1 ? 'recomendaciones' : 'recomendación'} sobre ${l}. Las sigo.`,
     links: l => `Sigo las conexiones de ${l}.`, hop2: x => `Dos pasos más allá, ahora estoy en ${x}.`, expand: l => `Miro ${l} con más detalle.`,
     match: n => `${n} textos de recomendaciones coinciden directamente.`, rank: n => `Recorriendo el grafo, ${n} recomendaciones quedan cerca de su pregunta.`,
     select: 'Ya tengo lo que necesito. Ahora elijo las recomendaciones que responden a su pregunta.', table: 'Mire, aquí está la recomendación en la tabla original de la guía.'},
-  ru: {and: 'и', share: 'Сейчас я покажу свой экран и проведу вас по нашему графу знаний.', again: 'Давайте ещё раз посмотрим на граф.',
+  ru: {and: 'и',
+    wDocs: n => `Проверяю все руководства, их ${n}: где может быть ответ.`, wRead: n => `Теперь читаю отдельные утверждения в подходящих руководствах, их ${n}.`,
+    wTaken: n => n > 1 ? `Проверку прошли утверждения, их ${n}. Каждое — это предложение из руководства, со страницей.` : 'Проверку прошло одно утверждение. Это предложение из руководства, со страницей.',
+    wNone: 'Ни одно утверждение из руководств не прошло проверку по этому вопросу.',
+    share: 'Сейчас я покажу свой экран и проведу вас по нашему графу знаний.', again: 'Давайте ещё раз посмотрим на граф.',
     seed: x => `Начинаю с ${x}.`, recs: (n, l) => `Вот что я нашёл: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} вокруг ${l}. Иду по ним дальше.`,
     links: l => `Иду по связям ${l}.`, hop2: x => `Два шага дальше, я сейчас у ${x}.`, expand: l => `Посмотрю на ${l} подробнее.`,
     match: n => `${n} ${ruPlural(n, 'текст рекомендации совпадает', 'текста рекомендаций совпадают', 'текстов рекомендаций совпадают')} напрямую.`,
     rank: n => `Расхожусь по графу: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} близко к вашему вопросу.`,
     select: 'Я нашёл то, что нужно. Сейчас выберу рекомендации, которые отвечают на ваш вопрос.', table: 'Смотрите, вот эта рекомендация в оригинальной таблице руководства.'},
-  hi: {and: 'और', share: 'मैं अपनी स्क्रीन शेयर करता हूँ और आपको हमारे नॉलेज ग्राफ़ से होकर ले चलता हूँ।', again: 'चलिए, ग्राफ़ को एक बार फिर देखते हैं।',
+  hi: {and: 'और',
+    wDocs: n => `मैं सभी ${n} गाइडलाइन जाँच रहा हूँ कि जवाब कहाँ हो सकता है।`, wRead: n => `अब मैं उपयुक्त गाइडलाइन में ${n} अलग-अलग कथन पढ़ रहा हूँ।`,
+    wTaken: n => n > 1 ? `${n} कथन जाँच में खरे उतरे। हर एक किसी गाइडलाइन का वाक्य है, पेज के साथ।` : 'एक कथन जाँच में खरा उतरा। यह किसी गाइडलाइन का वाक्य है, पेज के साथ।',
+    wNone: 'इस बारे में गाइडलाइन का कोई कथन जाँच में खरा नहीं उतरा।',
+    share: 'मैं अपनी स्क्रीन शेयर करता हूँ और आपको हमारे नॉलेज ग्राफ़ से होकर ले चलता हूँ।', again: 'चलिए, ग्राफ़ को एक बार फिर देखते हैं।',
     seed: x => `मैं ${x} से शुरू कर रहा हूँ।`, recs: (n, l) => `यह मिला: ${l} से जुड़ी ${n} ${n > 1 ? 'सिफ़ारिशें' : 'सिफ़ारिश'}। मैं इन्हें आगे देखता हूँ।`,
     links: l => `मैं ${l} के कनेक्शन देख रहा हूँ।`, hop2: x => `अब दो कदम आगे, मैं ${x} पर हूँ।`, expand: l => `मैं ${l} को थोड़ा और विस्तार से देखता हूँ।`,
     match: n => `${n} सिफ़ारिशों का टेक्स्ट सीधे मेल खाता है।`, rank: n => `ग्राफ़ में फैलते हुए ${n} सिफ़ारिशें आपके सवाल के क़रीब मिलीं।`,
@@ -2008,8 +2102,10 @@ async function guidoCall(m, p) {
   // the tool argument is the persona llm's rewording, often in english. the patient's own words decide the language
   // guido narrates in and what the window shows; the graph search keeps the tool's question
   const said = [...(stage.talk || [])].reverse().find(t => t.role === 'user'), asked = (said && said.text) || question;
+  if (guidoEngine === 'walker') return guidoWalkCall(m, p, question, asked, t0);
   const firstShare = !WM.on; shareOn();
   const gw = winOpen('graph', uiText('Knowledge Graph') + ' — ' + asked, 'graph');
+  gw.body.classList.remove('walking');
   if (!gw.body.querySelector('.kg-canvas')) { gw.body.append($('#kg-canvas')); const ws = document.createElement('div'); ws.className = 'wsteps'; gw.body.append(ws); }
   gw.body.querySelector('.wsteps').innerHTML = '';
   ['table', 'inspector', 'notes', 'pdf'].forEach(winClose); WM.concept = null; winLayout('focus');  // new topic, clean desk
@@ -2053,6 +2149,79 @@ async function guidoCall(m, p) {
   await Promise.race([nar.done().then(() => faceIdle(12000)), new Promise(r => setTimeout(r, Math.max(0, left)))]);
   nar.stop();
   toolResult(m, p, ok ? answer : st.raw, ok);
+}
+// guido's call on the graph walker: the shared screen shows the walker's path while he walks, then the statements the
+// answer rests on and the original page of the first one. the result goes out by the tool deadline like before.
+// a walk that is not finished by then (tavus gives up on a tool call after roughly 30 s) gets WALK_LATE as its tool
+// result, so the persona says one holding sentence; when the walk ends, its answer is spoken verbatim through the face
+const WALK_LATE = 'The lookup in the knowledge graph is still running. Tell the user in one short sentence, in their language, that the search '
+  + 'takes a moment longer and that the answer follows right away. Do not answer the question yourself and do not call the tool again.';
+function walkEvidence(cited) {
+  const w = winOpen('table', uiText('Evidence from the guidelines'), 'table', true);
+  w.body.innerHTML = ''; const host = document.createElement('div'); host.className = 'jr-host'; w.body.append(host);
+  const el = {b: {type: 'Board', props: {title: uiText('Statements the answer rests on')}, children: []}};
+  cited.slice(0, 6).forEach((s, i) => {
+    el['q' + i] = {type: 'Quote', props: {claim: s.snippet, quote: s.highlight, ref: s.ref, title: s.title, page: s.page, grade: walkGrade(s), pageId: s.page_id}, children: []};
+    el.b.children.push('q' + i);
+  });
+  jrMount(host).set({root: 'b', elements: el});
+}
+async function guidoWalkCall(m, p, question, asked, t0) {
+  const firstShare = !WM.on; shareOn();
+  const gw = winOpen('graph', uiText('Knowledge Graph') + ' — ' + asked, 'graph');
+  ['table', 'inspector', 'notes', 'pdf'].forEach(winClose); WM.concept = null; winLayout('focus');  // new topic, clean desk
+  gw.body.classList.add('walking');
+  const frame = walkFrame(gw.body), lang = langOf(asked), T = SAY[lang] || SAY.en, nar = narrator(lang);
+  nar.say(firstShare ? T.share : T.again, true);
+  let raw = '', ok = true, sources = [], statements = 0, late = false, evidenceOnly = false;
+  const deadline = setTimeout(() => { late = true; nar.stop(); toolResult(m, p, WALK_LATE, true); }, Math.max(0, TOOL_DEADLINE_MS - (performance.now() - t0)));
+  try {
+    const r = await fetch('/api/chat/guido', {method: 'POST', headers: HEADERS, body: JSON.stringify({messages: [{role: 'user', text: question}], via: 'call'})});
+    if (!r.ok || !r.body) throw Error('HTTP ' + r.status);
+    const reader = r.body.getReader(), dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const {value, done} = await reader.read(); if (done) break;
+      buf += dec.decode(value, {stream: true}); let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
+        if (!line.startsWith('data:')) continue;
+        const ev = JSON.parse(line.slice(5));
+        if (ev.type === 'walker') {
+          const w = ev.ev; walkSend(frame, w);
+          if (late) continue;  // the persona is speaking its holding sentence: no narration over it
+          if (w.t === 'scores' && w.level === 'guidelines') nar.say(T.wDocs(w.items.length));
+          else if (w.t === 'scores' && w.level === 'statements') { statements += w.candidates; nar.say(T.wRead(statements)); }
+          else if (w.t === 'taken') nar.say(w.items.length ? T.wTaken(w.items.length) : T.wNone);
+        }
+        else if (ev.type === 'sources') sources = ev.items;   // after a fallback: the other engine's sources and text
+        else if (ev.type === 'text') { raw += ev.delta; evidenceOnly = !!ev.evidence_only; }  // evidence only: no writer ran, the persona phrases the answer
+        else if (ev.type === 'error') throw Error(ev.message);
+      }
+    }
+    if (!raw.trim()) throw Error('no answer');
+  } catch (err) { ok = false; raw = 'The knowledge graph is unavailable right now: ' + (err.message || 'error'); }
+  clearTimeout(deadline);  // the walk is over: from here the result goes out below, in time
+  const answer = speakable(raw, 2800);
+  const cited = [...new Set([...raw.matchAll(/\[(\d+)\]/g)].map(x => +x[1]))].map(n => sources.find(s => s.n === n)).filter(s => s && s.walker);
+  if (ok && cited.length) {
+    walkEvidence(cited);
+    const s = cited.find(x => x.page_id);
+    if (s) showPdf({ref: s.ref, title: s.title, page: s.page, page_id: s.page_id, text: s.highlight});
+    winLayout('split');
+  }
+  direct('found', answer.slice(0, 600));
+  if (late) {  // the tool result went out at the deadline: speak the answer itself once the face is quiet
+    await faceIdle(12000);
+    // without a writer there is no answer to speak, only statements: the best one, as the guideline words it
+    echo(speakable(!ok ? uiText('The knowledge graph is not reachable right now. Please ask again in a moment.') : evidenceOnly && sources[0] ? sources[0].title + ': ' + sources[0].snippet : raw));
+    return;
+  }
+  // the walk is done: lines not spoken yet are dropped, the one being spoken ends, then the result goes out. waiting
+  // for the whole narration cost 10 to 15 s in a real call (the persona's own holding sentence comes first)
+  nar.stop();
+  const left = TOOL_DEADLINE_MS - (performance.now() - t0);
+  await Promise.race([faceIdle(8000), new Promise(r => setTimeout(r, Math.max(0, left)))]);
+  toolResult(m, p, ok ? (evidenceOnly ? raw.slice(0, 3000) : answer) : raw, ok);  // the statements keep their numbers and line breaks
 }
 async function linoCall(m, p) {
   let args = p.arguments; try { if (typeof args === 'string') args = JSON.parse(args); } catch { args = {}; }
