@@ -206,7 +206,9 @@ function kgInit() {
     .linkDirectionalParticles(l => l.hot && !l.ghost ? 3 : 0).linkDirectionalParticleWidth(3).linkDirectionalParticleSpeed(0.011)
     .linkDirectionalParticleColor(() => kgC('hot'))
     .onRenderFramePre(kgBackdrop)
-    .nodeCanvasObject(kgDraw).nodePointerAreaPaint((n, color, ctx) => { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, kgR(n) + 3, 0, 2 * Math.PI); ctx.fill(); })
+    .nodeCanvasObject(kgDraw).nodePointerAreaPaint((n, color, ctx) => { if (n.kind === 'dot') return; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, kgR(n) + 3, 0, 2 * Math.PI); ctx.fill(); })
+    .linkPointerAreaPaint(() => {})  // links are not hovered: no second drawing of every link for hit detection
+    .onRenderFramePost(kgForeground)
     .linkCurvature(l => l.role === 'concept' ? 0.22 : 0.08)
     .onNodeHover(n => { if (n && (n.kind === 'dot' || (n.ghost && (KG.g || 0) < .3))) n = null; KG.hover = n || null; el.style.cursor = n ? 'pointer' : ''; kgTip(n); })
     .onNodeClick(n => { kgTip(n, true); if (n.kind === 'page' && n.page_id) window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: n.page_id}})); });
@@ -218,17 +220,18 @@ function kgInit() {
 }
 // Simple collision force (labels need room); O(n^2) is fine for < 150 nodes.
 function kgCollide(radius) {
-  let nodes = []; const rad = typeof radius === 'function' ? radius : n => n.kind === 'question' ? radius * 1.7 : radius / 2;
+  let all = []; const rad = typeof radius === 'function' ? radius : n => n.kind === 'question' ? radius * 1.7 : radius / 2;
   const f = alpha => {
+    const nodes = all.filter(n => n.kind !== 'dot');  // the ring of scored guidelines is a backdrop: nothing collides with it
     for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
-      const a = nodes[i], b = nodes[j]; if (a.kind === 'dot' || b.kind === 'dot') continue;
+      const a = nodes[i], b = nodes[j];
       let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
       const min = rad(a) + rad(b);
       if (d < min) { const k = (min - d) / d * 0.5 * Math.min(1, alpha * 4 + 0.2); dx *= k; dy *= k;
         if (a.fx == null) { a.x -= dx; a.y -= dy; } if (b.fx == null) { b.x += dx; b.y += dy; } }
     }
   };
-  f.initialize = n => { nodes = n; };
+  f.initialize = n => { all = n; };
   return f;
 }
 function kgRecLabel(n, lim) {
@@ -253,6 +256,7 @@ const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a
 function kgBackdrop(ctx, scale) {
   const c = KG.fg.centerAt(), now = performance.now();
   KG.view = {x: c.x, y: c.y, k: scale}; KG.g = smooth(1.25, 2.05, scale);  // g: how much of the unchosen graph shows, 0 at the wide shot
+  KG.chips = [];  // the label boxes of this frame, in screen pixels: a label that would cover an earlier one is left out
   if (!KG.cine) return;
   const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, 470);
   halo.addColorStop(0, 'rgba(96,118,255,.22)'); halo.addColorStop(.45, 'rgba(96,118,255,.07)'); halo.addColorStop(1, 'rgba(96,118,255,0)');
@@ -267,12 +271,25 @@ function kgBackdrop(ctx, scale) {
     const g = ctx.createConicGradient(a, 0, 0); g.addColorStop(0, 'rgba(130,150,255,0)'); g.addColorStop(.82, 'rgba(130,150,255,0)'); g.addColorStop(1, `rgba(130,150,255,${.30 * fade})`);
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 372, 0, 2 * Math.PI); ctx.fill();
   }
+  // the scored guidelines that stayed closed: a ring of dots, the fainter the worse they fit. drawn here together, four
+  // fills for two hundred dots, and one stroke for their streaks while the camera moves
+  const pv = KG.pview || KG.view, moved = Math.hypot((KG.view.x - pv.x) * scale, (KG.view.y - pv.y) * scale) + Math.abs(scale - pv.k) * 260 > 1.6;
+  const zs = scale > 1 ? Math.pow(scale, -.5) : 1, buckets = [[], [], [], []];
+  for (const n of KG.nodes) if (n.kind === 'dot' && now >= n.born) buckets[n.done ? 0 : Math.min(3, 1 + Math.floor((n.p || 0) * 3))].push(n);
+  ctx.fillStyle = kgC('dot');
+  buckets.forEach((b, i) => { if (!b.length) return; ctx.globalAlpha = [.3, .45, .7, .95][i]; ctx.beginPath();
+    for (const n of b) { const r = kgR(n) * zs * Math.min(1, .3 + (now - n.born) / 500); ctx.moveTo(n.x + r, n.y); ctx.arc(n.x, n.y, r, 0, 2 * Math.PI); } ctx.fill(); });
+  if (moved) { ctx.globalAlpha = .2; ctx.strokeStyle = kgC('dot'); ctx.lineWidth = 2.2 * zs; ctx.lineCap = 'round'; ctx.beginPath();
+    for (const b of buckets) for (const n of b) { const ox = ((n.x - pv.x) * pv.k - (n.x - KG.view.x) * scale) / scale, oy = ((n.y - pv.y) * pv.k - (n.y - KG.view.y) * scale) / scale;
+      ctx.moveTo(n.x, n.y); ctx.lineTo(n.x + ox * 1.3, n.y + oy * 1.3); } ctx.stroke(); }
+  ctx.globalAlpha = 1; KG.pview = KG.view;
   // links beyond the walk: a UMLS concept of the evidence also occurs in guidelines that stayed closed. faint from afar, clear up close
-  const fa = .05 + .5 * KG.g;
+  const fa = .035 + .36 * KG.g;
   if (KG.foreign && KG.foreign.length) {
     ctx.lineWidth = 1 / scale; ctx.setLineDash([3 / scale, 5 / scale]); ctx.strokeStyle = `rgba(183,148,255,${fa})`;
     for (const [a, b] of KG.foreign) {
       const A = KG.byId.get(a), B = KG.byId.get(b); if (!A || !B || A.x == null || B.x == null) continue;
+      if (KG.wave === -1 && KG.pathIds.size && !KG.pathIds.has(a)) continue;  // its concept left the picture with the final path
       ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.quadraticCurveTo((A.x + B.x) * .35, (A.y + B.y) * .35, B.x, B.y); ctx.stroke();
     }
     ctx.setLineDash([]);
@@ -281,6 +298,7 @@ function kgBackdrop(ctx, scale) {
 function kgDraw(n, ctx, scale) {
   const cine = KG.cine, now = performance.now(), v = KG.view || {x: 0, y: 0, k: scale};
   // motion blur: a streak against the node's movement on screen, its own and the camera's
+  if (n.kind === 'dot') return;
   const sx = (n.x - v.x) * v.k, sy = (n.y - v.y) * v.k;
   let streak = null;
   if (cine && n.sx != null && n.kind !== 'question') { const dx = sx - n.sx, dy = sy - n.sy, sp = Math.hypot(dx, dy); if (sp > 2.4 && sp < 320) streak = [dx / v.k, dy / v.k, Math.min(1, sp / 24)]; }
@@ -292,20 +310,17 @@ function kgDraw(n, ctx, scale) {
     if (cine) { ctx.shadowColor = 'rgba(140,160,255,.9)'; ctx.shadowBlur = 22 + 6 * Math.sin(now / 520); }
     ctx.fillStyle = cine ? '#f4f6ff' : '#1d2233'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - h / 2, w, h, h / 2) : ctx.rect(n.x - w / 2, n.y - h / 2, w, h); ctx.fill();
     ctx.shadowBlur = 0; ctx.fillStyle = cine ? '#10152c' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, n.x, n.y + 0.5 / scale);
+    (KG.chips || (KG.chips = [])).push([(n.x - w / 2) * scale, (n.y - h / 2) * scale, w * scale, h * scale]);
     return;
   }
   const age = (now - n.born) / 600, born = Math.max(0, Math.min(1, age));  // 0 until its turn in a staggered wave
   if (!born) return;
   const pop = born < 1 ? 1 + .35 * Math.sin(born * Math.PI) : 1;  // a node arrives a little too large and settles
-  const r = kgR(n) * (0.4 + 0.6 * born) * pop, col = kgC(n.kind) || kgC('concept');
-  const blur = (alpha, width) => { if (!streak) return; const [dx, dy, a] = streak, g = ctx.createLinearGradient(n.x, n.y, n.x - dx * 2.2, n.y - dy * 2.2);
-    g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = alpha * a * .7; ctx.strokeStyle = g; ctx.lineWidth = width; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(n.x - dx * 2.2, n.y - dy * 2.2); ctx.stroke(); };
-  if (n.kind === 'dot') {  // a guideline that was scored and stayed closed: no label, the fainter the worse it fits
-    const a = born * (n.done ? 0.3 : 0.4 + 0.6 * (n.p || 0)) * (cine ? 1 + .25 * Math.sin(now / 900 + n.tw) : 1);
-    blur(a, r * 1.8);
-    ctx.globalAlpha = Math.min(1, a); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 2 * Math.PI); ctx.fill(); ctx.globalAlpha = 1; return;
-  }
+  const r = kgR(n) * (0.4 + 0.6 * born) * pop * (cine && scale > 1 ? Math.pow(scale, -.5) : 1), col = kgC(n.kind) || kgC('concept');
+  const blur = (alpha, width) => { if (!streak) return; const [dx, dy, a] = streak, g = ctx.createLinearGradient(n.x, n.y, n.x - dx * 1.5, n.y - dy * 1.5);
+    g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = alpha * a * .6; ctx.strokeStyle = g; ctx.lineWidth = width; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(n.x - dx * 1.5, n.y - dy * 1.5); ctx.stroke(); };
+  if (n.kind === 'dot') return;  // the ring of scored guidelines is drawn in one go by kgBackdrop
   if (n.ghost) {  // read and not taken: there, but only for those who look closely
     const a = born * KG.g * (KG.hover === n ? 1 : .75); if (a < .02) return;
     ctx.globalAlpha = a; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 2 * Math.PI); ctx.fill();
@@ -323,7 +338,8 @@ function kgDraw(n, ctx, scale) {
   if (n.hop === 0 && n.kind === 'concept') { ctx.fillStyle = kgC('seedRing'); ctx.beginPath(); ctx.arc(n.x, n.y, r + 6 + 2 * Math.sin(now / 380), 0, 2 * Math.PI); ctx.fill(); }
   if (cited) { ctx.strokeStyle = '#f2b136'; ctx.lineWidth = 3 / scale; if (cine) { ctx.shadowColor = '#f2b136'; ctx.shadowBlur = 12 + 5 * Math.sin(now / 430); }
     ctx.beginPath(); ctx.arc(n.x, n.y, r + 3.5, 0, 2 * Math.PI); ctx.stroke(); ctx.shadowBlur = 0; }
-  if (!dim && born >= 1) { ctx.shadowColor = col; ctx.shadowBlur = cine ? (cited || n.hop === 0 ? 26 : 14) : (cited || n.hop === 0 ? 14 : 6); }  // a glow in the node's own colour
+  const lit = cited || n.hop === 0 || n.lit;  // a glow in the node's own colour, for the roots, the evidence and the cited
+  if (!dim && born >= 1 && (lit || !cine)) { ctx.shadowColor = col; ctx.shadowBlur = cine ? 24 : lit ? 14 : 6; }
   ctx.fillStyle = col; ctx.beginPath();
   if (n.kind === 'rec') { const w = r * 1.7; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - w / 2, w, w, 2) : ctx.rect(n.x - w / 2, n.y - w / 2, w, w); }
   else if (n.kind === 'page') { const w = r * 1.4, h = r * 1.9; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - h / 2, w, h, 1.5) : ctx.rect(n.x - w / 2, n.y - h / 2, w, h); }  // a sheet: a guideline page
@@ -341,6 +357,9 @@ function kgChip(ctx, scale, n, r, txt, big, alpha) {
   const cine = KG.cine, cited = KG.cited.has(n.id), fs = (big ? 13 : 11.5) / scale;
   ctx.font = `${big ? 650 : 550} ${fs}px Segoe UI, system-ui, sans-serif`;
   const w = ctx.measureText(txt).width, h = fs * 1.45, y = n.y + r + 4 / scale;
+  const box = [(n.x - w / 2) * scale - 7, y * scale - 2, w * scale + 14, h * scale + 4], taken = KG.chips || (KG.chips = []);
+  if (KG.hover !== n && taken.some(b => box[0] < b[0] + b[2] && b[0] < box[0] + box[2] && box[1] < b[1] + b[3] && b[1] < box[1] + box[3])) return;
+  taken.push(box);
   ctx.fillStyle = cine ? (cited ? 'rgba(58,42,8,.92)' : 'rgba(13,18,40,.86)') : cited ? 'rgba(255,246,222,.96)' : 'rgba(255,255,255,.92)';
   ctx.beginPath(); ctx.roundRect ? ctx.roundRect(n.x - w / 2 - 5 / scale, y, w + 10 / scale, h, 5 / scale) : ctx.rect(n.x - w / 2 - 5 / scale, y, w + 10 / scale, h); ctx.fill();
   ctx.strokeStyle = cine ? (cited ? 'rgba(242,177,54,.55)' : 'rgba(140,155,255,.22)') : 'rgba(30,40,70,.10)'; ctx.lineWidth = 1 / scale; ctx.stroke();
@@ -380,7 +399,9 @@ function hudHome(parent) { const el = $('#kg-hud'); if (el && el.parentNode !== 
 function kgReset(question) {
   kgInit(); if (KG.fg) KG.fg.d3Force('charge').strength(kgCharge);
   KG.nodes = []; KG.links = []; KG.byId.clear(); KG.cited.clear(); KG.pathIds = new Set(); KG.hop = 0; KG.wave = 0;
-  KG.foreign = []; KG.ring = false; DIR.on = false; DIR.gen++; DIR.q.length = 0;  // a new graph: the director starts again with the next walk
+  KG.foreign = []; KG.ring = false; DIR.on = false; DIR.gen++; DIR.q.length = 0; DIR.comet = null; DIR.at = null;  // a new graph: the director starts again with the next walk
+  if (KG.fg) KG.fg.enablePointerInteraction(true);
+  document.querySelector('.kg-hint')?.remove();
   if (question) { const q = {id: 'q', kind: 'question', label: question, hop: -1, born: performance.now(), x: 0, y: 0, fx: 0, fy: 0}; KG.nodes.push(q); KG.byId.set('q', q); }
   $('#kg-tip').classList.add('hidden'); $('#kg-tip').dataset.sticky = '';
   $('#kg-empty').classList.toggle('hidden', !!question); $('#kg-status').textContent = 'Starting traversal…';
@@ -1505,28 +1526,66 @@ function walkLegend() {
    queue up and play one after the other, faster when the walk is ahead of the picture. the visitor's own wheel or
    drag takes the camera for a few seconds, and for good once the walk has ended */
 const DIR = {on: false, gen: 0, q: [], busy: false, ids: null, fix: null, maxK: 2, tau: 520, pad: 70, userAt: 0, sweep: 0, raf: 0, ts: 0, cam: {x: 0, y: 0, k: 1}};
-function dirShot(ids, o = {}) { DIR.ids = ids; DIR.fix = o.fix || null; DIR.maxK = o.maxK || 1.9; DIR.tau = o.tau || 520; DIR.pad = o.pad || 70; }
+function kgHint(text) {
+  const host = $('#kg-canvas').parentNode; host.querySelector('.kg-hint')?.remove();
+  if (!text) return;
+  const e = document.createElement('div'); e.className = 'kg-hint'; e.textContent = text; host.append(e);
+  setTimeout(() => e.classList.add('gone'), 6500); setTimeout(() => e.remove(), 7600);
+}
+function dirShot(ids, o = {}) { DIR.ids = ids; DIR.fix = o.fix || null; DIR.at = null; DIR.maxK = o.maxK || 1.9; DIR.tau = o.tau || 520; DIR.pad = o.pad || 70; }
+const dirEase = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const dirPace = () => DIR.q.length > 1 ? .5 : 1;  // the walk is ahead of the picture: everything plays at double speed
+// the runner travels from one node to the next and the camera rides along at zoom k: the visitor walks the graph with it.
+// resolves on arrival, where the node lights up; the camera then stays with that node until the next shot or flight
+function dirFly(aId, bId, ms, k) {
+  return new Promise(done => {
+    const a = KG.byId.get(aId), b = KG.byId.get(bId);
+    if (!a || !b || !DIR.on || a === b) return done();
+    DIR.comet = {a, b, t0: performance.now(), dur: Math.max(160, ms * dirPace()), done, gen: DIR.gen}; DIR.flyK = k || 1.7; DIR.ids = null; DIR.fix = null;
+  });
+}
+function dirCometAt(c, now) { const p = dirEase(Math.min(1, (now - c.t0) / c.dur)); return [c.a.x + (c.b.x - c.a.x) * p, c.a.y + (c.b.y - c.a.y) * p, p]; }
+// after every frame, over the graph: the runner, a bright head with a tail along the way it came
+function kgForeground(ctx, scale) {
+  const c = DIR.comet; if (!c || !KG.cine) return;
+  const [x, y, p] = dirCometAt(c, performance.now()), dx = c.b.x - c.a.x, dy = c.b.y - c.a.y, len = Math.hypot(dx, dy) || 1, tail = Math.min(len * p, 110 / scale);
+  const tx = x - dx / len * tail, ty = y - dy / len * tail, g = ctx.createLinearGradient(x, y, tx, ty);
+  g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.25, 'rgba(160,180,255,.55)'); g.addColorStop(1, 'rgba(120,140,255,0)');
+  ctx.strokeStyle = g; ctx.lineWidth = 3.4 / scale; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.stroke();
+  const r = 16 / scale, h = ctx.createRadialGradient(x, y, 0, x, y, r);
+  h.addColorStop(0, 'rgba(255,255,255,1)'); h.addColorStop(.22, 'rgba(190,205,255,.85)'); h.addColorStop(1, 'rgba(120,140,255,0)');
+  ctx.fillStyle = h; ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fill();
+}
 function dirLoop(ts) {
   const fg = KG.fg;
   if (!DIR.on || !fg) { DIR.raf = 0; return; }
   const c = DIR.cam, dt = Math.min(64, ts - (DIR.ts || ts)); DIR.ts = ts;
   if (performance.now() - DIR.userAt > 3500) {
-    let tx = c.x, ty = c.y, tk = c.k;
-    if (DIR.fix) ({x: tx, y: ty, k: tk} = DIR.fix);
+    let tx = c.x, ty = c.y, tk = c.k, tau = DIR.tau;
+    const fly = DIR.comet;
+    if (fly && fly.gen !== DIR.gen) DIR.comet = null;
+    else if (fly) {  // riding along with the runner, looking a little ahead
+      const now = performance.now(), [x, y, p] = dirCometAt(fly, now);
+      tx = x + (fly.b.x - x) * .22; ty = y + (fly.b.y - y) * .22; tk = DIR.flyK; tau = 210;
+      if (p >= 1) { fly.b.shock = now; fly.b.wave = KG.wave; DIR.at = fly.b; DIR.comet = null; fly.done(); }  // arrived: the node lights up and shows its name
+    }
+    else if (DIR.fix) ({x: tx, y: ty, k: tk} = DIR.fix);
+    else if (DIR.at) { tx = DIR.at.x; ty = DIR.at.y; tk = DIR.flyK; tau = 420; }  // arrived: stay with this node
     else if (DIR.ids) {
       let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
       for (const n of KG.nodes) if (DIR.ids.has(n.id) && n.x != null) { x0 = Math.min(x0, n.x); x1 = Math.max(x1, n.x); y0 = Math.min(y0, n.y); y1 = Math.max(y1, n.y); }
       if (x1 >= x0) { tx = (x0 + x1) / 2; ty = (y0 + y1) / 2 + 8;
         tk = Math.max(.3, Math.min(DIR.maxK, (fg.width() - 2 * DIR.pad) / Math.max(40, x1 - x0), (fg.height() - 2 * DIR.pad) / Math.max(40, y1 - y0))); }
     }
-    const a = 1 - Math.exp(-dt / DIR.tau), t = ts / 1000;
+    const a = 1 - Math.exp(-dt / tau), t = ts / 1000;
     c.x += (tx - c.x) * a; c.y += (ty - c.y) * a; c.k *= Math.exp(Math.log(tk / c.k) * a);
     fg.centerAt(c.x + Math.sin(t * .43) * 5 / c.k, c.y + Math.cos(t * .31) * 4 / c.k); fg.zoom(c.k);
   } else { const p = fg.centerAt(); c.x = p.x; c.y = p.y; c.k = fg.zoom(); }  // the visitor has the camera: stay where they leave it
   DIR.raf = requestAnimationFrame(dirLoop);
 }
 function dirStart() {
-  DIR.gen++; DIR.q.length = 0; DIR.on = true; DIR.userAt = 0; DIR.sweep = 0; DIR.ts = 0;
+  DIR.gen++; DIR.q.length = 0; DIR.on = true; DIR.userAt = 0; DIR.sweep = 0; DIR.ts = 0; DIR.comet = null; DIR.at = null;
+  KG.fg.enablePointerInteraction(false);  // while the director leads, no hit-test layer is drawn: every frame costs half
   DIR.cam = {x: 0, y: 0, k: 2.4}; dirShot(null, {fix: {x: 0, y: 0, k: 2.4}});  // the first frame: close on the question
   if (!DIR.raf) DIR.raf = requestAnimationFrame(dirLoop);
 }
@@ -1536,8 +1595,9 @@ async function dirRun() {
   while (DIR.q.length) {
     const [fn, dwell, gen] = DIR.q.shift();
     if (gen !== DIR.gen) continue;
-    try { fn(); } catch (e) { console.error(e); }
-    await new Promise(r => setTimeout(r, dwell * (DIR.q.length > 1 ? .4 : 1)));
+    try { await fn(); } catch (e) { console.error(e); }  // a cue may travel (dirFly) before the next one starts
+    if (gen !== DIR.gen) continue;
+    await new Promise(r => setTimeout(r, dwell * dirPace()));
   }
   DIR.busy = false;
 }
@@ -1566,8 +1626,8 @@ function walkGraph(W, ev, question) {
     dirShot(new Set(KG.nodes.map(n => n.id)), {tau: 780, pad: 40});
     status(uiText('{n} guidelines scored', {n: num(items.length)}));
   }, 1700);
-  if (ev.t === 'guidelines') return dirCue(() => {
-    // the chosen guidelines leave the ring and become the roots of the walk; the camera pushes in on them
+  if (ev.t === 'guidelines') return dirCue(async () => {
+    // the chosen guidelines leave the ring and become the roots of the walk; the runner visits each of them from the question
     ev.kept.forEach((di, k) => {
       const n = KG.byId.get('d' + di); if (!n) return;
       Object.assign(n, {kind: 'concept', hop: 0, label: (ev.titles || [])[k] || '', fx: null, fy: null, born: performance.now() - 600, shock: performance.now() + k * 140});
@@ -1575,10 +1635,11 @@ function walkGraph(W, ev, question) {
     });
     KG.wave = (KG.wave || 0) + 1; ev.kept.forEach(di => { const n = KG.byId.get('d' + di); if (n) n.wave = KG.wave; });
     KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]}); KG.fg.d3ReheatSimulation();
-    dirShot(new Set(['q', ...ev.kept.map(di => 'd' + di)]), {tau: 620, maxK: 1.5, pad: 90});
     status(uiText('{n} guidelines scored · {m} opened', {n: num(W.n.docs), m: ev.kept.length}));
-  }, 1250);
-  if (ev.t === 'scores' && ev.level === 'topics') return dirCue(() => {
+    for (const di of ev.kept.slice(0, 4)) { await dirFly('q', 'd' + di, 560, 1.35); await new Promise(r => setTimeout(r, 140 * dirPace())); }
+    dirShot(new Set(['q', ...ev.kept.map(di => 'd' + di)]), {tau: 620, maxK: 1.4, pad: 110});
+  }, 500);
+  if (ev.t === 'scores' && ev.level === 'topics') return dirCue(async () => {
     // the topics of one guideline: the fitting ones open, the others stay as ghosts around it. a close shot of this guideline
     const sorted = ev.items.slice().sort((a, b) => b[1] - a[1]), best = sorted.slice(0, 3).filter((x, k) => x[1] >= .3 || k === 0), open = new Set(best.map(x => x[0]));
     W.n.topics += ev.items.length;
@@ -1586,10 +1647,11 @@ function walkGraph(W, ev, question) {
     add(sorted.slice(0, 12).map(([ti, p]) => ({id: 't' + ti, kind: 'topic', hop: 2, label: name(ti), text: name(ti), p, ghost: !open.has(ti)})),
         sorted.slice(0, 12).map(([ti]) => ({source: 'd' + ev.doc, target: 't' + ti, role: 'topic', ghost: !open.has(ti)})), 'd' + ev.doc, 2);
     best.forEach(([ti]) => unghost('t' + ti));
-    dirShot(new Set(['d' + ev.doc, ...best.map(([ti]) => 't' + ti)]), {tau: 480, maxK: 1.7, pad: 110});
     status(uiText('{n} topics scored', {n: num(W.n.topics)}));
-  }, 800);
-  if (ev.t === 'scores' && (ev.level === 'statements' || ev.level === 'rerank')) return dirCue(() => {
+    await dirFly(DIR.at && DIR.at.id !== 'd' + ev.doc ? DIR.at.id : 'q', 'd' + ev.doc, 420, 1.6);  // on to this guideline, then into its best topic
+    if (best[0]) await dirFly('d' + ev.doc, 't' + best[0][0], 440, 1.75);
+  }, 260);
+  if (ev.t === 'scores' && (ev.level === 'statements' || ev.level === 'rerank')) return dirCue(async () => {
     if (ev.level === 'statements') W.n.statements += ev.candidates;
     const top = (ev.top || []).slice(0, ev.level === 'rerank' ? 6 : 8);
     // the best candidates, and behind them the next ones the walker read: there for a closer look
@@ -1597,10 +1659,11 @@ function walkGraph(W, ev, question) {
     add(top.map(stmt).concat(ghosts.map(g => ({id: 's' + g.i, kind: 'rec', hop: 3, label: '', text: g.text, p: g.p, ghost: true}))),
         top.map(p => ({source: parent(p), target: 's' + p.i, role: 'statement'})).concat(ghosts.map(g => ({source: parent(g), target: 's' + g.i, role: 'statement', ghost: true}))), null, 3);
     top.forEach(p => unghost('s' + p.i));
-    dirShot(tree(), {tau: 620, maxK: 1.35, pad: 60});
-    status(ev.level === 'rerank' ? uiText('Stricter second check') : uiText('{n} statements, each on its own', {n: num(W.n.statements)}));
+    status(ev.level === 'rerank' ? uiText('Stricter second check') : uiText('{n} statements read', {n: num(W.n.statements)}));
+    if (ev.level === 'statements' && top[0]) { await dirFly(parent(top[0]), 's' + top[0].i, 480, 1.85); await new Promise(r => setTimeout(r, 300 * dirPace())); }  // into the best statement
+    dirShot(tree(), {tau: 760, maxK: 1.3, pad: 110});  // and back out: how much has grown
   }, ev.level === 'rerank' ? 650 : 1000);
-  if (ev.t === 'taken') return dirCue(() => {
+  if (ev.t === 'taken') return dirCue(async () => {
     // the evidence, the UMLS concepts that tie its statements together, and where those concepts occur in guidelines that stayed closed
     const items = ev.items.slice(0, 8), nodes = items.map(stmt), links = items.map(p => ({source: parent(p), target: 's' + p.i, role: 'statement'})), seen = new Map();
     items.forEach(p => (p.concepts || []).forEach(c => { const e = seen.get(c.ci) || {c, of: []}; e.of.push(p.i); seen.set(c.ci, e); }));
@@ -1608,15 +1671,23 @@ function walkGraph(W, ev, question) {
     concepts.forEach(({c, of}) => {
       nodes.push({id: 'u' + c.ci, kind: 'umls', hop: 4, label: (de && c.de) || c.name, text: c.cui});
       of.forEach(i => links.push({source: 's' + i, target: 'u' + c.ci, role: 'concept'}));
-      (c.docs || []).forEach(di => { const d = KG.byId.get('d' + di); if (d && d.kind === 'dot') KG.foreign.push(['u' + c.ci, 'd' + di]); });
+      (c.docs || []).filter(di => (KG.byId.get('d' + di) || {}).kind === 'dot').slice(0, 5).forEach(di => KG.foreign.push(['u' + c.ci, 'd' + di]));
     });
     W.taken = new Set(items.map(p => 's' + p.i));
-    add(nodes, links, null, 4); items.forEach(p => { unghost('s' + p.i); const n = KG.byId.get('s' + p.i); if (n) n.shock = performance.now(); });
-    // push in: close on the evidence, where the unchosen statements around it come into view
-    dirShot(new Set([...W.taken, ...concepts.map(x => 'u' + x.c.ci)]), {tau: 900, maxK: 2.3, pad: 80});
+    add(nodes, links, null, 4); items.forEach(p => { unghost('s' + p.i); const n = KG.byId.get('s' + p.i); if (n) { n.shock = performance.now(); n.lit = true; } });
     status(uiText(items.length === 1 ? '1 statement chosen as evidence' : '{n} statements chosen as evidence', {n: items.length}));
-  }, 2100);
-  if (ev.t === 'writing') return dirCue(() => dirShot(tree(), {tau: 700, maxK: 1.3, pad: 60}), 350);
+    // the runner goes from one piece of evidence to the next, over the UMLS concept two of them share where there is one.
+    // close enough that the statements read and not taken, and the links to closed guidelines, are around the visitor
+    const stops = items.slice(0, 5);
+    for (let k = 0; k < stops.length; k++) {
+      const here = 's' + stops[k].i, prev = k ? 's' + stops[k - 1].i : parent(stops[0]);
+      const shared = k ? concepts.find(x => x.of.includes(stops[k].i) && x.of.includes(stops[k - 1].i)) : null;
+      if (shared) { await dirFly(prev, 'u' + shared.c.ci, 330, 2.05); await dirFly('u' + shared.c.ci, here, 330, 2.05); }
+      else await dirFly(prev, here, 440, 2.05);
+      await new Promise(r => setTimeout(r, 220 * dirPace()));
+    }
+  }, 350);
+  if (ev.t === 'writing') return dirCue(() => dirShot(tree(), {tau: 700, maxK: 1.3, pad: 110}), 350);
   if (ev.t === 'answer') return dirCue(() => {
     // evidence that is no statement of the proposition graph (a graded recommendation, a table row) joins as its own node
     const cited = [...new Set([...String(ev.text || '').matchAll(/\[(\d+)\]/g)].map(m => +m[1]))].map(n => (ev.sources || []).find(s => s.n === n)).filter(Boolean);
@@ -1630,8 +1701,9 @@ function walkGraph(W, ev, question) {
     kgUpdate({nodes: [], links: [], cited: ev.status === 'evidence' ? [...(W.taken || [])].filter(has) : ids, action: 'done'});
     if (!KG.pathIds.size) dirShot(tree(), {tau: 800, maxK: 1.2});
     const m = KG.cited.size, gen = DIR.gen;
-    status((ev.status === 'not covered' ? uiText('Not in the guidelines') : uiText(m === 1 ? '1 statement cited' : '{m} statements cited', {m})) + ' · ' + uiText('zoom in for more'));
-    setTimeout(() => { if (gen === DIR.gen) DIR.on = false; }, 2600);
+    status(ev.status === 'not covered' ? uiText('Not in the guidelines') : uiText(m === 1 ? '1 statement cited' : '{m} statements cited', {m}));
+    kgHint(uiText('Zoom in: the graph holds more than the path'));
+    setTimeout(() => { if (gen === DIR.gen) { DIR.on = false; KG.fg.enablePointerInteraction(true); } }, 2600);  // the graph is the visitor's now: hover, click, zoom
   }, 0);
 }
 // class and level of a walker source in the language of the page

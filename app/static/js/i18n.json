@@ -528,7 +528,9 @@
     "Topic of the guideline": "Thema der Leitlinie",
     "zoom in for more": "hineinzoomen zeigt mehr",
     "Read, not taken": "Gelesen, nicht gewählt",
-    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Stellen Sie Guido eine Frage. Er durchläuft hier den Wissensgraphen der Leitlinien, und beim Hineinzoomen sehen Sie, was um seinen Pfad herum liegt."
+    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Stellen Sie Guido eine Frage. Er durchläuft hier den Wissensgraphen der Leitlinien, und beim Hineinzoomen sehen Sie, was um seinen Pfad herum liegt.",
+    "{n} statements read": "{n} Aussagen gelesen",
+    "Zoom in: the graph holds more than the path": "Hineinzoomen: Der Graph enthält mehr als den Pfad"
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -1058,7 +1060,9 @@
     "Topic of the guideline": "Tema de la guía",
     "zoom in for more": "acerque para ver más",
     "Read, not taken": "Leída, no elegida",
-    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Haga una pregunta a Guido. Aquí recorre el grafo de conocimiento de las guías, y al acercar verá lo que hay alrededor de su camino."
+    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Haga una pregunta a Guido. Aquí recorre el grafo de conocimiento de las guías, y al acercar verá lo que hay alrededor de su camino.",
+    "{n} statements read": "{n} afirmaciones leídas",
+    "Zoom in: the graph holds more than the path": "Acerque: el grafo contiene más que el camino"
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1588,7 +1592,9 @@
     "Topic of the guideline": "Тема руководства",
     "zoom in for more": "приблизьте, чтобы увидеть больше",
     "Read, not taken": "Прочитано, не выбрано",
-    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Задайте Гвидо вопрос. Здесь он проходит по графу знаний руководств, а при приближении видно, что лежит вокруг его пути."
+    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "Задайте Гвидо вопрос. Здесь он проходит по графу знаний руководств, а при приближении видно, что лежит вокруг его пути.",
+    "{n} statements read": "Прочитано утверждений: {n}",
+    "Zoom in: the graph holds more than the path": "Приблизьте: в графе больше, чем этот путь"
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -2118,6 +2124,8 @@
     "Topic of the guideline": "गाइडलाइन का विषय",
     "zoom in for more": "और देखने के लिए ज़ूम करें",
     "Read, not taken": "पढ़ा गया, चुना नहीं गया",
-    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "गीडो से सवाल पूछें। वह यहाँ गाइडलाइन के नॉलेज ग्राफ़ में चलता है, और ज़ूम करने पर उसके रास्ते के आसपास का हिस्सा दिखता है।"
+    "Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.": "गीडो से सवाल पूछें। वह यहाँ गाइडलाइन के नॉलेज ग्राफ़ में चलता है, और ज़ूम करने पर उसके रास्ते के आसपास का हिस्सा दिखता है।",
+    "{n} statements read": "{n} कथन पढ़े गए",
+    "Zoom in: the graph holds more than the path": "ज़ूम करें: ग्राफ़ में रास्ते से ज़्यादा है"
   }
 }

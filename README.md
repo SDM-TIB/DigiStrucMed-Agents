@@ -183,7 +183,11 @@ message, the graph panel stages the walk as a live force graph on a dark ground,
 guideline page with the verbatim quote marked. A director in `app.js` (`DIR`, `walkGraph`) turns the events into
 shots with a led camera: every guideline scored as a dot on a ring around the question under a radar sweep, the chosen
 ones leaving the ring, their topics and statements branching out, UMLS concepts tying statements together, a push-in
-on the evidence, a pull-back to the cited path. Moving nodes leave a short streak (motion blur). What the walker read
+on the evidence, a pull-back to the cited path. A runner, a light with a tail, travels the edges from the question to
+each chosen guideline, into its best topic, into the best statement and from one piece of evidence to the next (over the
+UMLS concept two of them share), and the camera rides along close behind it: the visitor walks the graph with the
+walker. Moving nodes leave a short streak (motion blur). The ring's dots are drawn in one pass and no hit-test layer is
+drawn while the director leads, which keeps a frame at a few milliseconds. What the walker read
 and did not take (further topics, the next fifty statements) and where a concept of the evidence occurs in guidelines
 that stayed closed is in the graph as well and shows on zooming in; the visitor's wheel or drag takes the camera. In a call, Guido shares the same graph on his screen and shows the statements the answer rests
 on with the page of the first one. The Graph Walker page keeps the five-stage path; it can also be embedded

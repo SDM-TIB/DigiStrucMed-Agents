@@ -582,7 +582,14 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 .conv.kg-on .kg-panel.wk{border-left-color:#0b0f20}
 .kg-panel.wk .kg-head{background:linear-gradient(#0b1024 55%,transparent);position:relative;z-index:2}
 .kg-panel.wk .kg-head b{color:#f3f5ff}
+.kg-panel.wk .kg-head>div:first-child{min-width:0;flex:1}
+.kg-panel.wk .kg-head #kg-status{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kg-panel.wk .kg-legend{flex:none;flex-wrap:nowrap;gap:9px}
 .kg-panel.wk .kg-head span,.kg-panel.wk .kg-legend{color:#a7b1da}
+.kg-hint{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:3;padding:7px 14px;border-radius:999px;font-size:12px;color:#dfe5ff;white-space:nowrap;
+  background:rgba(16,22,48,.78);border:1px solid rgba(140,155,255,.28);backdrop-filter:blur(6px);animation:kgHint .5s ease both;transition:opacity 1s;pointer-events:none}
+.kg-hint.gone{opacity:0}
+@keyframes kgHint{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
 .kg-panel.wk .kg-empty{color:#a7b1da}.kg-panel.wk .kg-empty svg{color:#8ea0ff;opacity:.8}
 .kg-panel.wk .lg.c::before{background:#6f86ff}.kg-panel.wk .lg.r::before{background:#3ddc97}
 .walk-cost{margin:6px 0 0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
