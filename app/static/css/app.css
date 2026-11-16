@@ -592,7 +592,6 @@ a.ab-person:hover{border-color:var(--accent);transform:translateY(-2px)}
 @keyframes kgHint{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
 .kg-panel.wk .kg-empty{color:#a7b1da}.kg-panel.wk .kg-empty svg{color:#8ea0ff;opacity:.8}
 .kg-panel.wk .lg.c::before{background:#6f86ff}.kg-panel.wk .lg.r::before{background:#3ddc97}
-.walk-cost{margin:6px 0 0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .srcx-quote .src-meta{display:block;margin:12px 0 4px;font-size:12px;color:var(--muted)}
 .srcx-quote q{display:block;font-style:italic}
 .kg-empty{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;padding:40px;color:var(--muted);pointer-events:none}

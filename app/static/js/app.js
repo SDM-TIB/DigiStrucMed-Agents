@@ -196,6 +196,9 @@ const KG = {fg: null, nodes: [], links: [], byId: new Map(), cited: new Set(), p
 const KG_COL = {concept: '#4b63e0', rec: '#2fa36b', guide: '#8a90a0', page: '#d97706', topic: '#0e9aa7', umls: '#8b5cf6', dot: '#9aa3b8', seedRing: 'rgba(75,99,224,.28)', link: 'rgba(110,118,140,.35)', hot: '#4b63e0'};
 // the scored-but-closed guidelines of a walk are a backdrop: they push nothing and nothing collides with them
 const kgCharge = n => n.kind === 'dot' ? 0 : n.ghost ? -30 : n.kind === 'question' ? -600 : -220;
+// the library's own particles, for the light panel. on the walker's stage they are the constant 0 and kgForeground draws
+// the lights: given any function here, the library does per-link work every frame that took the walk from 300 to 25 frames a second
+const kgParticles = l => l.hot && !l.ghost ? 3 : 0;
 function kgInit() {
   if (KG.fg || !window.ForceGraph) return;
   const el = $('#kg-canvas');
@@ -203,13 +206,13 @@ function kgInit() {
     .nodeId('id').linkSource('source').linkTarget('target')
     .linkColor(l => l.ghost ? `rgba(160,172,230,${(.45 * (KG.g || 0)).toFixed(3)})` : l.hot ? kgC('hot') : kgC('link')).linkWidth(l => l.ghost ? 0.6 : l.hot ? 1.8 : 0.8)
     .linkVisibility(l => !l.ghost || (KG.g || 0) > .03)
-    .linkDirectionalParticles(l => l.hot && !l.ghost ? 3 : 0).linkDirectionalParticleWidth(3).linkDirectionalParticleSpeed(0.011)
+    .linkDirectionalParticles(KG.cine ? 0 : kgParticles).linkDirectionalParticleWidth(3).linkDirectionalParticleSpeed(0.011)
     .linkDirectionalParticleColor(() => kgC('hot'))
     .onRenderFramePre(kgBackdrop)
     .nodeCanvasObject(kgDraw).nodePointerAreaPaint((n, color, ctx) => { if (n.kind === 'dot') return; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, kgR(n) + 3, 0, 2 * Math.PI); ctx.fill(); })
     .linkPointerAreaPaint(() => {})  // links are not hovered: no second drawing of every link for hit detection
     .onRenderFramePost(kgForeground)
-    .linkCurvature(l => l.role === 'concept' ? 0.22 : 0.08)
+    .linkCurvature(l => l.role === 'concept' ? 0.22 : 0)
     .onNodeHover(n => { if (n && (n.kind === 'dot' || (n.ghost && (KG.g || 0) < .3))) n = null; KG.hover = n || null; el.style.cursor = n ? 'pointer' : ''; kgTip(n); })
     .onNodeClick(n => { kgTip(n, true); if (n.kind === 'page' && n.page_id) window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: n.page_id}})); });
   KG.fg.d3Force('charge').strength(kgCharge);
@@ -251,6 +254,19 @@ function kgR(n) {  // the walker's nodes carry their probability p: a better fit
 const kgC = k => (KG.cine ? KG_CINE : KG_COL)[k];
 const KG_CINE = {concept: '#6f86ff', rec: '#3ddc97', guide: '#8a93b8', page: '#ffb454', topic: '#22d3ee', umls: '#b794ff', dot: '#7f8bbd', seedRing: 'rgba(111,134,255,.30)',
   link: 'rgba(150,162,220,.26)', hot: '#93a4ff'};
+// a glow on the dark stage is a sprite: a soft disc drawn once per colour and reused, stretched to the size asked for.
+// a canvas shadow blur looks the same and costs a blur pass per node and frame: with a dozen lit nodes the walk fell to 25 frames a second
+const KG_GLOW = new Map();
+function kgGlow(ctx, x, y, rx, ry, color, alpha) {
+  let s = KG_GLOW.get(color);
+  if (!s) {
+    s = document.createElement('canvas'); s.width = s.height = 128;
+    const c = s.getContext('2d'), g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, color + 'b8'); g.addColorStop(.3, color + '66'); g.addColorStop(.62, color + '1f'); g.addColorStop(1, color + '00');
+    c.fillStyle = g; c.fillRect(0, 0, 128, 128); KG_GLOW.set(color, s);
+  }
+  const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * alpha; ctx.drawImage(s, x - rx, y - ry, rx * 2, ry * 2); ctx.globalAlpha = a0;
+}
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 // before every frame: where the camera is (for motion blur and for what a closer look shows), then the stage behind the graph
 function kgBackdrop(ctx, scale) {
@@ -265,23 +281,19 @@ function kgBackdrop(ctx, scale) {
     ctx.lineWidth = 1 / scale; ctx.strokeStyle = 'rgba(150,165,255,.07)';
     for (const r of [150, 255, 360]) { ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.stroke(); }
   }
-  if (DIR.sweep && ctx.createConicGradient) {  // a radar sweep while every guideline is scored
-    const a = (now - DIR.sweep) / 1000 * 4.4, fade = Math.max(0, 1 - Math.max(0, now - DIR.sweep - 1500) / 700);
-    if (!fade) DIR.sweep = 0;
-    const g = ctx.createConicGradient(a, 0, 0); g.addColorStop(0, 'rgba(130,150,255,0)'); g.addColorStop(.82, 'rgba(130,150,255,0)'); g.addColorStop(1, `rgba(130,150,255,${.30 * fade})`);
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 372, 0, 2 * Math.PI); ctx.fill();
-  }
   // the scored guidelines that stayed closed: a ring of dots, the fainter the worse they fit. drawn here together, four
   // fills for two hundred dots, and one stroke for their streaks while the camera moves
-  const pv = KG.pview || KG.view, moved = Math.hypot((KG.view.x - pv.x) * scale, (KG.view.y - pv.y) * scale) + Math.abs(scale - pv.k) * 260 > 1.6;
+  const pv = KG.pview || KG.view, speed = Math.hypot((KG.view.x - pv.x) * scale, (KG.view.y - pv.y) * scale) + Math.abs(scale - pv.k) * 260, moved = speed > 5;  // px per frame
   const zs = scale > 1 ? Math.pow(scale, -.5) : 1, buckets = [[], [], [], []];
   for (const n of KG.nodes) if (n.kind === 'dot' && now >= n.born) buckets[n.done ? 0 : Math.min(3, 1 + Math.floor((n.p || 0) * 3))].push(n);
   ctx.fillStyle = kgC('dot');
   buckets.forEach((b, i) => { if (!b.length) return; ctx.globalAlpha = [.3, .45, .7, .95][i]; ctx.beginPath();
     for (const n of b) { const r = kgR(n) * zs * Math.min(1, .3 + (now - n.born) / 500); ctx.moveTo(n.x + r, n.y); ctx.arc(n.x, n.y, r, 0, 2 * Math.PI); } ctx.fill(); });
-  if (moved) { ctx.globalAlpha = .2; ctx.strokeStyle = kgC('dot'); ctx.lineWidth = 2.2 * zs; ctx.lineCap = 'round'; ctx.beginPath();
-    for (const b of buckets) for (const n of b) { const ox = ((n.x - pv.x) * pv.k - (n.x - KG.view.x) * scale) / scale, oy = ((n.y - pv.y) * pv.k - (n.y - KG.view.y) * scale) / scale;
-      ctx.moveTo(n.x, n.y); ctx.lineTo(n.x + ox * 1.3, n.y + oy * 1.3); } ctx.stroke(); }
+  if (moved) {  // the ring streaks only in a fast move, short and faint: stars passing, not rain
+    const cap = 22 / scale; ctx.globalAlpha = Math.min(.2, .05 + speed / 260); ctx.strokeStyle = kgC('dot'); ctx.lineWidth = 1.8 * zs; ctx.lineCap = 'round'; ctx.beginPath();
+    for (const b of buckets) for (const n of b) { let ox = ((n.x - pv.x) * pv.k - (n.x - KG.view.x) * scale) / scale, oy = ((n.y - pv.y) * pv.k - (n.y - KG.view.y) * scale) / scale;
+      const l = Math.hypot(ox, oy); if (l > cap) { ox *= cap / l; oy *= cap / l; }
+      ctx.moveTo(n.x, n.y); ctx.lineTo(n.x + ox, n.y + oy); } ctx.stroke(); }
   ctx.globalAlpha = 1; KG.pview = KG.view;
   // links beyond the walk: a UMLS concept of the evidence also occurs in guidelines that stayed closed. faint from afar, clear up close
   const fa = .035 + .36 * KG.g;
@@ -307,9 +319,9 @@ function kgDraw(n, ctx, scale) {
     const fs = 13 / scale, txt = n.label.length > 46 ? n.label.slice(0, 45) + '…' : n.label;
     ctx.font = `600 ${fs}px Segoe UI, system-ui, sans-serif`;
     const w = ctx.measureText(txt).width + 22 / scale, h = fs * 2.2;
-    if (cine) { ctx.shadowColor = 'rgba(140,160,255,.9)'; ctx.shadowBlur = 22 + 6 * Math.sin(now / 520); }
+    if (cine) { const p = 1 + .08 * Math.sin(now / 520); kgGlow(ctx, n.x, n.y, (w / 2 + 34 / scale) * p, (h / 2 + 30 / scale) * p, '#8ca0ff', .95); }
     ctx.fillStyle = cine ? '#f4f6ff' : '#1d2233'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - h / 2, w, h, h / 2) : ctx.rect(n.x - w / 2, n.y - h / 2, w, h); ctx.fill();
-    ctx.shadowBlur = 0; ctx.fillStyle = cine ? '#10152c' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, n.x, n.y + 0.5 / scale);
+    ctx.fillStyle = cine ? '#10152c' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, n.x, n.y + 0.5 / scale);
     (KG.chips || (KG.chips = [])).push([(n.x - w / 2) * scale, (n.y - h / 2) * scale, w * scale, h * scale]);
     return;
   }
@@ -317,9 +329,9 @@ function kgDraw(n, ctx, scale) {
   if (!born) return;
   const pop = born < 1 ? 1 + .35 * Math.sin(born * Math.PI) : 1;  // a node arrives a little too large and settles
   const r = kgR(n) * (0.4 + 0.6 * born) * pop * (cine && scale > 1 ? Math.pow(scale, -.5) : 1), col = kgC(n.kind) || kgC('concept');
-  const blur = (alpha, width) => { if (!streak) return; const [dx, dy, a] = streak, g = ctx.createLinearGradient(n.x, n.y, n.x - dx * 1.5, n.y - dy * 1.5);
-    g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = alpha * a * .6; ctx.strokeStyle = g; ctx.lineWidth = width; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(n.x - dx * 1.5, n.y - dy * 1.5); ctx.stroke(); };
+  const blur = (alpha, width) => { if (!streak) return; const [dx, dy, a] = streak; ctx.strokeStyle = col; ctx.lineCap = 'round';
+    ctx.globalAlpha = alpha * a * .34; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(n.x - dx * .8, n.y - dy * .8); ctx.stroke();
+    ctx.globalAlpha = alpha * a * .16; ctx.lineWidth = width * .6; ctx.beginPath(); ctx.moveTo(n.x - dx * .8, n.y - dy * .8); ctx.lineTo(n.x - dx * 1.6, n.y - dy * 1.6); ctx.stroke(); };
   if (n.kind === 'dot') return;  // the ring of scored guidelines is drawn in one go by kgBackdrop
   if (n.ghost) {  // read and not taken: there, but only for those who look closely
     const a = born * KG.g * (KG.hover === n ? 1 : .75); if (a < .02) return;
@@ -336,10 +348,11 @@ function kgDraw(n, ctx, scale) {
     ctx.beginPath(); ctx.arc(n.x, n.y, r + 4 + 46 * t * (2 - t), 0, 2 * Math.PI); ctx.stroke(); ctx.globalAlpha = born * (dim ? 0.18 : 1);
   }
   if (n.hop === 0 && n.kind === 'concept') { ctx.fillStyle = kgC('seedRing'); ctx.beginPath(); ctx.arc(n.x, n.y, r + 6 + 2 * Math.sin(now / 380), 0, 2 * Math.PI); ctx.fill(); }
-  if (cited) { ctx.strokeStyle = '#f2b136'; ctx.lineWidth = 3 / scale; if (cine) { ctx.shadowColor = '#f2b136'; ctx.shadowBlur = 12 + 5 * Math.sin(now / 430); }
-    ctx.beginPath(); ctx.arc(n.x, n.y, r + 3.5, 0, 2 * Math.PI); ctx.stroke(); ctx.shadowBlur = 0; }
+  if (cited) { if (cine) { const g = (r + 3.5) * (2.9 + .35 * Math.sin(now / 430)); kgGlow(ctx, n.x, n.y, g, g, '#f2b136', 1); }
+    ctx.strokeStyle = '#f2b136'; ctx.lineWidth = 3 / scale; ctx.beginPath(); ctx.arc(n.x, n.y, r + 3.5, 0, 2 * Math.PI); ctx.stroke(); }
   const lit = cited || n.hop === 0 || n.lit;  // a glow in the node's own colour, for the roots, the evidence and the cited
-  if (!dim && born >= 1 && (lit || !cine)) { ctx.shadowColor = col; ctx.shadowBlur = cine ? 24 : lit ? 14 : 6; }
+  if (cine) { if (!dim && born >= 1 && lit && !cited) kgGlow(ctx, n.x, n.y, r * 3.6, r * 3.6, col, 1); }
+  else if (!dim && born >= 1) { ctx.shadowColor = col; ctx.shadowBlur = lit ? 14 : 6; }  // the light panel of the other engines: few nodes, a real shadow
   ctx.fillStyle = col; ctx.beginPath();
   if (n.kind === 'rec') { const w = r * 1.7; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - w / 2, w, w, 2) : ctx.rect(n.x - w / 2, n.y - w / 2, w, w); }
   else if (n.kind === 'page') { const w = r * 1.4, h = r * 1.9; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - h / 2, w, h, 1.5) : ctx.rect(n.x - w / 2, n.y - h / 2, w, h); }  // a sheet: a guideline page
@@ -1516,6 +1529,7 @@ function loadGuidoEngine() {
 function walkLegend() {
   const on = guidoEngine === 'walker', set = (sel, text) => { const e = document.querySelector(sel); if (e) e.textContent = uiText(text); };
   $('#kg-panel').classList.toggle('wk', on); KG.cine = on;
+  if (KG.fg) KG.fg.linkDirectionalParticles(on ? 0 : kgParticles);
   set('.kg-legend .lg.c', on ? 'Guideline' : 'Concept'); set('.kg-legend .lg.r', on ? 'Statement' : 'Recommendation');
   set('.kg-legend .lg.p', on ? 'Topic' : 'Page'); set('.kg-legend .lg.g', on ? 'UMLS concept' : 'Guideline');
   if (on) { const e = $('#kg-empty p'); if (e) e.textContent = uiText('Ask Guido a question. He walks the knowledge graph of the guidelines here, and you can zoom in to see what lies around his path.'); }
@@ -1525,7 +1539,7 @@ function walkLegend() {
    part of the way there (so it eases in and out and follows nodes that still move), with a slow drift on top. cues
    queue up and play one after the other, faster when the walk is ahead of the picture. the visitor's own wheel or
    drag takes the camera for a few seconds, and for good once the walk has ended */
-const DIR = {on: false, gen: 0, q: [], busy: false, ids: null, fix: null, maxK: 2, tau: 520, pad: 70, userAt: 0, sweep: 0, raf: 0, ts: 0, cam: {x: 0, y: 0, k: 1}};
+const DIR = {on: false, gen: 0, q: [], busy: false, ids: null, fix: null, maxK: 2, tau: 520, pad: 70, userAt: 0, raf: 0, ts: 0, cam: {x: 0, y: 0, k: 1}};
 function kgHint(text) {
   const host = $('#kg-canvas').parentNode; host.querySelector('.kg-hint')?.remove();
   if (!text) return;
@@ -1547,7 +1561,18 @@ function dirFly(aId, bId, ms, k) {
 function dirCometAt(c, now) { const p = dirEase(Math.min(1, (now - c.t0) / c.dur)); return [c.a.x + (c.b.x - c.a.x) * p, c.a.y + (c.b.y - c.a.y) * p, p]; }
 // after every frame, over the graph: the runner, a bright head with a tail along the way it came
 function kgForeground(ctx, scale) {
-  const c = DIR.comet; if (!c || !KG.cine) return;
+  if (!KG.cine) return;
+  // lights running along the active links, towards the node the walk reached: all of them in one path. the library's
+  // own particles are drawn one by one and took most of a frame once a hundred links were active
+  const now = performance.now(), ph = now / 1400, pr = 2.1 / Math.sqrt(Math.max(1, scale));
+  ctx.fillStyle = kgC('hot'); ctx.globalAlpha = .9; ctx.beginPath();
+  for (const l of KG.links) {
+    if (!l.hot || l.ghost) continue;
+    const a = l.source, b = l.target; if (a.x == null || b.x == null) continue;
+    for (let k = 0; k < 2; k++) { const t = (ph + k / 2 + (l.index || 0) * .37) % 1, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t; ctx.moveTo(x + pr, y); ctx.arc(x, y, pr, 0, 2 * Math.PI); }
+  }
+  ctx.fill(); ctx.globalAlpha = 1;
+  const c = DIR.comet; if (!c) return;
   const [x, y, p] = dirCometAt(c, performance.now()), dx = c.b.x - c.a.x, dy = c.b.y - c.a.y, len = Math.hypot(dx, dy) || 1, tail = Math.min(len * p, 110 / scale);
   const tx = x - dx / len * tail, ty = y - dy / len * tail, g = ctx.createLinearGradient(x, y, tx, ty);
   g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.25, 'rgba(160,180,255,.55)'); g.addColorStop(1, 'rgba(120,140,255,0)');
@@ -1584,7 +1609,7 @@ function dirLoop(ts) {
   DIR.raf = requestAnimationFrame(dirLoop);
 }
 function dirStart() {
-  DIR.gen++; DIR.q.length = 0; DIR.on = true; DIR.userAt = 0; DIR.sweep = 0; DIR.ts = 0; DIR.comet = null; DIR.at = null;
+  DIR.gen++; DIR.q.length = 0; DIR.on = true; DIR.userAt = 0; DIR.ts = 0; DIR.comet = null; DIR.at = null;
   KG.fg.enablePointerInteraction(false);  // while the director leads, no hit-test layer is drawn: every frame costs half
   DIR.cam = {x: 0, y: 0, k: 2.4}; dirShot(null, {fix: {x: 0, y: 0, k: 2.4}});  // the first frame: close on the question
   if (!DIR.raf) DIR.raf = requestAnimationFrame(dirLoop);
@@ -1622,9 +1647,9 @@ function walkGraph(W, ev, question) {
     const items = ev.items.slice().sort((a, b) => b[1] - a[1]); W.n.docs = items.length;
     add(items.map(([di, p], k) => { const a = k * 2.399963, r = 150 + 210 * Math.sqrt(k / items.length);
       return {id: 'd' + di, kind: 'dot', hop: 1, label: '', p, tw: k, fx: Math.cos(a) * r, fy: Math.sin(a) * r}; }), [], null, 1);
-    KG.ring = true; DIR.sweep = performance.now();
+    KG.ring = true;
     dirShot(new Set(KG.nodes.map(n => n.id)), {tau: 780, pad: 40});
-    status(uiText('{n} guidelines scored', {n: num(items.length)}));
+    status(uiText('{n} guideline nodes around your question', {n: num(items.length)}));
   }, 1700);
   if (ev.t === 'guidelines') return dirCue(async () => {
     // the chosen guidelines leave the ring and become the roots of the walk; the runner visits each of them from the question
@@ -1635,7 +1660,7 @@ function walkGraph(W, ev, question) {
     });
     KG.wave = (KG.wave || 0) + 1; ev.kept.forEach(di => { const n = KG.byId.get('d' + di); if (n) n.wave = KG.wave; });
     KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]}); KG.fg.d3ReheatSimulation();
-    status(uiText('{n} guidelines scored · {m} opened', {n: num(W.n.docs), m: ev.kept.length}));
+    status(uiText(ev.kept.length === 1 ? '1 guideline reached' : '{m} guidelines reached', {m: ev.kept.length}));
     for (const di of ev.kept.slice(0, 4)) { await dirFly('q', 'd' + di, 560, 1.35); await new Promise(r => setTimeout(r, 140 * dirPace())); }
     dirShot(new Set(['q', ...ev.kept.map(di => 'd' + di)]), {tau: 620, maxK: 1.4, pad: 110});
   }, 500);
@@ -1647,7 +1672,7 @@ function walkGraph(W, ev, question) {
     add(sorted.slice(0, 12).map(([ti, p]) => ({id: 't' + ti, kind: 'topic', hop: 2, label: name(ti), text: name(ti), p, ghost: !open.has(ti)})),
         sorted.slice(0, 12).map(([ti]) => ({source: 'd' + ev.doc, target: 't' + ti, role: 'topic', ghost: !open.has(ti)})), 'd' + ev.doc, 2);
     best.forEach(([ti]) => unghost('t' + ti));
-    status(uiText('{n} topics scored', {n: num(W.n.topics)}));
+    status(uiText('Into the topics'));
     await dirFly(DIR.at && DIR.at.id !== 'd' + ev.doc ? DIR.at.id : 'q', 'd' + ev.doc, 420, 1.6);  // on to this guideline, then into its best topic
     if (best[0]) await dirFly('d' + ev.doc, 't' + best[0][0], 440, 1.75);
   }, 260);
@@ -1659,7 +1684,7 @@ function walkGraph(W, ev, question) {
     add(top.map(stmt).concat(ghosts.map(g => ({id: 's' + g.i, kind: 'rec', hop: 3, label: '', text: g.text, p: g.p, ghost: true}))),
         top.map(p => ({source: parent(p), target: 's' + p.i, role: 'statement'})).concat(ghosts.map(g => ({source: parent(g), target: 's' + g.i, role: 'statement', ghost: true}))), null, 3);
     top.forEach(p => unghost('s' + p.i));
-    status(ev.level === 'rerank' ? uiText('Stricter second check') : uiText('{n} statements read', {n: num(W.n.statements)}));
+    status(ev.level === 'rerank' ? uiText('Closing in') : uiText('{n} statement nodes in reach', {n: num(W.n.statements)}));
     if (ev.level === 'statements' && top[0]) { await dirFly(parent(top[0]), 's' + top[0].i, 480, 1.85); await new Promise(r => setTimeout(r, 300 * dirPace())); }  // into the best statement
     dirShot(tree(), {tau: 760, maxK: 1.3, pad: 110});  // and back out: how much has grown
   }, ev.level === 'rerank' ? 650 : 1000);
@@ -1675,7 +1700,7 @@ function walkGraph(W, ev, question) {
     });
     W.taken = new Set(items.map(p => 's' + p.i));
     add(nodes, links, null, 4); items.forEach(p => { unghost('s' + p.i); const n = KG.byId.get('s' + p.i); if (n) { n.shock = performance.now(); n.lit = true; } });
-    status(uiText(items.length === 1 ? '1 statement chosen as evidence' : '{n} statements chosen as evidence', {n: items.length}));
+    status(uiText(items.length === 1 ? '1 statement on the path' : '{n} statements on the path', {n: items.length}));
     // the runner goes from one piece of evidence to the next, over the UMLS concept two of them share where there is one.
     // close enough that the statements read and not taken, and the links to closed guidelines, are around the visitor
     const stops = items.slice(0, 5);
@@ -1708,28 +1733,36 @@ function walkGraph(W, ev, question) {
 }
 // class and level of a walker source in the language of the page
 const walkGrade = s => [s.cor ? uiText('Class {c}', {c: s.cor}) : '', s.loe ? uiText('Level of evidence {l}', {l: s.loe}) : ''].filter(Boolean).join(' · ');
-// one event of the walk as a step line of the message. the lines have their own box above st.steps: that one belongs to
-// the React island (ui/src/luna-ui.tsx), which redraws it when the answer starts and would drop plain lines
+// one event of the walk as a step line of the message: the walk told as a way through the graph, with the names of the
+// nodes it passes (guideline -> topic -> statements -> the UMLS concepts that tie the evidence together). the lines have
+// their own box above st.steps: that one belongs to the React island (ui/src/luna-ui.tsx), which redraws it when the
+// answer starts and would drop plain lines
 function walkStep(st, ev) {
-  const w = st.walk, num = n => Number(n).toLocaleString(careLocale());
+  const w = st.walk, de = care.lang === 'de', num = n => Number(n).toLocaleString(careLocale());
   const line = (kind, html) => step(st, kind, html, true, w.steps);
-  const title = t => `<span class="q">${esc(t.length > 46 ? t.slice(0, 45) + '…' : t)}</span>`;
-  if (ev.t === 'loading') { if (!w.loading) { w.loading = true; line('search', uiText('Loading the knowledge graph')); } return; }
-  if (ev.t === 'start') return line('search', uiText('Reading the question'));
-  if (ev.t === 'scores' && ev.level === 'guidelines') return line('search', uiText('Scored all {n} guidelines: where can the answer be?', {n: num(ev.items.length)}));
-  if (ev.t === 'guidelines') return line('read', uiText(ev.kept.length === 1 ? '1 guideline fits: {names}' : '{n} guidelines fit: {names}',
-    {n: ev.kept.length, names: (ev.titles || []).slice(0, 3).map(title).join(', ') + (ev.kept.length > 3 ? ' +' + (ev.kept.length - 3) : '')}));
-  if (ev.t === 'scores' && ev.level === 'statements') { w.statements += ev.candidates; return line('read', uiText('Read {n} statements of these guidelines, each on its own', {n: num(w.statements)})); }
-  if (ev.t === 'scores' && ev.level === 'rerank') return line('check', uiText('Stricter second check of the best {n} statements', {n: num(ev.items.length)}));
-  if (ev.t === 'taken') return line('check', uiText(ev.items.length === 1 ? '1 statement chosen as evidence, with its page and original quote' : '{n} statements chosen as evidence, each with its page and original quote', {n: ev.items.length}));
-  if (ev.t === 'writing') return line('check', uiText('Only now a language model writes, from this evidence alone'));
-  if (ev.t === 'done') w.cost = ev;
-}
-function walkCost(st) {
-  const c = st.walk && st.walk.cost; if (!c || !st.raw.trim()) return;
-  const f = (n, d) => Number(n).toLocaleString(careLocale(), {minimumFractionDigits: d, maximumFractionDigits: d});
-  const text = uiText('Answered in {s} s for {c} $: {d} decisions by scoring models, language-model calls: {l}', {s: f(c.seconds, 1), c: f(c.usd, 4), d: f(c.decision_calls, 0), l: c.language_model_calls});
-  st.el.querySelector('.refs').insertAdjacentHTML('afterend', `<p class="walk-cost">${esc(text)}</p>`);
+  const node = (t, n = 44) => `<span class="q">${esc((t = String(t || '')).length > n ? t.slice(0, n - 1) + '…' : t)}</span>`;
+  if (ev.t === 'loading') { if (!w.loading) { w.loading = true; line('search', uiText('Opening the knowledge graph')); } return; }
+  if (ev.t === 'start') return line('search', uiText('Entering the knowledge graph at your question'));
+  if (ev.t === 'guidelines') {
+    w.titles = {}; ev.kept.forEach((di, k) => { w.titles[di] = (ev.titles || [])[k] || ''; });
+    return line('search', uiText(ev.kept.length === 1 ? 'An edge leads to the guideline {names}' : 'Edges lead to {n} guidelines: {names}',
+      {n: ev.kept.length, names: (ev.titles || []).slice(0, 3).map(t => node(t)).join(', ') + (ev.kept.length > 3 ? ' +' + (ev.kept.length - 3) : '')}));
+  }
+  if (ev.t === 'scores' && ev.level === 'topics') {  // one hop per guideline: into its nearest topic
+    const best = ev.items.slice().sort((x, y) => y[1] - x[1])[0], nm = best && (ev.names || {})[best[0]];
+    if (!nm) return;
+    return line('search', `${node((w.titles || {})[ev.doc], 34)} → ${node((de && nm[1]) || nm[0], 40)}`);
+  }
+  if (ev.t === 'scores' && ev.level === 'statements') { w.statements += ev.candidates; return line('read', uiText('{n} statement nodes hang below these topics', {n: num(w.statements)})); }
+  if (ev.t === 'scores' && ev.level === 'rerank') return line('read', uiText('Closing in on the statements that say it themselves'));
+  if (ev.t === 'taken') {
+    const seen = new Map(); ev.items.forEach(p => (p.concepts || []).forEach(c => seen.set(c.ci, [(seen.get(c.ci) || [0])[0] + 1, (de && c.de) || c.name])));
+    const shared = [...seen.values()].sort((x, y) => y[0] - x[0]).slice(0, 3).map(x => node(x[1], 30)).join(', ');
+    if (!ev.items.length) return line('check', uiText('No statement node lies on a path to your question'));
+    return line('check', uiText(ev.items.length === 1 ? 'The path ends at 1 statement node' : 'The path runs through {n} statement nodes', {n: ev.items.length})
+      + (shared ? ' · ' + uiText('tied together by {names}', {names: shared}) : ''));
+  }
+  if (ev.t === 'writing') return line('check', uiText('Reading the answer off the path'));
 }
 // Guido's traversal is computed in milliseconds; the timeline replays it at a pace the audience can follow.
 // Every narrated step is derived from the real graph events (nodes, relations, recommendations) of this answer.
@@ -1876,7 +1909,6 @@ async function sendChat(text) {
     finishRefs(st);
     st.el.lang = langOf(st.raw); care.setLang(st.el.lang);  // the answer is longer than the question, so its language is the safer guess
     if (st.raw.trim()) st.el.querySelector('.refs').insertAdjacentHTML('afterend', `<p class="care-note">${esc(care.t(a === AGENTS.lino ? 'noteLino' : 'note'))}</p>`);
-    walkCost(st);
     announce(`${a.name}: ${st.answer.textContent.slice(0, 900)}`);
     if (a === AGENTS.lino) renderStoryboard(st);
     if (a !== AGENTS.lino) markUncited(st);
@@ -2282,36 +2314,36 @@ function langOf(text) {
 const ruPlural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? few : many;
 const SAY = {
   en: {and: 'and',
-    wDocs: n => `I'm checking all ${n} guidelines for where the answer can be.`, wRead: n => `Now I'm reading ${n} single statements in the ones that fit.`,
-    wTaken: n => n > 1 ? `${n} statements hold up. Each is a sentence from a guideline, with its page.` : 'One statement holds up. It is a sentence from a guideline, with its page.',
-    wNone: 'No statement in the guidelines holds up for this.',
+    wDocs: n => `From your question I step into the graph of ${n} guidelines.`, wRead: n => `I follow the edges down to the statements, ${n} of them lie in reach.`,
+    wTaken: n => n > 1 ? `My path runs through ${n} statements. Each is a sentence from a guideline, with its page.` : 'My path ends at one statement, a sentence from a guideline, with its page.',
+    wNone: 'No path in the graph leads to a statement about this.',
     share: 'Let me share my screen and walk you through our knowledge graph.', again: 'Let me look at the graph again.',
     seed: x => `I'm starting from ${x}.`, recs: (n, l) => `Here's something: ${n} recommendation${n > 1 ? 's' : ''} around ${l}. Let me follow them.`,
     links: l => `Let me follow the links of ${l}.`, hop2: x => `Two steps out now, I'm at ${x}.`, expand: l => `Let me expand ${l} a bit further.`,
     match: n => `${n} recommendation texts match directly.`, rank: n => `Spreading out through the graph, ${n} recommendations come up close to your question.`,
     select: 'I found what I need. Let me pick the recommendations that answer your question.', table: 'Look, here is the recommendation in the original guideline table.'},
   de: {and: 'und',
-    wDocs: n => `Ich prüfe alle ${n} Leitlinien darauf, wo die Antwort stehen kann.`, wRead: n => `Jetzt lese ich ${n} einzelne Aussagen in den passenden Leitlinien.`,
-    wTaken: n => n > 1 ? `${n} Aussagen bestehen die Prüfung. Jede ist ein Satz aus einer Leitlinie, mit Seite.` : 'Eine Aussage besteht die Prüfung. Sie ist ein Satz aus einer Leitlinie, mit Seite.',
-    wNone: 'Dazu besteht keine Aussage der Leitlinien die Prüfung.',
+    wDocs: n => `Von Ihrer Frage aus gehe ich in den Graphen der ${n} Leitlinien.`, wRead: n => `Ich folge den Kanten hinunter zu den Aussagen, ${n} liegen in Reichweite.`,
+    wTaken: n => n > 1 ? `Mein Pfad führt durch ${n} Aussagen. Jede ist ein Satz aus einer Leitlinie, mit Seite.` : 'Mein Pfad endet bei einer Aussage, einem Satz aus einer Leitlinie, mit Seite.',
+    wNone: 'Im Graphen führt kein Pfad zu einer Aussage dazu.',
     share: 'Ich teile kurz meinen Bildschirm und gehe mit Ihnen durch unseren Wissensgraphen.', again: 'Ich schaue noch einmal in den Graphen.',
     seed: x => `Ich starte bei ${x}.`, recs: (n, l) => `Hier ist etwas: ${n} ${n > 1 ? 'Empfehlungen' : 'Empfehlung'} rund um ${l}. Denen folge ich jetzt.`,
     links: l => `Ich folge den Verbindungen von ${l}.`, hop2: x => `Zwei Schritte weiter bin ich jetzt bei ${x}.`, expand: l => `Ich schaue mir ${l} noch genauer an.`,
     match: n => `${n} Empfehlungstexte passen direkt.`, rank: n => `Ich breite mich im Graphen aus, ${n} Empfehlungen liegen nah an Ihrer Frage.`,
     select: 'Ich habe, was ich brauche. Jetzt wähle ich die Empfehlungen aus, die Ihre Frage beantworten.', table: 'Schauen Sie, hier ist die Empfehlung in der originalen Leitlinientabelle.'},
   es: {and: 'y',
-    wDocs: n => `Reviso las ${n} guías para ver dónde puede estar la respuesta.`, wRead: n => `Ahora leo ${n} afirmaciones, una por una, en las guías que encajan.`,
-    wTaken: n => n > 1 ? `${n} afirmaciones superan la comprobación. Cada una es una frase de una guía, con su página.` : 'Una afirmación supera la comprobación. Es una frase de una guía, con su página.',
-    wNone: 'Ninguna afirmación de las guías supera la comprobación para esto.',
+    wDocs: n => `Desde su pregunta entro en el grafo de las ${n} guías.`, wRead: n => `Sigo las aristas hasta las afirmaciones, ${n} quedan al alcance.`,
+    wTaken: n => n > 1 ? `Mi camino pasa por ${n} afirmaciones. Cada una es una frase de una guía, con su página.` : 'Mi camino termina en una afirmación, una frase de una guía, con su página.',
+    wNone: 'Ningún camino del grafo lleva a una afirmación sobre esto.',
     share: 'Comparto mi pantalla y le muestro nuestro grafo de conocimiento.', again: 'Vuelvo a mirar el grafo.',
     seed: x => `Empiezo por ${x}.`, recs: (n, l) => `Aquí hay algo: ${n} ${n > 1 ? 'recomendaciones' : 'recomendación'} sobre ${l}. Las sigo.`,
     links: l => `Sigo las conexiones de ${l}.`, hop2: x => `Dos pasos más allá, ahora estoy en ${x}.`, expand: l => `Miro ${l} con más detalle.`,
     match: n => `${n} textos de recomendaciones coinciden directamente.`, rank: n => `Recorriendo el grafo, ${n} recomendaciones quedan cerca de su pregunta.`,
     select: 'Ya tengo lo que necesito. Ahora elijo las recomendaciones que responden a su pregunta.', table: 'Mire, aquí está la recomendación en la tabla original de la guía.'},
   ru: {and: 'и',
-    wDocs: n => `Проверяю все руководства, их ${n}: где может быть ответ.`, wRead: n => `Теперь читаю отдельные утверждения в подходящих руководствах, их ${n}.`,
-    wTaken: n => n > 1 ? `Проверку прошли утверждения, их ${n}. Каждое — это предложение из руководства, со страницей.` : 'Проверку прошло одно утверждение. Это предложение из руководства, со страницей.',
-    wNone: 'Ни одно утверждение из руководств не прошло проверку по этому вопросу.',
+    wDocs: n => `От вашего вопроса я вхожу в граф руководств, их ${n}.`, wRead: n => `Иду по рёбрам к утверждениям, в пределах досягаемости их ${n}.`,
+    wTaken: n => n > 1 ? `Мой путь проходит через утверждения, их ${n}. Каждое — это предложение из руководства, со страницей.` : 'Мой путь заканчивается на одном утверждении, предложении из руководства, со страницей.',
+    wNone: 'В графе нет пути к утверждению об этом.',
     share: 'Сейчас я покажу свой экран и проведу вас по нашему графу знаний.', again: 'Давайте ещё раз посмотрим на граф.',
     seed: x => `Начинаю с ${x}.`, recs: (n, l) => `Вот что я нашёл: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} вокруг ${l}. Иду по ним дальше.`,
     links: l => `Иду по связям ${l}.`, hop2: x => `Два шага дальше, я сейчас у ${x}.`, expand: l => `Посмотрю на ${l} подробнее.`,
@@ -2319,9 +2351,9 @@ const SAY = {
     rank: n => `Расхожусь по графу: ${n} ${ruPlural(n, 'рекомендация', 'рекомендации', 'рекомендаций')} близко к вашему вопросу.`,
     select: 'Я нашёл то, что нужно. Сейчас выберу рекомендации, которые отвечают на ваш вопрос.', table: 'Смотрите, вот эта рекомендация в оригинальной таблице руководства.'},
   hi: {and: 'और',
-    wDocs: n => `मैं सभी ${n} गाइडलाइन जाँच रहा हूँ कि जवाब कहाँ हो सकता है।`, wRead: n => `अब मैं उपयुक्त गाइडलाइन में ${n} अलग-अलग कथन पढ़ रहा हूँ।`,
-    wTaken: n => n > 1 ? `${n} कथन जाँच में खरे उतरे। हर एक किसी गाइडलाइन का वाक्य है, पेज के साथ।` : 'एक कथन जाँच में खरा उतरा। यह किसी गाइडलाइन का वाक्य है, पेज के साथ।',
-    wNone: 'इस बारे में गाइडलाइन का कोई कथन जाँच में खरा नहीं उतरा।',
+    wDocs: n => `आपके सवाल से मैं ${n} गाइडलाइन के ग्राफ़ में उतर रहा हूँ।`, wRead: n => `मैं किनारों के साथ कथनों तक जा रहा हूँ, ${n} पहुँच में हैं।`,
+    wTaken: n => n > 1 ? `मेरा रास्ता ${n} कथनों से होकर जाता है। हर एक किसी गाइडलाइन का वाक्य है, पेज के साथ।` : 'मेरा रास्ता एक कथन पर ख़त्म होता है, जो किसी गाइडलाइन का वाक्य है, पेज के साथ।',
+    wNone: 'ग्राफ़ में इस बारे में किसी कथन तक कोई रास्ता नहीं जाता।',
     share: 'मैं अपनी स्क्रीन शेयर करता हूँ और आपको हमारे नॉलेज ग्राफ़ से होकर ले चलता हूँ।', again: 'चलिए, ग्राफ़ को एक बार फिर देखते हैं।',
     seed: x => `मैं ${x} से शुरू कर रहा हूँ।`, recs: (n, l) => `यह मिला: ${l} से जुड़ी ${n} ${n > 1 ? 'सिफ़ारिशें' : 'सिफ़ारिश'}। मैं इन्हें आगे देखता हूँ।`,
     links: l => `मैं ${l} के कनेक्शन देख रहा हूँ।`, hop2: x => `अब दो कदम आगे, मैं ${x} पर हूँ।`, expand: l => `मैं ${l} को थोड़ा और विस्तार से देखता हूँ।`,
