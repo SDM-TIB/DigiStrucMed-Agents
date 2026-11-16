@@ -16,6 +16,7 @@ guido.run falls back to the agent it ran before.
 """
 import json
 import threading
+import time
 
 import config
 import corpus
@@ -36,6 +37,36 @@ ROUTE = (
   "`reply` answers it in the user's language in one or two sentences, formally addressed (German 'Sie'): Guido is an "
   "AI assistant from TIB who answers by walking a knowledge graph of cardiology guidelines and shows the source of "
   "every statement; then invite a question. `question` is empty.")
+
+
+WARM_QUESTION = 'What is the recommended target dose of sacubitril/valsartan in heart failure with reduced ejection fraction?'
+WARM_FOLLOW_UP = [{'role': 'user', 'text': 'Welche Empfehlungsklasse haben SGLT2-Hemmer bei HFrEF?'},
+                  {'role': 'assistant', 'text': 'Klasse 1, Evidenzgrad A [1].'}, {'role': 'user', 'text': 'Und bei HFmrEF?'}]
+
+
+def warm(log=print):
+  """when an instance starts with Guido on the walker: one routing call and one complete walk in the background, each
+  with its outcome in the service log. the first visitor then meets loaded data, open connections and a filled
+  query cache, and the log says whether the engine works here and how long a walk takes (about two cents per start)"""
+  def go():
+    try:
+      t0 = time.time()
+      out = _ask_route(WARM_FOLLOW_UP)
+      ok = out.get('kind') == 'guideline' and 'hfmref' in str(out.get('question') or '').lower() and len(str(out.get('question'))) > len('Und bei HFmrEF?')
+      log(f"guido walker start check: routing {'ok' if ok else 'unexpected: ' + json.dumps(out, ensure_ascii=False)[:200]} in {time.time() - t0:.1f} s", flush=True)
+    except Exception as e:  # the walk then takes a follow-up as typed
+      log(f'guido walker start check: routing failed ({type(e).__name__}: {str(e)[:160]})', flush=True)
+    try:
+      t0, status, sources = time.time(), None, 0
+      for ev in run([{'role': 'user', 'text': WARM_QUESTION}], via='call', writer=True):
+        if ev['type'] == 'walker' and ev['ev'].get('t') == 'answer':
+          status = ev['ev'].get('status')
+        if ev['type'] == 'sources':
+          sources = sum(1 for s in ev['items'] if s.get('page_id'))
+      log(f'guido walker start check: walk {status}, {sources} sources on corpus pages, {time.time() - t0:.1f} s including loading', flush=True)
+    except Exception as e:
+      log(f'guido walker start check: walk FAILED ({type(e).__name__}: {str(e)[:300]}); Guido answers with the fallback engine', flush=True)
+  threading.Thread(target=go, daemon=True).start()
 
 
 class Unavailable(Exception):

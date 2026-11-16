@@ -367,4 +367,7 @@ if __name__ == '__main__':
   page_search.warm()  # wakes the embedding service
   if walkerchat.available():
     walkerchat.warm()  # the Graph Walker loads its graph and index in the background
+    if guido.engine() == 'walker':
+      import guidowalker
+      guidowalker.warm()  # one routing call and one walk, their outcome and duration in the log
   ThreadingHTTPServer(('0.0.0.0', config.PORT), Handler).serve_forever()

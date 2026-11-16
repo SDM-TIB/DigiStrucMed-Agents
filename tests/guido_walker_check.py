@@ -141,6 +141,28 @@ gw.walkerchat.available = lambda: False
 evs, err = collect(gw.run(first, walk=walk, router=fixed('q')))
 check('no data pack: Unavailable before anything is shown', err == 'walker data not installed' and evs == [])
 
+# ---- the start check logs what works, and never raises
+lines = []
+gw.walkerchat.available = lambda: True
+gw.walkerchat.run = walk
+gw._ask_route = lambda m: {'kind': 'guideline', 'question': 'Welche Empfehlungsklasse haben SGLT2-Hemmer bei HFmrEF?', 'reply': ''}
+gw.warm(log=lambda text, flush=False: lines.append(text))
+import time  # noqa: E402
+for _ in range(50):
+  if len(lines) == 2:
+    break
+  time.sleep(.05)
+check('start check: routing ok and the walk with its sources', len(lines) == 2 and 'routing ok' in lines[0] and 'walk answered, 1 sources on corpus pages' in lines[1])
+lines.clear()
+gw._ask_route = boom
+gw.walkerchat.run = broken
+gw.warm(log=lambda text, flush=False: lines.append(text))
+for _ in range(50):
+  if len(lines) == 2:
+    break
+  time.sleep(.05)
+check('start check: failures are logged, not raised', len(lines) == 2 and 'routing failed (RuntimeError' in lines[0] and 'walk FAILED (Unavailable: graph down)' in lines[1])
+
 # ---- guido.run: the walker first, another engine after it
 gw.walkerchat.available = lambda: True
 guido.config.AGENT_URL = ''
