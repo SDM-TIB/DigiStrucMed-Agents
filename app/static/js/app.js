@@ -226,6 +226,12 @@ function kgCollide(radius) {
   let all = []; const rad = typeof radius === 'function' ? radius : n => n.kind === 'question' ? radius * 1.7 : radius / 2;
   const f = alpha => {
     const nodes = all.filter(n => n.kind !== 'dot');  // the ring of scored guidelines is a backdrop: nothing collides with it
+    const q = KG.cine && nodes.find(n => n.kind === 'question');
+    if (q) for (const b of nodes) {  // the question is a wide pill, not a disc: nothing comes to rest on its text
+      if (b === q || b.fx != null) continue;
+      const dx = b.x - q.x, dy = b.y - q.y, hw = 178, hh = 30;
+      if (Math.abs(dx) < hw && Math.abs(dy) < hh) b.y += (dy >= 0 ? 1 : -1) * (hh - Math.abs(dy)) * .35;
+    }
     for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i], b = nodes[j];
       let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
@@ -285,7 +291,10 @@ function kgBackdrop(ctx, scale) {
   // fills for two hundred dots, and one stroke for their streaks while the camera moves
   const pv = KG.pview || KG.view, speed = Math.hypot((KG.view.x - pv.x) * scale, (KG.view.y - pv.y) * scale) + Math.abs(scale - pv.k) * 260, moved = speed > 5;  // px per frame
   const zs = scale > 1 ? Math.pow(scale, -.5) : 1, buckets = [[], [], [], []];
-  for (const n of KG.nodes) if (n.kind === 'dot' && now >= n.born) buckets[n.done ? 0 : Math.min(3, 1 + Math.floor((n.p || 0) * 3))].push(n);
+  for (const n of KG.nodes) if (n.kind === 'dot' && now >= n.born) {
+    if (n.tx != null) { n.fx += (n.tx - n.fx) * .07; n.fy += (n.ty - n.fy) * .07; n.x = n.fx; n.y = n.fy; if (Math.abs(n.tx - n.fx) + Math.abs(n.ty - n.fy) < .4) n.tx = null; }
+    buckets[n.done ? 0 : Math.min(3, 1 + Math.floor((n.p || 0) * 3))].push(n);
+  }
   ctx.fillStyle = kgC('dot');
   buckets.forEach((b, i) => { if (!b.length) return; ctx.globalAlpha = [.3, .45, .7, .95][i]; ctx.beginPath();
     for (const n of b) { const r = kgR(n) * zs * Math.min(1, .3 + (now - n.born) / 500); ctx.moveTo(n.x + r, n.y); ctx.arc(n.x, n.y, r, 0, 2 * Math.PI); } ctx.fill(); });
@@ -1639,18 +1648,29 @@ function walkGraph(W, ev, question) {
   const parent = p => has('t' + p.topic) ? 't' + p.topic : 'd' + p.doc;
   const unghost = id => { const n = KG.byId.get(id); if (n && n.ghost) { n.ghost = false; n.born = performance.now(); KG.links.forEach(l => { if ((l.target.id || l.target) === id) l.ghost = false; }); } };
   if (ev.t === 'start') {
+    // the graph is there before the walk says anything: the guidelines as a field of dots around the question, the camera
+    // drawing back from the question. when the walk reports, the dots take their places by how well they fit
     kgReset(question); dirStart(); W.n = {docs: 0, topics: 0, statements: 0};
-    return dirCue(() => {}, 450);
+    const n0 = LIB.length || 200;  // the library's size, known once the sources were loaded
+    add(Array.from({length: n0}, (_, k) => { const a = Math.random() * 2 * Math.PI, r = 170 + 230 * Math.sqrt(Math.random());
+      return {id: 'd' + k, kind: 'dot', hop: 1, label: '', p: .22, tw: k, fx: Math.cos(a) * r, fy: Math.sin(a) * r}; }), [], null, 1);
+    KG.ring = true; status(uiText('Entering the graph'));
+    return dirCue(() => dirShot(new Set(KG.nodes.map(n => n.id)), {tau: 2600, pad: 30}), 450);
   }
   if (ev.t === 'scores' && ev.level === 'guidelines') return dirCue(() => {
     // every guideline as a dot on a spiral around the question: the better it fits, the nearer and the larger. the camera pulls back to take them all in
-    const items = ev.items.slice().sort((a, b) => b[1] - a[1]); W.n.docs = items.length;
-    add(items.map(([di, p], k) => { const a = k * 2.399963, r = 150 + 210 * Math.sqrt(k / items.length);
-      return {id: 'd' + di, kind: 'dot', hop: 1, label: '', p, tw: k, fx: Math.cos(a) * r, fy: Math.sin(a) * r}; }), [], null, 1);
+    const items = ev.items.slice().sort((a, b) => b[1] - a[1]), known = new Set(items.map(x => 'd' + x[0])); W.n.docs = items.length;
+    const place = k => { const a = k * 2.399963, r = 150 + 210 * Math.sqrt(k / items.length); return [Math.cos(a) * r, Math.sin(a) * r]; };
+    items.forEach(([di, p], k) => { const n = KG.byId.get('d' + di); if (n) { [n.tx, n.ty] = place(k); n.p = p; } });  // a dot already there glides to its place (kgBackdrop)
+    add(items.map(([di, p], k) => ({id: 'd' + di, kind: 'dot', hop: 1, label: '', p, tw: k, fx: place(k)[0], fy: place(k)[1]})), [], null, 1);
+    if (KG.nodes.some(n => n.kind === 'dot' && !known.has(n.id))) {  // the field was a guess of the library's size: dots without a guideline go
+      KG.nodes = KG.nodes.filter(n => n.kind !== 'dot' || known.has(n.id)); KG.byId = new Map(KG.nodes.map(n => [n.id, n]));
+      KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]});
+    }
     KG.ring = true;
     dirShot(new Set(KG.nodes.map(n => n.id)), {tau: 780, pad: 40});
     status(uiText('{n} guideline nodes around your question', {n: num(items.length)}));
-  }, 1700);
+  }, 1300);
   if (ev.t === 'guidelines') return dirCue(async () => {
     // the chosen guidelines leave the ring and become the roots of the walk; the runner visits each of them from the question
     ev.kept.forEach((di, k) => {
@@ -1668,7 +1688,7 @@ function walkGraph(W, ev, question) {
     // the topics of one guideline: the fitting ones open, the others stay as ghosts around it. a close shot of this guideline
     const sorted = ev.items.slice().sort((a, b) => b[1] - a[1]), best = sorted.slice(0, 3).filter((x, k) => x[1] >= .3 || k === 0), open = new Set(best.map(x => x[0]));
     W.n.topics += ev.items.length;
-    const name = ti => { const nm = (ev.names || {})[ti] || []; return (de && nm[1]) || nm[0] || ''; };
+    const name = ti => { const nm = (ev.names || {})[ti] || [], t = (de && nm[1]) || nm[0] || ''; return /^(other|sonstiges|andere)$/i.test(t) ? '' : t; };  // the catch-all topic has no name worth showing
     add(sorted.slice(0, 12).map(([ti, p]) => ({id: 't' + ti, kind: 'topic', hop: 2, label: name(ti), text: name(ti), p, ghost: !open.has(ti)})),
         sorted.slice(0, 12).map(([ti]) => ({source: 'd' + ev.doc, target: 't' + ti, role: 'topic', ghost: !open.has(ti)})), 'd' + ev.doc, 2);
     best.forEach(([ti]) => unghost('t' + ti));
@@ -1750,7 +1770,7 @@ function walkStep(st, ev) {
   }
   if (ev.t === 'scores' && ev.level === 'topics') {  // one hop per guideline: into its nearest topic
     const best = ev.items.slice().sort((x, y) => y[1] - x[1])[0], nm = best && (ev.names || {})[best[0]];
-    if (!nm) return;
+    if (!nm || /^other$/i.test(nm[0])) return;
     return line('search', `${node((w.titles || {})[ev.doc], 34)} → ${node((de && nm[1]) || nm[0], 40)}`);
   }
   if (ev.t === 'scores' && ev.level === 'statements') { w.statements += ev.candidates; return line('read', uiText('{n} statement nodes hang below these topics', {n: num(w.statements)})); }
@@ -2477,6 +2497,8 @@ function walkEvidence(cited) {
   const w = winOpen('table', uiText('Evidence from the guidelines'), 'table', true);
   w.body.innerHTML = ''; const host = document.createElement('div'); host.className = 'jr-host'; w.body.append(host);
   const el = {b: {type: 'Board', props: {title: uiText('Statements the answer rests on')}, children: []}};
+  const said = new Set(), key = s => String(s.snippet || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  cited = cited.filter(s => !said.has(key(s)) && said.add(key(s)));  // a guideline repeats its recommendations (summary table, chapter): each statement once
   cited.slice(0, 6).forEach((s, i) => {
     el['q' + i] = {type: 'Quote', props: {claim: s.snippet, quote: s.highlight, ref: s.ref, title: s.title, page: s.page, grade: walkGrade(s), pageId: s.page_id}, children: []};
     el.b.children.push('q' + i);

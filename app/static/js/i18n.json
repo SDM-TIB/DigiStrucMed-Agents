@@ -549,7 +549,8 @@
     "Closing in": "Eingrenzen",
     "{n} statement nodes in reach": "{n} Aussage-Knoten in Reichweite",
     "1 statement on the path": "1 Aussage auf dem Pfad",
-    "{n} statements on the path": "{n} Aussagen auf dem Pfad"
+    "{n} statements on the path": "{n} Aussagen auf dem Pfad",
+    "Entering the graph": "Einstieg in den Graphen"
   },
   "es": {
     "Login TIB Chat": "Acceso a TIB Chat",
@@ -1100,7 +1101,8 @@
     "Closing in": "Acercándose",
     "{n} statement nodes in reach": "{n} nodos de afirmaciones al alcance",
     "1 statement on the path": "1 afirmación en el camino",
-    "{n} statements on the path": "{n} afirmaciones en el camino"
+    "{n} statements on the path": "{n} afirmaciones en el camino",
+    "Entering the graph": "Entrando en el grafo"
   },
   "ru": {
     "Login TIB Chat": "Вход в TIB Chat",
@@ -1651,7 +1653,8 @@
     "Closing in": "Сужаю круг",
     "{n} statement nodes in reach": "Узлов-утверждений в пределах досягаемости: {n}",
     "1 statement on the path": "1 утверждение на пути",
-    "{n} statements on the path": "Утверждений на пути: {n}"
+    "{n} statements on the path": "Утверждений на пути: {n}",
+    "Entering the graph": "Вход в граф"
   },
   "hi": {
     "Login TIB Chat": "TIB Chat लॉगिन",
@@ -2202,6 +2205,7 @@
     "Closing in": "सिमट रहा है",
     "{n} statement nodes in reach": "{n} कथन-नोड पहुँच में",
     "1 statement on the path": "रास्ते पर 1 कथन",
-    "{n} statements on the path": "रास्ते पर {n} कथन"
+    "{n} statements on the path": "रास्ते पर {n} कथन",
+    "Entering the graph": "ग्राफ़ में प्रवेश"
   }
 }
