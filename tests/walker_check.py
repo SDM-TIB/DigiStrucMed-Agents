@@ -25,7 +25,7 @@ def check(name, cond):
 g = walkerchat._translate({'t': 'scores', 'level': 'documents', 'scorer': 's', 'probs': {'urn:A': .9, 'urn:B': .1, 'urn:X': .5}}, S)
 check('guidelines: known documents only, as indices', g['level'] == 'guidelines' and g['items'] == [[0, .9], [1, .1]])
 t = walkerchat._translate({'t': 'scores', 'level': 'topics', 'scorer': 's', 'probs': {'urn:B|t1': .7}}, S)
-check('topics: topic index and its guideline', t['items'] == [[1, .7]] and t['doc'] == 1)
+check('topics: topic index, its guideline and the names of the best', t['items'] == [[1, .7]] and t['doc'] == 1 and t['names'] == {'1': ['t1', '']})
 r = walkerchat._translate({'t': 'scores', 'level': 'pieces', 'scorer': 's', 'probs': {'urn:mhh:rec/1': .8}}, S)
 check('recommendation nodes of the 28.10 graph are their own level', r['level'] == 'recommendations' and r['items'] == [])
 p = walkerchat._translate({'t': 'scores', 'level': 'pieces', 'scorer': 's', 'probs': {'p#prop1': .4, 'p#prop0': .9}}, S)

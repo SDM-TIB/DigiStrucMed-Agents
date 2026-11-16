@@ -91,7 +91,8 @@ def replay(messages):
     hit = {L['topic'][i] for _, i in best if doc_of(i) == d}
     time.sleep(.6)
     yield at({'t': 'scores', 'level': 'topics', 'scorer': '@cf/cloudflare/clef-flash', 'doc': d,
-              'items': [[ti, round(.85 if ti in hit else min(.5, .05 + fit(L['topics'][ti]['name'])), 3)] for ti in topics]})
+              'items': [[ti, round(.85 if ti in hit else min(.5, .05 + fit(L['topics'][ti]['name'])), 3)] for ti in topics],
+              'names': {str(ti): [L['topics'][ti].get('name') or '', L['topics'][ti].get('de') or ''] for ti in topics}})
   card = lambda s, i: {**walkerchat._prop_card(i, S['by_key'][L['keys'][i]], S), 'p': round(min(.98, .35 + .6 * s), 3)}
   candidates = sum(1 for i in range(len(L['keys'])) if doc_of(i) in kept)
   time.sleep(1.2)

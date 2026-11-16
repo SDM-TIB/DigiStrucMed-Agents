@@ -179,10 +179,12 @@ With `GUIDO_HARNESS=walker` Guido's chat and his video call answer with Walker V
 above. `app/guidowalker.py` puts a conversation around the walk: one bounded call of the language model decides
 whether the message is small talk (Guido answers himself) and turns a follow-up ("and for women?") into a
 self-contained question; a first message is walked in the user's own words. The walk's steps become step lines of the
-message, the graph panel shows the walker's path (the Graph Walker page embedded as `/graph-walker?embed=1`, fed over
-`postMessage`), and every `[n]` opens the original guideline page with the verbatim quote marked. In a call, Guido
-shares the same path on his screen, narrates the stages, and shows the statements the answer rests on with the page of
-the first one. The embedded path is in German, like the Graph Walker page.
+message, the graph panel draws the walk as a live force graph (every scored guideline a dot around the question, the
+chosen guidelines growing out of that ring, their topics and statements branching from them, UMLS concepts tying
+statements together, the cited path lit at the end), and every `[n]` opens the original guideline page with the
+verbatim quote marked. In a call, Guido shares the same graph on his screen and shows the statements the answer rests
+on with the page of the first one. The Graph Walker page keeps the five-stage path; it can also be embedded
+(`/graph-walker?embed=1`, fed over `postMessage`). The embedded path is in German, like the Graph Walker page.
 
 Speed. A walk is twenty to thirty requests to decision models and one to the writer; its duration is theirs.
 `MODEL_SLOTS` (default 8) is how many run side by side. `V5_SCORER` and `V7_RERANK` choose the decision models: empty

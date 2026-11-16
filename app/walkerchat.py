@@ -140,7 +140,9 @@ def _translate(ev, s):
         ti = s['topic_i'].get((s['doc_i'].get(doc), name))
         if ti is not None:
           items.append([ti, round(v, 3)])
-      return {'t': 'scores', 'level': 'topics', 'scorer': ev['scorer'], 'items': items, 'doc': L['topics'][items[0][0]]['doc'] if items else None}
+      best = sorted(items, key=lambda x: -x[1])[:4]  # the topics a page may draw, with their names
+      return {'t': 'scores', 'level': 'topics', 'scorer': ev['scorer'], 'items': items, 'doc': L['topics'][items[0][0]]['doc'] if items else None,
+              'names': {str(i): [L['topics'][i].get('name') or '', L['topics'][i].get('de') or ''] for i, _ in best}}
     if level in ('pieces', 'answers'):
       items = sorted(([s['key_i'][k], round(v, 3)] for k, v in probs.items() if k in s['key_i']), key=lambda x: -x[1])
       if level == 'pieces' and not items:  # the 28.10 graph's recommendation nodes (class and level of evidence), not statements

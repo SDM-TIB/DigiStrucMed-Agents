@@ -193,7 +193,9 @@ function loadData() {
 
 /* ---------------- guido's live knowledge graph (force-graph) ---------------- */
 const KG = {fg: null, nodes: [], links: [], byId: new Map(), cited: new Set(), pathIds: new Set(), hop: 0, hover: null};
-const KG_COL = {concept: '#4b63e0', rec: '#2fa36b', guide: '#8a90a0', page: '#d97706', seedRing: 'rgba(75,99,224,.28)', link: 'rgba(110,118,140,.35)', hot: '#4b63e0'};
+const KG_COL = {concept: '#4b63e0', rec: '#2fa36b', guide: '#8a90a0', page: '#d97706', topic: '#0e9aa7', umls: '#8b5cf6', dot: '#9aa3b8', seedRing: 'rgba(75,99,224,.28)', link: 'rgba(110,118,140,.35)', hot: '#4b63e0'};
+// the scored-but-closed guidelines of a walk are a backdrop: they push nothing and nothing collides with them
+const kgCharge = n => n.kind === 'dot' ? 0 : n.kind === 'question' ? -600 : -220;
 function kgInit() {
   if (KG.fg || !window.ForceGraph) return;
   const el = $('#kg-canvas');
@@ -203,11 +205,12 @@ function kgInit() {
     .linkDirectionalParticles(l => l.hot ? 3 : 0).linkDirectionalParticleWidth(3).linkDirectionalParticleSpeed(0.011)
     .linkDirectionalParticleColor(() => KG_COL.hot)
     .nodeCanvasObject(kgDraw).nodePointerAreaPaint((n, color, ctx) => { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, kgR(n) + 3, 0, 2 * Math.PI); ctx.fill(); })
-    .onNodeHover(n => { KG.hover = n || null; el.style.cursor = n ? 'pointer' : ''; kgTip(n); })
+    .linkCurvature(l => l.role === 'concept' ? 0.22 : 0.08)
+    .onNodeHover(n => { if (n && n.kind === 'dot') n = null; KG.hover = n || null; el.style.cursor = n ? 'pointer' : ''; kgTip(n); })
     .onNodeClick(n => { kgTip(n, true); if (n.kind === 'page' && n.page_id) window.dispatchEvent(new CustomEvent('jr-open-page', {detail: {id: n.page_id}})); });
-  KG.fg.d3Force('charge').strength(n => n.kind === 'question' ? -600 : -220);
+  KG.fg.d3Force('charge').strength(kgCharge);
   KG.fg.d3Force('link').distance(l => l.role === 'question' ? 90 : l.role === 'source' ? 40 : 70);
-  KG.fg.d3Force('collide', kgCollide(n => n.kind === 'question' ? 48 : KG.wave === -1 ? (KG.pathIds.has(n.id) ? 46 : 8) : 13));
+  KG.fg.d3Force('collide', kgCollide(n => n.kind === 'dot' ? 0 : n.kind === 'question' ? 48 : KG.wave === -1 ? (KG.pathIds.has(n.id) ? 46 : 8) : 13));
   new ResizeObserver(() => KG.fg.width(el.clientWidth).height(el.clientHeight)).observe(el);
 }
 // Simple collision force (labels need room); O(n^2) is fine for < 150 nodes.
@@ -215,7 +218,8 @@ function kgCollide(radius) {
   let nodes = []; const rad = typeof radius === 'function' ? radius : n => n.kind === 'question' ? radius * 1.7 : radius / 2;
   const f = alpha => {
     for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
-      const a = nodes[i], b = nodes[j]; let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+      const a = nodes[i], b = nodes[j]; if (a.kind === 'dot' || b.kind === 'dot') continue;
+      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
       const min = rad(a) + rad(b);
       if (d < min) { const k = (min - d) / d * 0.5 * Math.min(1, alpha * 4 + 0.2); dx *= k; dy *= k;
         if (a.fx == null) { a.x -= dx; a.y -= dy; } if (b.fx == null) { b.x += dx; b.y += dy; } }
@@ -230,7 +234,12 @@ function kgRecLabel(n, lim) {
   const t = (n.text || n.label).replace(/\s+/g, ' '), room = lim - (grade ? grade.length + 3 : 0);
   return (t.length > room ? t.slice(0, room - 1).trimEnd() + '…' : t) + (grade ? ' · ' + grade : '');
 }
-function kgR(n) { return n.kind === 'concept' ? (n.hop === 0 ? 9 : 6) : n.kind === 'rec' ? 5 : n.kind === 'page' ? 5.5 : 4; }
+function kgR(n) {  // the walker's nodes carry their probability p: a better fit is drawn larger
+  if (n.kind === 'dot') return 1.4 + 3.2 * (n.p || 0);
+  if (n.kind === 'topic') return 4.5 + 2.5 * (n.p || 0);
+  if (n.kind === 'umls') return 5;
+  return n.kind === 'concept' ? (n.hop === 0 ? 9 : 6) : n.kind === 'rec' ? (n.p != null ? 4 + 2.5 * n.p : 5) : n.kind === 'page' ? 5.5 : 4;
+}
 function kgDraw(n, ctx, scale) {
   if (n.kind === 'question') {
     const fs = 13 / scale, txt = n.label.length > 46 ? n.label.slice(0, 45) + '…' : n.label;
@@ -240,18 +249,24 @@ function kgDraw(n, ctx, scale) {
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, n.x, n.y + 0.5 / scale);
     return;
   }
-  const born = Math.min(1, (performance.now() - n.born) / 600), r = kgR(n) * (0.4 + 0.6 * born);
+  const born = Math.max(0, Math.min(1, (performance.now() - n.born) / 600)), r = kgR(n) * (0.4 + 0.6 * born);  // 0 until its turn in a staggered wave
+  if (!born) return;
+  if (n.kind === 'dot') {  // a guideline that was scored and stayed closed: no label, the fainter the worse it fits
+    ctx.globalAlpha = born * (n.done ? 0.3 : 0.4 + 0.6 * (n.p || 0)); ctx.fillStyle = KG_COL.dot;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 2 * Math.PI); ctx.fill(); ctx.globalAlpha = 1; return;
+  }
   const dim = KG.wave === -1 && KG.pathIds.size && !KG.pathIds.has(n.id);
   ctx.globalAlpha = born * (dim ? 0.18 : 1);
   if (n.hop === 0 && n.kind === 'concept') { ctx.fillStyle = KG_COL.seedRing; ctx.beginPath(); ctx.arc(n.x, n.y, r + 6 + 2 * Math.sin(performance.now() / 380), 0, 2 * Math.PI); ctx.fill(); }
   if (KG.cited.has(n.id)) { ctx.strokeStyle = '#f2b136'; ctx.lineWidth = 3 / scale; ctx.beginPath(); ctx.arc(n.x, n.y, r + 3.5, 0, 2 * Math.PI); ctx.stroke(); }
+  if (!dim && born >= 1) { ctx.shadowColor = KG_COL[n.kind] || KG_COL.concept; ctx.shadowBlur = KG.cited.has(n.id) || n.hop === 0 ? 14 : 6; }  // a soft glow in the node's own colour
   ctx.fillStyle = KG_COL[n.kind] || KG_COL.concept; ctx.beginPath();
   if (n.kind === 'rec') { const w = r * 1.7; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - w / 2, w, w, 2) : ctx.rect(n.x - w / 2, n.y - w / 2, w, w); }
   else if (n.kind === 'page') { const w = r * 1.4, h = r * 1.9; ctx.roundRect ? ctx.roundRect(n.x - w / 2, n.y - h / 2, w, h, 1.5) : ctx.rect(n.x - w / 2, n.y - h / 2, w, h); }  // a sheet: a guideline page
   else ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
-  ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2 / scale; ctx.stroke();
+  ctx.fill(); ctx.shadowBlur = 0; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2 / scale; ctx.stroke();
   const showLabel = KG.hover === n || (KG.wave === -1 ? KG.pathIds.has(n.id) : n.hop === 0 || n.wave === KG.wave);
-  if (showLabel && born > 0.3) {
+  if (showLabel && born > 0.3 && (n.label || n.text)) {
     const big = n.hop === 0 || KG.cited.has(n.id), fs = (big ? 13 : 11.5) / scale, lim = n.kind === 'rec' ? 38 : 28;
     const txt = n.kind === 'rec' ? kgRecLabel(n, lim) : n.label.length > lim ? n.label.slice(0, lim - 1) + '…' : n.label;
     ctx.font = `${big ? 650 : 550} ${fs}px Segoe UI, system-ui, sans-serif`;
@@ -269,6 +284,7 @@ function kgTip(n, sticky) {
   if (!n) { if (!tip.dataset.sticky) tip.classList.add('hidden'); return; }
   tip.dataset.sticky = sticky ? '1' : '';
   tip.innerHTML = n.kind === 'rec' ? `<b>${esc(n.label)}</b>${esc(n.text || '')}` : n.kind === 'page' ? `<b>${esc(n.label)}</b>${esc(n.text || '')} · ${esc(uiText('Guideline page'))}`
+    : guidoEngine === 'walker' ? `<b>${esc(n.label)}</b>${esc(uiText(n.kind === 'topic' ? 'Topic of the guideline' : n.kind === 'umls' ? 'UMLS concept' : 'Guideline'))}${n.kind === 'umls' && n.text ? ' · ' + esc(n.text) : ''}`
     : `<b>${esc(n.label)}</b>${n.kind === 'guide' ? 'Source guideline' : 'Concept in the knowledge graph'}`;
   tip.classList.remove('hidden');
 }
@@ -292,7 +308,7 @@ function hud(phase, detail) {
 // the hud lives in whichever element holds the graph canvas: the chat panel or guido's shared-screen window
 function hudHome(parent) { const el = $('#kg-hud'); if (el && el.parentNode !== parent) parent.append(el); }
 function kgReset(question) {
-  kgInit(); if (KG.fg) KG.fg.d3Force('charge').strength(n => n.kind === 'question' ? -600 : -220);
+  kgInit(); if (KG.fg) KG.fg.d3Force('charge').strength(kgCharge);
   KG.nodes = []; KG.links = []; KG.byId.clear(); KG.cited.clear(); KG.pathIds = new Set(); KG.hop = 0; KG.wave = 0;
   if (question) { const q = {id: 'q', kind: 'question', label: question, hop: -1, born: performance.now(), x: 0, y: 0, fx: 0, fy: 0}; KG.nodes.push(q); KG.byId.set('q', q); }
   $('#kg-tip').classList.add('hidden'); $('#kg-tip').dataset.sticky = '';
@@ -312,7 +328,8 @@ function kgAnswerLayout() {
   allOthers.slice(6).forEach(n => KG.pathIds.delete(n.id));
   KG.links.forEach(l => { const a = l.source.id || l.source, b = l.target.id || l.target; if (l.hot && !(KG.pathIds.has(a) && KG.pathIds.has(b))) l.hot = false; });
   // laid out in screen pixels at zoom 1, sized to the panel, so labels (fixed screen size) never overlap
-  const W = Math.max(320, KG.fg.width()), H = Math.max(320, KG.fg.height()), dx = Math.min(170, W * 0.24), rows = [];
+  const hudEl = $('#kg-hud'), top = hudEl && hudEl.offsetHeight && hudEl.parentNode === $('#kg-canvas').parentNode ? hudEl.offsetHeight + 16 : 0;  // a visible status card covers this strip
+  const W = Math.max(320, KG.fg.width()), H = Math.max(320, KG.fg.height() - top), dx = Math.min(170, W * 0.24), rows = [];
   const pairs = a => { for (let i = 0; i < a.length; i += 2) rows.push(a.slice(i, i + 2)); };
   if (KG.byId.has('q')) rows.push([KG.byId.get('q')]);
   pairs(seeds); recs.forEach(n => rows.push([n])); pairs(others);
@@ -326,7 +343,7 @@ function kgAnswerLayout() {
   }));
   const from = new Map([...target.keys()].map(n => [n, [n.x, n.y]])), t0 = performance.now(), D = 900;
   const ease = t => 1 - Math.pow(1 - t, 3);
-  KG.fg.d3ReheatSimulation(); KG.fg.centerAt(0, 0, D); KG.fg.zoom(zoom, D);
+  KG.fg.d3ReheatSimulation(); KG.fg.centerAt(0, -top / 2 / zoom, D); KG.fg.zoom(zoom, D);
   (function step() {
     const k = ease(Math.min(1, (performance.now() - t0) / D));
     target.forEach(([tx, ty], n) => { const [fx0, fy0] = from.get(n); n.fx = fx0 + (tx - fx0) * k; n.fy = fy0 + (ty - fy0) * k; });
@@ -342,6 +359,9 @@ function kgUpdate(ev) {
     const kind = id => (KG.byId.get(id) || {}).kind;
     KG.links.forEach(l => { const a = l.source.id || l.source, b = l.target.id || l.target;
       if ((KG.cited.has(a) || KG.cited.has(b)) && kind(a) !== 'guide' && kind(b) !== 'guide') { l.hot = true; KG.pathIds.add(a); KG.pathIds.add(b); } });
+    // a walker path runs question -> guideline -> topic -> statement: the links above a topic and a guideline on it
+    for (let again = true; again;) { again = false; KG.links.forEach(l => { const a = l.source.id || l.source, b = l.target.id || l.target;
+      if (!l.hot && l.role === 'topic' && KG.pathIds.has(b)) { l.hot = true; KG.pathIds.add(a); again = true; } }); }
     KG.links.forEach(l => { const a = l.source.id || l.source, b = l.target.id || l.target;
       if (a === 'q' && KG.pathIds.has(b)) { l.hot = true; KG.pathIds.add('q'); } });
     if (!KG.cited.size) KG.pathIds = new Set();
@@ -359,7 +379,7 @@ function kgUpdate(ev) {
   const anchor = ev.focus && KG.byId.get(ev.focus);
   ev.nodes.forEach((n, i) => {
     const parent = anchor || KG.nodes[0];
-    const node = {...n, born: performance.now() + i * 40, x: parent ? parent.x + (Math.random() - .5) * 30 : (Math.random() - .5) * 40, y: parent ? parent.y + (Math.random() - .5) * 30 : (Math.random() - .5) * 40};
+    const node = {...n, born: performance.now() + i * (n.kind === 'dot' ? 6 : 40), x: parent ? parent.x + (Math.random() - .5) * 30 : (Math.random() - .5) * 40, y: parent ? parent.y + (Math.random() - .5) * 30 : (Math.random() - .5) * 40};
     KG.nodes.push(node); KG.byId.set(n.id, node);
   });
   // start concepts and directly matched recommendations hang off the question
@@ -801,7 +821,6 @@ function switchAgent(id) {
   $('#head-name').textContent = agent.name; $('#head-tagline').textContent = agent.tagline;
   $('#head-orb').classList.toggle('lino', agent.orb === 'lino'); $('#head-orb').classList.toggle('guido', agent.orb === 'guido');
   $('#view-chat').classList.toggle('kg-on', agent === AGENTS.guido); if (agent === AGENTS.guido) kgInit();
-  walkPanel(agent === AGENTS.guido && guidoEngine === 'walker');
   const SUG = agent === AGENTS.guido ? [care.pair('sAspirin'), care.pair('sBleeding'), care.pair('sHfref')]  // in the patient's language
     : agent === AGENTS.lino ? [[care.t('sStoryboard'), STORYBOARD_PROMPT, 'attach'], care.pair('sAce')] : [];
   $('#suggests').innerHTML = SUG.map(([lv, q, kind], i) => `<button class="sug${kind ? ' sug-att' : ''}" style="animation-delay:${i * 60}ms" data-i="${i}" title="${kind ? 'Attach Mahsa’s storyboard prompt, then describe the video' : esc(q)}">${kind ? '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9.5 5 2.5-5 2.5Z"/></svg>' : ''}${esc(lv)}</button>`).join('');
@@ -1388,45 +1407,99 @@ function finishRefs(st) {
 }
 
 /* ---------- Guido on the Graph Walker (app/guidowalker.py) ----------
-   the server walks the proposition graph with Walker V7 and streams every step as a `walker` event. the path itself is
-   drawn by the Graph Walker page, embedded as an iframe (/graph-walker?embed=1) in the chat's graph panel and in the
-   video call's shared screen; this page forwards the events to it and writes the steps into the message. */
+   the server walks the proposition graph with Walker V7 and streams every step as a `walker` event. this page writes
+   the steps into the message and draws the walk as the live force graph of the graph panel (and of the shared screen
+   in a call): every guideline as a dot around the question, the nearer the better it fits; the chosen guidelines
+   grow out of that ring, their topics and statements branch from them, the UMLS concepts tie statements together,
+   and at the end the cited statements stay lit with their path. */
 let guidoEngine = 'local';  // 'walker' | 'mastra' | 'local', from /api/guido after sign-in
-const WALK_TEMPO = 0.5;     // the embedded picture plays about as fast as a walk takes
-const walkFrames = new Map();  // host element -> {el, ready, queue, played}
-function walkFrame(host) {
-  let f = walkFrames.get(host);
-  if (f && f.el.isConnected) return f;
-  const el = document.createElement('iframe'); el.className = 'walk-frame'; el.title = uiText('Path through the guideline knowledge graph');
-  el.src = '/graph-walker?embed=1&tempo=' + WALK_TEMPO + '&lang=' + walkLang(); host.append(el);
-  f = {el, ready: false, queue: [], played: null};
-  walkFrames.set(host, f); return f;
-}
-// the path is in German or English: the page's language when it is German, else English (Spanish, Russian and Hindi texts of the graph do not exist)
-const walkLang = () => care.lang === 'de' ? 'de' : 'en';
-function walkSend(f, ev) {
-  if (!f.ready) return f.queue.push(ev);
-  const win = f.el.contentWindow;
-  if (ev.t === 'start') win.postMessage({walker: 'lang', value: walkLang()}, location.origin);  // between two walks
-  win.postMessage({walker: 'event', ev}, location.origin);
-}
-// resolves when the embedded picture has shown event `t` (its director plays events one after the other), or after `ms`
-const walkShown = (f, t, ms) => new Promise(r => { const timer = setTimeout(r, ms); f.played = x => { if (x === t) { clearTimeout(timer); f.played = null; r(); } }; });
-addEventListener('message', e => {
-  if (e.origin !== location.origin) return;
-  const f = [...walkFrames.values()].find(x => x.el.contentWindow === e.source), m = e.data || {};
-  if (!f) return;
-  if (m.walker === 'ready') { f.ready = true; f.queue.splice(0).forEach(ev => walkSend(f, ev)); }
-  else if (m.walker === 'played') f.played?.(m.t);
-});
-function walkPanel(on) {
-  $('#kg-panel').classList.toggle('walk', on); $('#view-chat').classList.toggle('walk-on', on);
-  return on ? walkFrame($('#kg-walk')) : null;
-}
 // asked once the visitor is signed in (showApp): which engine Guido runs on
 function loadGuidoEngine() {
-  fetch('/api/guido').then(r => r.ok ? r.json() : {}).then(x => { guidoEngine = x.engine || 'local'; walkPanel(guidoEngine === 'walker' && agent === AGENTS.guido); }).catch(() => {});
+  fetch('/api/guido').then(r => r.ok ? r.json() : {}).then(x => { guidoEngine = x.engine || 'local'; walkLegend(); }).catch(() => {});
 }
+// legend and step track of the graph panel name what this engine draws
+function walkLegend() {
+  const on = guidoEngine === 'walker', set = (sel, text) => { const e = document.querySelector(sel); if (e) e.textContent = uiText(text); };
+  $('#kg-panel').classList.toggle('wk', on);
+  set('.kg-legend .lg.c', on ? 'Guideline' : 'Concept'); set('.kg-legend .lg.r', on ? 'Statement' : 'Recommendation');
+  set('.kg-legend .lg.p', on ? 'Topic' : 'Page'); set('.kg-legend .lg.g', on ? 'UMLS concept' : 'Guideline');
+  document.body.classList.toggle('guido-walker', on);  // no status card over the graph: the graph alone (app.css)
+}
+// one event of the walk into the graph. W is the state of this walk's drawing
+function walkGraph(W, ev, question) {
+  const de = care.lang === 'de', num = n => Number(n).toLocaleString(careLocale());
+  const cut = (t, n) => (t = String(t || '').replace(/\s+/g, ' ')).length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+  const has = id => KG.byId.has(id);
+  // the camera keeps the whole walk in view (the ring of scored guidelines only while it is the news)
+  const frame = all => kgCamera(new Set(KG.nodes.filter(n => all || n.kind !== 'dot').map(n => n.id)));
+  const add = (nodes, links, focus, hop) => { kgUpdate({nodes: nodes.filter(n => !has(n.id)), links, focus, action: 'walk', hop}); frame(hop === 1); };
+  const status = t => { $('#kg-status').textContent = t; };
+  const stmt = p => ({id: 's' + p.i, kind: 'rec', hop: 3, text: (de && p.text_de) || p.text, p: p.p,
+    label: [p.cls ? 'Class ' + p.cls : '', p.lvl ? 'LoE ' + p.lvl : ''].filter(Boolean).join(' · ') || cut((de && p.text_de) || p.text, 60)});
+  const parent = p => has('t' + p.topic) ? 't' + p.topic : 'd' + p.doc;
+  if (ev.t === 'start') { kgReset(question); W.docs = {}; W.n = {docs: 0, topics: 0, statements: 0}; return; }
+  if (ev.t === 'scores' && ev.level === 'guidelines') {
+    // every guideline as a dot on a ring around the question: the better it fits, the nearer and the larger
+    const items = ev.items.slice().sort((a, b) => b[1] - a[1]); W.n.docs = items.length;
+    const nodes = items.map(([di, p], k) => {
+      const a = k * 2.399963, r = 150 + 210 * Math.sqrt(k / items.length);  // golden-angle spiral, best in the middle
+      W.docs[di] = p;
+      return {id: 'd' + di, kind: 'dot', hop: 1, label: '', p, fx: Math.cos(a) * r, fy: Math.sin(a) * r};
+    });
+    add(nodes, [], null, 1);
+    status(uiText('{n} guidelines scored', {n: num(items.length)})); return;
+  }
+  if (ev.t === 'guidelines') {
+    // the chosen guidelines leave the ring and become the roots of the walk
+    ev.kept.forEach((di, k) => {
+      const n = KG.byId.get('d' + di); if (!n) return;
+      Object.assign(n, {kind: 'concept', hop: 0, label: (ev.titles || [])[k] || '', fx: null, fy: null, born: performance.now()});
+      KG.links.push({source: 'q', target: n.id, role: 'question', hot: true});
+    });
+    KG.wave = (KG.wave || 0) + 1; ev.kept.forEach(di => { const n = KG.byId.get('d' + di); if (n) n.wave = KG.wave; });
+    KG.fg.graphData({nodes: [...KG.nodes], links: [...KG.links]}); KG.fg.d3ReheatSimulation(); frame(true);
+    status(uiText('{n} guidelines scored · {m} opened', {n: num(W.n.docs), m: ev.kept.length})); return;
+  }
+  if (ev.t === 'scores' && ev.level === 'topics') {
+    const best = ev.items.slice().sort((a, b) => b[1] - a[1]).slice(0, 3).filter((x, k) => x[1] >= .3 || k === 0);
+    W.n.topics += ev.items.length;
+    add(best.map(([ti, p]) => { const nm = (ev.names || {})[ti] || []; return {id: 't' + ti, kind: 'topic', hop: 2, label: (de && nm[1]) || nm[0] || '', p}; }),
+        best.map(([ti]) => ({source: 'd' + ev.doc, target: 't' + ti, role: 'topic'})), 'd' + ev.doc, 2);
+    status(uiText('{n} topics scored', {n: num(W.n.topics)})); return;
+  }
+  if (ev.t === 'scores' && (ev.level === 'statements' || ev.level === 'rerank')) {
+    if (ev.level === 'statements') W.n.statements += ev.candidates;
+    const top = (ev.top || []).slice(0, ev.level === 'rerank' ? 6 : 8);
+    add(top.map(stmt), top.map(p => ({source: parent(p), target: 's' + p.i, role: 'statement'})), null, 3);
+    status(ev.level === 'rerank' ? uiText('Stricter second check') : uiText('{n} statements, each on its own', {n: num(W.n.statements)}));
+    return;
+  }
+  if (ev.t === 'taken') {
+    // the evidence, and the UMLS concepts that tie its statements together
+    const items = ev.items.slice(0, 8), nodes = items.map(stmt), links = items.map(p => ({source: parent(p), target: 's' + p.i, role: 'statement'})), seen = new Map();
+    items.forEach(p => (p.concepts || []).forEach(c => { const e = seen.get(c.ci) || {c, of: []}; e.of.push(p.i); seen.set(c.ci, e); }));
+    [...seen.values()].sort((a, b) => b.of.length - a.of.length).slice(0, 7).forEach(({c, of}) => {
+      nodes.push({id: 'u' + c.ci, kind: 'umls', hop: 4, label: (de && c.de) || c.name, text: c.cui});
+      of.forEach(i => links.push({source: 's' + i, target: 'u' + c.ci, role: 'concept'}));
+    });
+    W.taken = new Set(items.map(p => 's' + p.i));
+    add(nodes, links, null, 4);
+    return;
+  }
+  if (ev.t === 'answer') {
+    // evidence that is no statement of the proposition graph (a graded recommendation, a table row) joins as its own node
+    const cited = [...new Set([...String(ev.text || '').matchAll(/\[(\d+)\]/g)].map(m => +m[1]))].map(n => (ev.sources || []).find(s => s.n === n)).filter(Boolean);
+    const extra = cited.filter(s => s.i == null && s.doc != null && has('d' + s.doc));
+    if (extra.length) add(extra.map(s => ({id: 'x' + s.n, kind: 'rec', hop: 3, text: s.text, label: [s.cor ? 'Class ' + s.cor : '', s.loe ? 'LoE ' + s.loe : ''].filter(Boolean).join(' · ') || cut(s.text, 60)})),
+                          extra.map(s => ({source: 'd' + s.doc, target: 'x' + s.n, role: 'statement'})), null, 3);
+    const ids = cited.map(s => s.i != null ? 's' + s.i : 'x' + s.n).filter(has);
+    KG.nodes.forEach(n => { if (n.kind === 'dot') n.done = true; });
+    kgUpdate({nodes: [], links: [], cited: ev.status === 'evidence' ? [...(W.taken || [])].filter(has) : ids, action: 'done'});
+    const m = KG.cited.size;
+    status(ev.status === 'not covered' ? uiText('Not in the guidelines') : uiText(m === 1 ? '1 statement cited' : '{m} statements cited', {m}));
+  }
+}
+addEventListener('care-lang', walkLegend);  // the legend follows the language of the conversation
 // class and level of a walker source in the language of the page
 const walkGrade = s => [s.cor ? uiText('Class {c}', {c: s.cor}) : '', s.loe ? uiText('Level of evidence {l}', {l: s.loe}) : ''].filter(Boolean).join(' · ');
 // one event of the walk as a step line of the message. the lines have their own box above st.steps: that one belongs to
@@ -1544,7 +1617,7 @@ async function sendChat(text) {
   chatBusy = true; $('#send').disabled = true; $('#msg').value = ''; status('');
   const a = agent, chatHistory = a.history;
   const walking = a === AGENTS.guido && guidoEngine === 'walker';
-  if (a === AGENTS.guido && !walking) kgReset(text);
+  if (a === AGENTS.guido) kgReset(text);
   const story = attached && a === AGENTS.lino;
   care.setLang(langOf(text));
   const u = document.createElement('div'); u.className = 'msg-user'; u.lang = care.lang; u.textContent = text; $(a.thread).append(u);
@@ -1553,7 +1626,7 @@ async function sendChat(text) {
   chatHistory.push({role: 'user', text: story ? STORYBOARD_PROMPT + '\n\n' + text : text});
   const st = addAssistant();
   const tl = a === AGENTS.guido ? makeTimeline(st, walking ? {min: 1} : {}) : null;  // a walk needs no replay: its steps arrive as they happen
-  if (walking) { st.walk = {statements: 0, frame: walkPanel(true), steps: document.createElement('div')}; st.walk.steps.className = 'steps'; st.steps.before(st.walk.steps); }
+  if (walking) { st.walk = {statements: 0, graph: {}, steps: document.createElement('div')}; st.walk.steps.className = 'steps'; st.steps.before(st.walk.steps); }
   try {
     const r = await fetch(a.endpoint, {method: 'POST', headers: HEADERS, body: JSON.stringify({messages: chatHistory})});
     if (r.status === 401) { showLogin(); throw Error('Please sign in again.'); }
@@ -1569,8 +1642,8 @@ async function sendChat(text) {
         const ev = JSON.parse(line.slice(5));
         if (ev.type === 'sources') ev.items.forEach(s => st.sources[s.n] = s);
         if (ev.type === 'walker') {
-          if (ev.ev.t === 'fallback') { st.walk.steps.remove(); st.walk = null; st.pending = null; walkPanel(false); kgReset(text); }  // another engine answers: back to the concept graph
-          else if (st.walk) { walkSend(st.walk.frame, ev.ev); walkStep(st, ev.ev); }
+          if (ev.ev.t === 'fallback') { st.walk.steps.remove(); st.walk = null; st.pending = null; kgReset(text); }  // another engine answers and draws its own walk
+          else if (st.walk) { walkGraph(st.walk.graph, ev.ev, text); walkStep(st, ev.ev); }
           continue;
         }
         if (st.ui && !tl && ev.type !== 'text' && st.ui.event(ev)) continue;
@@ -1623,7 +1696,7 @@ async function sendChat(text) {
 $('#send').onclick = () => sendChat($('#msg').value);
 $('#msg').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat($('#msg').value); } });
 $('#msg').addEventListener('focus', warmSearch);
-$('#clear-chat').onclick = () => { if (chatBusy) return; agent.history.length = 0; $(agent.thread).innerHTML = ''; if (agent === AGENTS.guido && guidoEngine !== 'walker') kgReset(); $('#msg').focus(); };
+$('#clear-chat').onclick = () => { if (chatBusy) return; agent.history.length = 0; $(agent.thread).innerHTML = ''; if (agent === AGENTS.guido) kgReset(); $('#msg').focus(); };
 
 /* ---------------- full-screen video call ---------------- */
 let call = null, convId = null, preview = null, tick = null, endTimer = null, micOn = true, camOn = true, audioCtx = null, meterRaf = 0;
@@ -2112,7 +2185,6 @@ async function guidoCall(m, p) {
   if (guidoEngine === 'walker') return guidoWalkCall(m, p, question, asked, t0);
   const firstShare = !WM.on; shareOn();
   const gw = winOpen('graph', uiText('Knowledge Graph') + ' — ' + asked, 'graph');
-  gw.body.classList.remove('walking');
   if (!gw.body.querySelector('.kg-canvas')) { gw.body.append($('#kg-canvas')); const ws = document.createElement('div'); ws.className = 'wsteps'; gw.body.append(ws); }
   gw.body.querySelector('.wsteps').innerHTML = '';
   ['table', 'inspector', 'notes', 'pdf'].forEach(winClose); WM.concept = null; winLayout('focus');  // new topic, clean desk
@@ -2177,8 +2249,9 @@ async function guidoWalkCall(m, p, question, asked, t0) {
   const firstShare = !WM.on; shareOn();
   const gw = winOpen('graph', uiText('Knowledge Graph') + ' — ' + asked, 'graph');
   ['table', 'inspector', 'notes', 'pdf'].forEach(winClose); WM.concept = null; winLayout('focus');  // new topic, clean desk
-  gw.body.classList.add('walking');
-  const frame = walkFrame(gw.body), lang = langOf(asked), T = SAY[lang] || SAY.en, nar = narrator(lang);
+  if (!gw.body.querySelector('.kg-canvas')) { gw.body.append($('#kg-canvas')); const ws = document.createElement('div'); ws.className = 'wsteps'; gw.body.append(ws); }
+  const W = {}, lang = langOf(asked), T = SAY[lang] || SAY.en, nar = narrator(lang);
+  walkGraph(W, {t: 'start'}, asked);
   nar.say(firstShare ? T.share : T.again, true);
   let raw = '', ok = true, sources = [], statements = 0, late = false, evidenceOnly = false;
   const deadline = setTimeout(() => { late = true; nar.stop(); toolResult(m, p, WALK_LATE, true); }, Math.max(0, TOOL_DEADLINE_MS - (performance.now() - t0)));
@@ -2194,7 +2267,7 @@ async function guidoWalkCall(m, p, question, asked, t0) {
         if (!line.startsWith('data:')) continue;
         const ev = JSON.parse(line.slice(5));
         if (ev.type === 'walker') {
-          const w = ev.ev; walkSend(frame, w);
+          const w = ev.ev; if (w.t !== 'start') walkGraph(W, w, asked);
           if (late) continue;  // the persona is speaking its holding sentence: no narration over it
           if (w.t === 'scores' && w.level === 'guidelines') nar.say(T.wDocs(w.items.length));
           else if (w.t === 'scores' && w.level === 'statements') { statements += w.candidates; nar.say(T.wRead(statements)); }
